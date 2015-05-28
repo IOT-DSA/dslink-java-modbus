@@ -1,5 +1,7 @@
 package modbus;
 
+import java.util.Arrays;
+
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -10,8 +12,11 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.json.JsonArray;
 
+import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
+import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.msg.ModbusRequest;
 import com.serotonin.modbus4j.msg.ReadCoilsRequest;
 import com.serotonin.modbus4j.msg.ReadDiscreteInputsRequest;
@@ -23,16 +28,14 @@ public class SlaveNode {
 	
 	private ModbusLink link;
 	private Node node;
-	private int id;
 	private ModbusMaster master;
 	long interval;
 	
-	SlaveNode(ModbusLink link, Node node, int id, ModbusMaster master, long interval) {
+	SlaveNode(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
-		this.id = id;
-		this.master = master;
-		this.interval = interval;
+		this.master = getMaster();
+		this.interval = node.getAttribute("refresh interval").getNumber().longValue();
 		
 		Action act = new Action(Permission.READ, new AddPointHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -45,6 +48,56 @@ public class SlaveNode {
 		
 		act = new Action(Permission.READ, new RemoveHandler());
 		node.createChild("remove").setAction(act).build().setSerializable(false);
+		
+		makeEditAction();
+	}
+	
+	private void makeEditAction() {
+		Action act = new Action(Permission.READ, new EditHandler());
+		act.addParameter(new Parameter("host", ValueType.STRING, node.getAttribute("host")));
+		act.addParameter(new Parameter("port", ValueType.NUMBER, node.getAttribute("port")));
+		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
+		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, node.getAttribute("refresh interval")));
+		act.addParameter(new Parameter("timeout", ValueType.NUMBER, node.getAttribute("timeout")));
+		act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
+		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
+		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, node.getAttribute("max read register count")));
+		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, node.getAttribute("max write register count")));
+		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, node.getAttribute("discard data delay")));
+		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, node.getAttribute("use multiple write commands only")));
+		node.createChild("edit").setAction(act).build().setSerializable(false);
+	}
+	
+	ModbusMaster getMaster() {
+		String host = node.getAttribute("host").getString();
+		int port = node.getAttribute("port").getNumber().intValue();
+		int timeout = node.getAttribute("timeout").getNumber().intValue();
+		int retries = node.getAttribute("retries").getNumber().intValue();
+		int maxrbc = node.getAttribute("max read bit count").getNumber().intValue();
+		int maxrrc = node.getAttribute("max read register count").getNumber().intValue();
+		int maxwrc = node.getAttribute("max write register count").getNumber().intValue();
+		int ddd = node.getAttribute("discard data delay").getNumber().intValue();
+		boolean mwo = node.getAttribute("use multiple write commands only").getBool();
+		
+		IpParameters params = new IpParameters();
+		params.setHost(host);
+        params.setPort(port);
+        
+        ModbusMaster master = new ModbusFactory().createTcpMaster(params, false);
+        master.setTimeout(timeout);
+        master.setRetries(retries);
+        master.setMaxReadBitCount(maxrbc);
+        master.setMaxReadRegisterCount(maxrrc);
+        master.setMaxWriteRegisterCount(maxwrc);
+        master.setDiscardDataDelay(ddd);
+        master.setMultipleWritesOnly(mwo);
+        try {
+			master.init();
+		} catch (ModbusInitException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        return master;
 	}
 	
 	private enum PointType {COIL, DISCRETE, HOLDING, INPUT}
@@ -54,6 +107,39 @@ public class SlaveNode {
 		public void handle(ActionResult event) {
 			node.clearChildren();
 			node.getParent().removeChild(node);
+		}
+	}
+	
+	private class EditHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			String host = event.getParameter("host", ValueType.STRING).getString();
+			int port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
+			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
+			interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
+			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
+			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
+			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
+			int maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
+			int maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
+			int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
+			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
+			
+			node.setAttribute("host", new Value(host));
+			node.setAttribute("port", new Value(port));
+			node.setAttribute("slave id", new Value(slaveid));
+			node.setAttribute("refresh interval", new Value(interval));
+			node.setAttribute("timeout", new Value(timeout));
+			node.setAttribute("retries", new Value(retries));
+			node.setAttribute("max read bit count", new Value(maxrbc));
+			node.setAttribute("max read register count", new Value(maxrrc));
+			node.setAttribute("max write register count", new Value(maxwrc));
+			node.setAttribute("discard data delay", new Value(ddd));
+			node.setAttribute("use multiple write commands only", new Value(mwo));
+			
+			master = getMaster();
+			
+			node.removeChild("edit");
+			makeEditAction();
 		}
 	}
 	
@@ -115,6 +201,7 @@ public class SlaveNode {
 		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
 		int offset = pointNode.getAttribute("offset").getNumber().intValue();
 		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
+		int id = node.getAttribute("slave id").getNumber().intValue();
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request=null;
 		JsonArray val = new JsonArray();
@@ -127,10 +214,12 @@ public class SlaveNode {
 			}
 			ReadResponse response = (ReadResponse) master.send(request);
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
+				System.out.println(Arrays.toString(response.getBooleanData()));
 				for (boolean b: response.getBooleanData()) {
 					val.addBoolean(b);
 				}
 			} else {
+				System.out.println(Arrays.toString(response.getShortData()));
 				val = parseResponse(response.getShortData(), dataType);
 			}
 		} catch (ModbusTransportException e) {

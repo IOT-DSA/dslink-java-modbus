@@ -16,11 +16,6 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.vertx.java.core.Handler;
 
-import com.serotonin.modbus4j.ModbusFactory;
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusInitException;
-import com.serotonin.modbus4j.ip.IpParameters;
-
 public class ModbusLink {
 	
 	private Node node;
@@ -73,26 +68,21 @@ public class ModbusLink {
 			
 			Node snode = node.createChild(name).build();
 			snode.setSerializable(false);
+			snode.setAttribute("name", new Value(name));
+			snode.setAttribute("host", new Value(host));
+			snode.setAttribute("port", new Value(port));
+			snode.setAttribute("slave id", new Value(slaveid));
+			snode.setAttribute("refresh interval", new Value(interval));
+			snode.setAttribute("timeout", new Value(timeout));
+			snode.setAttribute("retries", new Value(retries));
+			snode.setAttribute("max read bit count", new Value(maxrbc));
+			snode.setAttribute("max read register count", new Value(maxrrc));
+			snode.setAttribute("max write register count", new Value(maxwrc));
+			snode.setAttribute("discard data delay", new Value(ddd));
+			snode.setAttribute("use multiple write commands only", new Value(mwo));
 			
-			IpParameters params = new IpParameters();
-			params.setHost(host);
-	        params.setPort(port);
-	        
-	        ModbusMaster master = new ModbusFactory().createTcpMaster(params, false);
-	        master.setTimeout(timeout);
-	        master.setRetries(retries);
-	        master.setMaxReadBitCount(maxrbc);
-	        master.setMaxReadRegisterCount(maxrrc);
-	        master.setMaxWriteRegisterCount(maxwrc);
-	        master.setDiscardDataDelay(ddd);
-	        master.setMultipleWritesOnly(mwo);
-	        try {
-				master.init();
-			} catch (ModbusInitException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-	        new SlaveNode(getMe(), snode, slaveid, master, interval);
+			
+	        new SlaveNode(getMe(), snode);
 		}
 	}
 	
