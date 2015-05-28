@@ -1,0 +1,220 @@
+package modbus;
+
+import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.Permission;
+import org.dsa.iot.dslink.node.actions.Action;
+import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
+import org.vertx.java.core.Handler;
+import org.vertx.java.core.json.JsonArray;
+
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusTransportException;
+import com.serotonin.modbus4j.msg.ModbusRequest;
+import com.serotonin.modbus4j.msg.ReadCoilsRequest;
+import com.serotonin.modbus4j.msg.ReadDiscreteInputsRequest;
+import com.serotonin.modbus4j.msg.ReadHoldingRegistersRequest;
+import com.serotonin.modbus4j.msg.ReadInputRegistersRequest;
+import com.serotonin.modbus4j.msg.ReadResponse;
+
+public class SlaveNode {
+	
+	private ModbusLink link;
+	private Node node;
+	private int id;
+	private ModbusMaster master;
+	long interval;
+	
+	SlaveNode(ModbusLink link, Node node, int id, ModbusMaster master, long interval) {
+		this.link = link;
+		this.node = node;
+		this.id = id;
+		this.master = master;
+		this.interval = interval;
+		
+		Action act = new Action(Permission.READ, new AddPointHandler());
+		act.addParameter(new Parameter("name", ValueType.STRING));
+		act.addParameter(new Parameter("type", ValueType.STRING));
+		act.addParameter(new Parameter("offset", ValueType.NUMBER));
+		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("data type", ValueType.STRING));
+		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
+		node.createChild("add point").setAction(act).build().setSerializable(false);
+		
+		act = new Action(Permission.READ, new RemoveHandler());
+		node.createChild("remove").setAction(act).build().setSerializable(false);
+	}
+	
+	private enum PointType {COIL, DISCRETE, HOLDING, INPUT}
+	private enum DataType {INT32, INT16, UINT32, UINT16, INT32M10K, UINT32M10K, BOOLEAN }
+	
+	private class RemoveHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			node.clearChildren();
+			node.getParent().removeChild(node);
+		}
+	}
+	
+	private class AddPointHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			String name = event.getParameter("name", ValueType.STRING).getString();
+			PointType type;
+			try {
+				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
+			} catch (Exception e) {
+				System.out.println("invalid type");
+				e.printStackTrace();
+				return;
+			}
+			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
+			int numRegs = event.getParameter("number of registers", ValueType.NUMBER).getNumber().intValue();
+			boolean writable = (type == PointType.COIL || type == PointType.HOLDING) && event.getParameter("writable", ValueType.BOOL).getBool();
+			DataType dataType;
+			try {
+				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString());
+			} catch (Exception e1) {
+				System.out.println("invalid data type");
+				e1.printStackTrace();
+				return;
+			}
+			Node pnode = node.createChild(name).setValueType(ValueType.STRING).build();
+			pnode.setAttribute("type", new Value(type.toString()));
+			pnode.setAttribute("offset", new Value(offset));
+			pnode.setAttribute("number of registers", new Value(numRegs));
+			pnode.setAttribute("data type", new Value(dataType.toString()));
+			pnode.setAttribute("writable", new Value(writable));
+			setupPointActions(pnode);
+			link.setupPoint(pnode, getMe());
+		}
+	}
+	
+	void setupPointActions(Node pointNode) {
+		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
+		pointNode.createChild("remove").setAction(act).build().setSerializable(false);
+		boolean writable = pointNode.getAttribute("writable").getBool();
+		if (writable) {
+//			act = new Action(Permission.READ, new SetHandler(pointNode));
+//			act.addParameter(new Parameter("value", ValueType.STRING));
+//			pointNode.createChild("set").setAction(act).build().setSerializable(false);
+		}
+	}
+	
+	private class RemovePointHandler implements Handler<ActionResult> {
+		private Node toRemove;
+		RemovePointHandler(Node pnode){
+			toRemove = pnode;
+		}
+		public void handle(ActionResult event) {
+			node.removeChild(toRemove);
+		}
+	}
+	
+	void readPoint(Node pointNode) {
+		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
+		int offset = pointNode.getAttribute("offset").getNumber().intValue();
+		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
+		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
+		ModbusRequest request=null;
+		JsonArray val = new JsonArray();
+		try {
+			switch (type) {
+			case COIL: request = new ReadCoilsRequest(id, offset, numRegs);break;
+			case DISCRETE: request = new ReadDiscreteInputsRequest(id, offset, numRegs);break;
+			case HOLDING: request = new ReadHoldingRegistersRequest(id, offset, numRegs);break;
+			case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
+			}
+			ReadResponse response = (ReadResponse) master.send(request);
+			if (type == PointType.COIL || type == PointType.DISCRETE) {
+				for (boolean b: response.getBooleanData()) {
+					val.addBoolean(b);
+				}
+			} else {
+				val = parseResponse(response.getShortData(), dataType);
+			}
+		} catch (ModbusTransportException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		pointNode.setValue(new Value(val.toString()));
+	}
+	
+//	private class SetHandler implements Handler<ActionResult> {
+//		private Node vnode;
+//		SetHandler(Node vnode) {
+//			this.vnode = vnode;
+//		}
+//		public void handle(ActionResult event) {
+//			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
+//			int offset = vnode.getAttribute("offset").getNumber().intValue();
+//			int numRegs = vnode.getAttribute("number of registers").getNumber().intValue();
+//			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
+//			ModbusRequest request = null;
+//			switch (type) {
+//			case COIL: request = new 
+//			}
+//			
+//		}
+//	}
+	
+	private JsonArray parseResponse(short[] responseData, DataType dataType) {
+		JsonArray retval = new JsonArray();
+		int last = 0;
+		int regnum = 0;
+		for (short s: responseData) {
+			switch (dataType) {
+			case INT16: retval.addNumber(s);break;
+			case UINT16: retval.addNumber(Short.toUnsignedInt(s));break;
+			case INT32: if (regnum == 0) {
+					regnum += 1;
+					last = s;
+				} else {
+					regnum = 0;
+					int num = last*65536 + Short.toUnsignedInt(s);
+					retval.addNumber(num);
+				}
+				break;
+			case UINT32:  if (regnum == 0) {
+					regnum += 1;
+					last = Short.toUnsignedInt(s);
+				} else {
+					regnum = 0;
+					long num = Integer.toUnsignedLong(last*65536 + Short.toUnsignedInt(s));
+					retval.addNumber(num);break;
+				}
+				break;
+			case INT32M10K: if (regnum == 0) {
+					regnum += 1;
+					last = s;
+				} else {
+					regnum = 0;
+					int num = last*10000 + s;
+					retval.addNumber(num);
+				}
+				break;
+			case UINT32M10K: if (regnum == 0) {
+					regnum += 1;
+					last = Short.toUnsignedInt(s);
+				} else {
+					regnum = 0;
+					long num = Integer.toUnsignedLong(last*10000 + Short.toUnsignedInt(s));
+					retval.addNumber(num);break;
+				}
+				break;
+			case BOOLEAN: for (int i=0; i<16; i++) {
+					retval.addBoolean(((s >> i) & 1) != 0);
+				}
+				break;
+			default: retval.addString("oops");break;
+			}
+		}
+		return retval;
+	}
+	
+	private SlaveNode getMe() {
+		return this;
+	}
+	
+
+}

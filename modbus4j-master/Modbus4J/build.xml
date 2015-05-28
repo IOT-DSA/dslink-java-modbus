@@ -1,0 +1,168 @@
+<?xml version="1.0"?>
+
+<project name="Modbus4J" basedir="." default="jar" xmlns:mvn="antlib:org.apache.maven.artifact.ant">
+
+	<taskdef resource="net/sf/antcontrib/antlib.xml" classpath="lib-opt/ant-contrib-1.0b3.jar" />
+	<typedef resource="org/apache/maven/artifact/ant/antlib.xml" uri="antlib:org.apache.maven.artifact.ant" classpath="lib-opt/maven-ant-tasks-2.1.3.jar" />
+
+
+	<mvn:pom file="pom.xml" id="maven-pom" />
+	<mvn:dependencies filesetId="maven-deps" type="jar" pomRefId="maven-pom" />
+	<mvn:dependencies filesetId="maven-deps-runtime" type="jar" pomRefId="maven-pom" useScope="runtime" />
+
+	<property name="fullName" value="${maven-pom.artifactId}-${maven-pom.version}" />
+
+
+    <path id="master-classpath">
+        <fileset refid="maven-deps" />
+        <fileset refid="maven-deps-runtime" />
+        <fileset dir="lib">
+            <include name="*.jar" />
+        </fileset>
+        <pathelement path="target/java" />
+    </path>
+
+    <target name="clean" description="Clean the target area">
+        <delete dir="target/java" />
+    </target>
+
+    <target name="compile" description="Compile main source tree java files">
+        <mkdir dir="target/java" />
+
+        <available property="lib.exists" file="lib" type="dir" />
+        <if>
+            <isset property="lib.exists" />
+            <then>
+            </then>
+            <else>
+                <mkdir dir="lib" />
+            </else>
+        </if>
+
+        <javac destdir="target/java"
+               target="1.7"
+               source="1.7"
+               debug="true"
+               debuglevel="lines,vars,source"
+               deprecation="false"
+               optimize="false"
+               failonerror="true"
+               includeantruntime="false">
+            <src path="src" />
+            <classpath refid="master-classpath" />
+        </javac>
+    </target>
+
+    <target name="jar"
+            depends="clean,compile"
+            description="Create a jar file of the compiled classes">
+        <delete file="target/release/${fullName}.jar" />
+        <delete file="target/java/MANIFEST.MF" />
+        <tstamp>
+            <format property="TODAY" pattern="yyyy-MM-dd HH:mm:ss" />
+        </tstamp>
+
+        <manifest file="target/java/MANIFEST.MF">
+            <attribute name="Built-By" value="${vendor}" />
+            <attribute name="Build-Date" value="${TODAY}" />
+            <attribute name="Version" value="${maven-pom.version}" />
+        </manifest>
+
+        <mkdir dir="target/java/lib" />
+        <mkdir dir="target/java/META-INF" />
+
+        <if>
+            <istrue value="${includeSource}" />
+            <then>
+                <copy todir="target/java/src" preservelastmodified="true">
+                    <fileset dir="src">
+                        <include name="**/*.*" />
+                    </fileset>
+                </copy>
+            </then>
+        </if>
+
+        <available property="scripts.exists" file="scripts" type="dir" />
+        <if>
+            <isset property="scripts.exists" />
+            <then>
+                <copy todir="target/java/bin" preservelastmodified="true">
+                    <fileset dir="scripts">
+                        <include name="**/*" />
+                    </fileset>
+                </copy>
+            </then>
+        </if>
+
+        <jar destfile="target/release/${fullName}.jar"
+             manifest="target/java/MANIFEST.MF">
+            <fileset dir="target/java">
+                <include name="**/*.class" />
+                <include name="**/*.java" />
+                <exclude name="MANIFEST.MF" />
+                <include name="META-INF/*.*" />
+            </fileset>
+        </jar>
+    </target>
+
+    <target name="docs" description="Generate Java Doc">
+        <mkdir dir="target/java/doc" />
+        <javadoc sourcepath="src"
+                 destdir="target/java/doc"
+                 classpathref="master-classpath" >
+            <doctitle><![CDATA[<h1>Modbus4j</h1>]]></doctitle>
+            <bottom><![CDATA[<i>Copyright &#169; 2014 Infinite Automation Systems. All Rights Reserved.</i>]]></bottom>
+        </javadoc>
+    </target>
+
+    <target name="jar-doc" depends="docs" description="Create a jar file of the javadocs">
+        <delete file="target/release/${fullName}-doc.jar" />
+        <jar destfile="target/release/${fullName}-doc.jar">
+            <fileset dir="target/java/doc">
+                <include name="**/*" />
+            </fileset>
+        </jar>
+    </target>
+
+    <target name="jar-src" description="Create a jar file of the sources">
+        <delete file="target/release/${fullName}-src.jar" />
+        <jar destfile="target/release/${fullName}-src.jar">
+            <fileset dir="src">
+                <include name="**/*.java" />
+            </fileset>
+        </jar>
+    </target>
+
+
+    <target name="maven-deploy"
+            depends="jar,jar-src,jar-doc"
+            description="Install library to Maven repository located at ${maven.local}">
+
+        <if>
+            <isset property="maven.local" />
+            <then>
+                <mvn:deploy file="target/release/${fullName}.jar">
+                    <remoterepository url="file://${maven.local}" />
+                    <pom refid="maven-pom" />
+                    <attach file="target/release/${fullName}-src.jar"
+                            type="jar"
+                            classifier="sources" />
+                    <attach file="target/release/${fullName}-doc.jar"
+                            type="jar"
+                            classifier="javadoc" />
+                </mvn:deploy>
+            </then>
+        </if>
+
+        <mvn:install file="target/release/${fullName}.jar">
+            <pom refid="maven-pom" />
+            <attach file="target/release/${fullName}-src.jar"
+                                        type="jar"
+                                        classifier="sources" />
+            <attach file="target/release/${fullName}-doc.jar"
+                    type="jar"
+                    classifier="javadoc" />
+        </mvn:install>
+    </target>
+
+</project>
