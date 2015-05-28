@@ -18,11 +18,14 @@ import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.msg.ModbusRequest;
+import com.serotonin.modbus4j.msg.ModbusResponse;
 import com.serotonin.modbus4j.msg.ReadCoilsRequest;
 import com.serotonin.modbus4j.msg.ReadDiscreteInputsRequest;
 import com.serotonin.modbus4j.msg.ReadHoldingRegistersRequest;
 import com.serotonin.modbus4j.msg.ReadInputRegistersRequest;
 import com.serotonin.modbus4j.msg.ReadResponse;
+import com.serotonin.modbus4j.msg.WriteCoilsRequest;
+import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveNode {
 	
@@ -158,8 +161,9 @@ public class SlaveNode {
 			int numRegs = event.getParameter("number of registers", ValueType.NUMBER).getNumber().intValue();
 			boolean writable = (type == PointType.COIL || type == PointType.HOLDING) && event.getParameter("writable", ValueType.BOOL).getBool();
 			DataType dataType;
-			try {
-				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString());
+			if (type == PointType.COIL || type == PointType.DISCRETE) dataType = DataType.BOOLEAN;
+			else try {
+				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e1) {
 				System.out.println("invalid data type");
 				e1.printStackTrace();
@@ -181,9 +185,9 @@ public class SlaveNode {
 		pointNode.createChild("remove").setAction(act).build().setSerializable(false);
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
-//			act = new Action(Permission.READ, new SetHandler(pointNode));
-//			act.addParameter(new Parameter("value", ValueType.STRING));
-//			pointNode.createChild("set").setAction(act).build().setSerializable(false);
+			act = new Action(Permission.READ, new SetHandler(pointNode));
+			act.addParameter(new Parameter("value", ValueType.STRING));
+			pointNode.createChild("set").setAction(act).build().setSerializable(false);
 		}
 	}
 	
@@ -229,23 +233,102 @@ public class SlaveNode {
 		pointNode.setValue(new Value(val.toString()));
 	}
 	
-//	private class SetHandler implements Handler<ActionResult> {
-//		private Node vnode;
-//		SetHandler(Node vnode) {
-//			this.vnode = vnode;
-//		}
-//		public void handle(ActionResult event) {
-//			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
-//			int offset = vnode.getAttribute("offset").getNumber().intValue();
-//			int numRegs = vnode.getAttribute("number of registers").getNumber().intValue();
-//			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
-//			ModbusRequest request = null;
-//			switch (type) {
-//			case COIL: request = new 
-//			}
-//			
-//		}
-//	}
+	private class SetHandler implements Handler<ActionResult> {
+		private Node vnode;
+		SetHandler(Node vnode) {
+			this.vnode = vnode;
+		}
+		public void handle(ActionResult event) {
+			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
+			int offset = vnode.getAttribute("offset").getNumber().intValue();
+			int id = node.getAttribute("slave id").getNumber().intValue();
+			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
+			int numThings = new JsonArray(vnode.getValue().getString()).size();
+			String valstr = event.getParameter("value", ValueType.STRING).getString();
+			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
+			JsonArray valarr = new JsonArray(valstr);
+			if (valarr.size() != numThings) {
+				System.out.println("wrong number of values");
+				return;
+			}
+			ModbusRequest request = null;
+			try {
+				switch (type) {
+				case COIL: request = new WriteCoilsRequest(id, offset, makeBoolArr(valarr));break;
+				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType));break;
+				default:break;
+				}
+				ModbusResponse response = master.send(request);
+				System.out.println(response.getExceptionMessage());
+			} catch (ModbusTransportException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				return;
+			}
+			
+		}
+	}
+	
+	private static boolean[] makeBoolArr(JsonArray jarr) throws Exception {
+		boolean[] retval = new boolean[jarr.size()];
+		for (int i=0;i<jarr.size();i++) {
+			Object o = jarr.get(i);
+			if (!(o instanceof Boolean)) throw new Exception("not a boolean array");
+			else retval[i] = (boolean) o;
+		}
+		return retval;
+	}
+	
+	private static short[] makeShortArr(JsonArray jarr, DataType dt) throws Exception {
+		short[] retval = null;
+		if (dt == DataType.BOOLEAN) {
+			retval = new short[(int)Math.ceil((double)jarr.size()/16)];
+			for (int i=0;i<retval.length;i++) {
+				short element = 0;
+				for (int j=0;j<16;j++) {
+					int bit = 0;
+					if (i+j < jarr.size()) {
+						Object o = jarr.get(i+j);
+						if (!(o instanceof Boolean)) throw new Exception("not a boolean array");
+						if ((boolean) o ) bit = 1;
+					}
+					element = (short) (element & (bit << (15 - j)));
+					jarr.get(i+j);
+				}
+				retval[i] = element;
+			}
+			return retval;
+		}
+		if (dt == DataType.INT16 || dt == DataType.UINT16) retval = new short[jarr.size()];
+		else retval = new short[2*jarr.size()];
+		for (int i=0;i<jarr.size();i++) {
+			Object o = jarr.get(i);
+			if (!(o instanceof Number)) throw new Exception("not an int array");
+			switch (dt) {
+			case INT16:
+			case UINT16: retval[i] =((Number) o).shortValue(); break;
+			case INT32:
+			case UINT32: { 
+				long aslong = (((Number) o).longValue());
+				retval[i/2] = (short) (aslong/65536);
+				retval[(i/2)+1] = (short) (aslong%65536); break;
+			}
+			case INT32M10K:
+			case UINT32M10K: { 
+				long aslong = (((Number) o).longValue());
+				retval[i/2] = (short) (aslong/10000);
+				retval[(i/2)+1] = (short) (aslong%10000); break;
+			}
+			default: break;
+			}
+			
+		}
+		return retval;
+	}
 	
 	private JsonArray parseResponse(short[] responseData, DataType dataType) {
 		JsonArray retval = new JsonArray();
