@@ -46,6 +46,7 @@ public class SlaveNode {
 		act.addParameter(new Parameter("offset", ValueType.NUMBER));
 		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("data type", ValueType.STRING));
+		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
 		node.createChild("add point").setAction(act).build().setSerializable(false);
 		
@@ -169,11 +170,14 @@ public class SlaveNode {
 				e1.printStackTrace();
 				return;
 			}
+			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
+			System.out.println(scaling);
 			Node pnode = node.createChild(name).setValueType(ValueType.STRING).build();
 			pnode.setAttribute("type", new Value(type.toString()));
 			pnode.setAttribute("offset", new Value(offset));
 			pnode.setAttribute("number of registers", new Value(numRegs));
 			pnode.setAttribute("data type", new Value(dataType.toString()));
+			pnode.setAttribute("scaling", new Value(scaling));
 			pnode.setAttribute("writable", new Value(writable));
 			setupPointActions(pnode);
 			link.setupPoint(pnode, getMe());
@@ -206,6 +210,7 @@ public class SlaveNode {
 		int offset = pointNode.getAttribute("offset").getNumber().intValue();
 		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
 		int id = node.getAttribute("slave id").getNumber().intValue();
+		double scaling = pointNode.getAttribute("scaling").getNumber().doubleValue();
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request=null;
 		JsonArray val = new JsonArray();
@@ -224,7 +229,7 @@ public class SlaveNode {
 				}
 			} else {
 				System.out.println(Arrays.toString(response.getShortData()));
-				val = parseResponse(response.getShortData(), dataType);
+				val = parseResponse(response.getShortData(), dataType, scaling);
 			}
 		} catch (ModbusTransportException e) {
 			// TODO Auto-generated catch block
@@ -243,6 +248,7 @@ public class SlaveNode {
 			int offset = vnode.getAttribute("offset").getNumber().intValue();
 			int id = node.getAttribute("slave id").getNumber().intValue();
 			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
+			double scaling = vnode.getAttribute("scaling").getNumber().doubleValue();
 			int numThings = new JsonArray(vnode.getValue().getString()).size();
 			String valstr = event.getParameter("value", ValueType.STRING).getString();
 			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
@@ -255,7 +261,7 @@ public class SlaveNode {
 			try {
 				switch (type) {
 				case COIL: request = new WriteCoilsRequest(id, offset, makeBoolArr(valarr));break;
-				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType));break;
+				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType, scaling));break;
 				default:break;
 				}
 				ModbusResponse response = master.send(request);
@@ -283,7 +289,7 @@ public class SlaveNode {
 		return retval;
 	}
 	
-	private static short[] makeShortArr(JsonArray jarr, DataType dt) throws Exception {
+	private static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling) throws Exception {
 		short[] retval = null;
 		if (dt == DataType.BOOLEAN) {
 			retval = new short[(int)Math.ceil((double)jarr.size()/16)];
@@ -308,18 +314,19 @@ public class SlaveNode {
 		for (int i=0;i<jarr.size();i++) {
 			Object o = jarr.get(i);
 			if (!(o instanceof Number)) throw new Exception("not an int array");
+			Number n = ((Number) o).doubleValue()*scaling;
 			switch (dt) {
 			case INT16:
-			case UINT16: retval[i] =((Number) o).shortValue(); break;
+			case UINT16: retval[i] =n.shortValue(); break;
 			case INT32:
 			case UINT32: { 
-				long aslong = (((Number) o).longValue());
+				long aslong = n.longValue();
 				retval[i/2] = (short) (aslong/65536);
 				retval[(i/2)+1] = (short) (aslong%65536); break;
 			}
 			case INT32M10K:
 			case UINT32M10K: { 
-				long aslong = (((Number) o).longValue());
+				long aslong = n.longValue();
 				retval[i/2] = (short) (aslong/10000);
 				retval[(i/2)+1] = (short) (aslong%10000); break;
 			}
@@ -330,21 +337,21 @@ public class SlaveNode {
 		return retval;
 	}
 	
-	private JsonArray parseResponse(short[] responseData, DataType dataType) {
+	private JsonArray parseResponse(short[] responseData, DataType dataType, double scaling) {
 		JsonArray retval = new JsonArray();
 		int last = 0;
 		int regnum = 0;
 		for (short s: responseData) {
 			switch (dataType) {
-			case INT16: retval.addNumber(s);break;
-			case UINT16: retval.addNumber(Short.toUnsignedInt(s));break;
+			case INT16: retval.addNumber(s/scaling);break;
+			case UINT16: retval.addNumber(Short.toUnsignedInt(s)/scaling);break;
 			case INT32: if (regnum == 0) {
 					regnum += 1;
 					last = s;
 				} else {
 					regnum = 0;
 					int num = last*65536 + Short.toUnsignedInt(s);
-					retval.addNumber(num);
+					retval.addNumber(num/scaling);
 				}
 				break;
 			case UINT32:  if (regnum == 0) {
@@ -353,7 +360,7 @@ public class SlaveNode {
 				} else {
 					regnum = 0;
 					long num = Integer.toUnsignedLong(last*65536 + Short.toUnsignedInt(s));
-					retval.addNumber(num);break;
+					retval.addNumber(num/scaling);
 				}
 				break;
 			case INT32M10K: if (regnum == 0) {
@@ -362,7 +369,7 @@ public class SlaveNode {
 				} else {
 					regnum = 0;
 					int num = last*10000 + s;
-					retval.addNumber(num);
+					retval.addNumber(num/scaling);
 				}
 				break;
 			case UINT32M10K: if (regnum == 0) {
@@ -371,7 +378,7 @@ public class SlaveNode {
 				} else {
 					regnum = 0;
 					long num = Integer.toUnsignedLong(last*10000 + Short.toUnsignedInt(s));
-					retval.addNumber(num);break;
+					retval.addNumber(num/scaling);
 				}
 				break;
 			case BOOLEAN: for (int i=0; i<16; i++) {
