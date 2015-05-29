@@ -31,6 +31,7 @@ public class SlaveFolder {
 	SlaveFolder(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
+		node.setAttribute("restoreType", new Value("folder"));
 		
 		Action act = new Action(Permission.READ, new AddPointHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -56,6 +57,24 @@ public class SlaveFolder {
 		
 	}
 	
+	void restoreLastSession() {
+		if (node.getChildren() == null) return;
+		for  (Node child: node.getChildren().values()) {
+			Value restoreType = child.getAttribute("restoreType");
+			if (restoreType != null) {
+				if (restoreType.getString().equals("folder")) {
+					SlaveFolder sf = new SlaveFolder(link, child, root);
+					sf.restoreLastSession();
+				} else if (restoreType.getString().equals("point")) {
+					setupPointActions(child);
+					link.setupPoint(child, root);
+				}
+			} else if (child.getAction() == null) {
+				node.removeChild(child);
+			}
+		}
+	}
+	
 	protected class RemoveHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			node.clearChildren();
@@ -67,7 +86,6 @@ public class SlaveFolder {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			Node child = node.createChild(name).build();
-			child.setSerializable(false);
 			new SlaveFolder(link, child, root);
 		}
 	}
@@ -109,6 +127,7 @@ public class SlaveFolder {
 			pnode.setAttribute("writable", new Value(writable));
 			setupPointActions(pnode);
 			link.setupPoint(pnode, root);
+			pnode.setAttribute("restoreType", new Value("point"));
 		}
 	}
 	

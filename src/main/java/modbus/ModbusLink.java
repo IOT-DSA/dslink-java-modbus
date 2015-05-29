@@ -34,6 +34,8 @@ public class ModbusLink {
 	
 	private void init() {
 		
+		restoreLastSession();
+		
 		Action act = new Action(Permission.READ, new AddDeviceHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		act.addParameter(new Parameter("transport type", ValueType.STRING));
@@ -57,6 +59,39 @@ public class ModbusLink {
 		
 	}
 	
+	private void restoreLastSession() {
+		if (node.getChildren() == null) return;
+		for (Node child: node.getChildren().values()) {
+			Value transType = child.getAttribute("transport type");
+			Value host = child.getAttribute("host");
+			Value port = child.getAttribute("port");
+			Value commPortId = child.getAttribute("comm port id");
+			Value baudRate = child.getAttribute("baud rate");
+			Value dataBits = child.getAttribute("data bits");
+			Value stopBits = child.getAttribute("stop bits");
+			Value parity = child.getAttribute("parity");
+			Value slaveId = child.getAttribute("slave id");
+			Value interval = child.getAttribute("refresh interval");
+			Value timeout = child.getAttribute("timeout");
+			Value retries = child.getAttribute("retries");
+			Value maxrbc = child.getAttribute("max read bit count");
+			Value maxrrc = child.getAttribute("max read register count");
+			Value maxwrc = child.getAttribute("max write register count");
+			Value ddd = child.getAttribute("discard data delay");
+			Value mwo = child.getAttribute("use multiple write commands only");
+			if (transType!=null && host!=null && port!=null && commPortId!=null && 
+					baudRate!=null && dataBits!=null && stopBits!=null && parity!=null && 
+					slaveId!=null && interval!=null && timeout!=null && retries!=null && 
+					maxrbc!=null && maxrrc!=null && maxwrc!=null && ddd!=null && mwo!=null) {
+				SlaveNode sn = new SlaveNode(getMe(), child);
+				sn.restoreLastSession();
+			} else {
+				node.removeChild(child);
+			}
+		}
+	}
+	
+	
 	private class AddDeviceHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
@@ -79,8 +114,6 @@ public class ModbusLink {
 			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
 			
 			Node snode = node.createChild(name).build();
-			snode.setSerializable(false);
-			snode.setAttribute("name", new Value(name));
 			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("host", new Value(host));
 			snode.setAttribute("port", new Value(port));
