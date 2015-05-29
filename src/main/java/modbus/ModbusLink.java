@@ -36,8 +36,14 @@ public class ModbusLink {
 		
 		Action act = new Action(Permission.READ, new AddDeviceHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("host", ValueType.STRING));
-		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
+		act.addParameter(new Parameter("transport type", ValueType.STRING));
+		act.addParameter(new Parameter("(ip) host", ValueType.STRING, new Value("")));
+		act.addParameter(new Parameter("(ip) port", ValueType.NUMBER, new Value(502)));
+		act.addParameter(new Parameter("(serial) comm port id", ValueType.STRING, new Value("")));
+		act.addParameter(new Parameter("(serial) baud rate", ValueType.NUMBER, new Value(9600)));
+		act.addParameter(new Parameter("(serial) data bits", ValueType.NUMBER, new Value(8)));
+		act.addParameter(new Parameter("(serial) stop bits", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("(serial) parity", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, new Value(5)));
 		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
@@ -54,8 +60,14 @@ public class ModbusLink {
 	private class AddDeviceHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			String host = event.getParameter("host", ValueType.STRING).getString();
-			int port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
+			String transtype = event.getParameter("transport type", ValueType.STRING).getString();
+			String host = event.getParameter("(ip) host", ValueType.STRING).getString();
+			int port = event.getParameter("(ip) port", ValueType.NUMBER).getNumber().intValue();
+			String commPortId = event.getParameter("(serial) comm port id", ValueType.STRING).getString();
+			int baudRate = event.getParameter("(serial) baud rate", ValueType.NUMBER).getNumber().intValue();
+			int dataBits = event.getParameter("(serial) data bits", ValueType.NUMBER).getNumber().intValue();
+			int stopBits = event.getParameter("(serial) stop bits", ValueType.NUMBER).getNumber().intValue();
+			int parity = event.getParameter("(serial) parity", ValueType.NUMBER).getNumber().intValue();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			long interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
 			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
@@ -69,8 +81,14 @@ public class ModbusLink {
 			Node snode = node.createChild(name).build();
 			snode.setSerializable(false);
 			snode.setAttribute("name", new Value(name));
+			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("host", new Value(host));
 			snode.setAttribute("port", new Value(port));
+			snode.setAttribute("comm port id", new Value(commPortId));
+			snode.setAttribute("baud rate", new Value(baudRate));
+			snode.setAttribute("data bits", new Value(dataBits));
+			snode.setAttribute("stop bits", new Value(stopBits));
+			snode.setAttribute("parity", new Value(parity));
 			snode.setAttribute("slave id", new Value(slaveid));
 			snode.setAttribute("refresh interval", new Value(interval));
 			snode.setAttribute("timeout", new Value(timeout));
@@ -80,7 +98,6 @@ public class ModbusLink {
 			snode.setAttribute("max write register count", new Value(maxwrc));
 			snode.setAttribute("discard data delay", new Value(ddd));
 			snode.setAttribute("use multiple write commands only", new Value(mwo));
-			
 			
 	        new SlaveNode(getMe(), snode);
 		}
