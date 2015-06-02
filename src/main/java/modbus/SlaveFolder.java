@@ -235,8 +235,10 @@ public class SlaveFolder {
 				return;
 			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
-				System.out.println("it works?" +Arrays.toString(response.getBooleanData()));
-				for (boolean b: response.getBooleanData()) {
+				boolean[] booldat = response.getBooleanData();
+				System.out.println("it works?" +Arrays.toString(booldat));
+				for (int j=0;j<numRegs;j++) {
+					boolean b = booldat[j];
 					val.addBoolean(b);
 				}
 			} else {
@@ -247,7 +249,9 @@ public class SlaveFolder {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		pointNode.setValue(new Value(val.toString()));
+		String valString = val.toString();
+		if (val.size() == 1) valString = val.get(0).toString();
+		pointNode.setValue(new Value(valString));
 	}
 	
 	protected class SetHandler implements Handler<ActionResult> {
@@ -261,7 +265,9 @@ public class SlaveFolder {
 			int id = root.node.getAttribute("slave id").getNumber().intValue();
 			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
 			double scaling = vnode.getAttribute("scaling").getNumber().doubleValue();
-			int numThings = new JsonArray(vnode.getValue().getString()).size();
+			String oldstr = vnode.getValue().getString();
+			if (!oldstr.startsWith("[")) oldstr = "["+oldstr+"]";
+			int numThings = new JsonArray(oldstr).size();
 			String valstr = event.getParameter("value", ValueType.STRING).getString();
 			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
 			JsonArray valarr = new JsonArray(valstr);
@@ -276,14 +282,17 @@ public class SlaveFolder {
 				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType, scaling));break;
 				default:break;
 				}
+				if (request!=null) System.out.println("set request: " + request.toString());
 				ModbusResponse response = root.master.send(request);
 				System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
+				System.out.println("Modbus transpot exception");
 				e.printStackTrace();
 				return;
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
+				System.out.println("make arr exception");
 				e.printStackTrace();
 				return;
 			}
