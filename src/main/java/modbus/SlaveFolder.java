@@ -35,10 +35,10 @@ public class SlaveFolder {
 		
 		Action act = new Action(Permission.READ, new AddPointHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("type", ValueType.STRING));
+		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
 		act.addParameter(new Parameter("offset", ValueType.NUMBER));
 		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("data type", ValueType.STRING));
+		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT32", "INT16", "UINT32", "UINT16", "INT32M10K", "UINT32M10K", "INT32SWAP", "UINT32SWAP", "BCD16")));
 		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
 		node.createChild("add point").setAction(act).build().setSerializable(false);
@@ -77,9 +77,13 @@ public class SlaveFolder {
 	
 	protected class RemoveHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			node.clearChildren();
-			node.getParent().removeChild(node);
+			remove();
 		}
+	}
+	
+	protected void remove() {
+		node.clearChildren();
+		node.getParent().removeChild(node);
 	}
 	
 	protected class AddFolderHandler implements Handler<ActionResult> {
@@ -91,7 +95,7 @@ public class SlaveFolder {
 	}
 	
 	protected enum PointType {COIL, DISCRETE, HOLDING, INPUT}
-	protected enum DataType {INT32, INT16, UINT32, UINT16, INT32M10K, UINT32M10K, BOOLEAN }
+	protected enum DataType {INT32, INT16, UINT32, UINT16, INT32M10K, UINT32M10K, BOOLEAN, INT32SWAP, UINT32SWAP, BCD16 }
 	
 	protected class AddPointHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
@@ -117,7 +121,6 @@ public class SlaveFolder {
 				return;
 			}
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
-			System.out.println(scaling);
 			Node pnode = node.createChild(name).setValueType(ValueType.STRING).build();
 			pnode.setAttribute("type", new Value(type.toString()));
 			pnode.setAttribute("offset", new Value(offset));
@@ -134,11 +137,69 @@ public class SlaveFolder {
 	protected void setupPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
 		pointNode.createChild("remove").setAction(act).build().setSerializable(false);
+		
+		act = new Action(Permission.READ, new EditPointHandler(pointNode));
+		act.addParameter(new Parameter("name", ValueType.STRING, new Value(pointNode.getName())));
+		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT"), pointNode.getAttribute("type")));
+		act.addParameter(new Parameter("offset", ValueType.NUMBER, pointNode.getAttribute("offset")));
+		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, pointNode.getAttribute("number of registers")));
+		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT32", "INT16", "UINT32", "UINT16", "INT32M10K", "UINT32M10K", "INT32SWAP", "UINT32SWAP", "BCD16"), pointNode.getAttribute("data type")));
+		act.addParameter(new Parameter("scaling", ValueType.NUMBER, pointNode.getAttribute("scaling")));
+		act.addParameter(new Parameter("writable", ValueType.BOOL, pointNode.getAttribute("writable")));
+		pointNode.createChild("edit").setAction(act).build().setSerializable(false);
+		
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
 			act = new Action(Permission.READ, new SetHandler(pointNode));
 			act.addParameter(new Parameter("value", ValueType.STRING));
 			pointNode.createChild("set").setAction(act).build().setSerializable(false);
+		}
+	}
+	
+	protected class EditPointHandler implements Handler<ActionResult> {
+		private Node pointNode;
+		EditPointHandler(Node pnode) {
+			pointNode = pnode;
+		}
+		public void handle(ActionResult event) {
+			String name = event.getParameter("name", ValueType.STRING).getString();
+			PointType type;
+			try {
+				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
+			} catch (Exception e) {
+				System.out.println("invalid type");
+				e.printStackTrace();
+				return;
+			}
+			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
+			int numRegs = event.getParameter("number of registers", ValueType.NUMBER).getNumber().intValue();
+			boolean writable = (type == PointType.COIL || type == PointType.HOLDING) && event.getParameter("writable", ValueType.BOOL).getBool();
+			DataType dataType;
+			if (type == PointType.COIL || type == PointType.DISCRETE) dataType = DataType.BOOLEAN;
+			else try {
+				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
+			} catch (Exception e1) {
+				System.out.println("invalid data type");
+				e1.printStackTrace();
+				return;
+			}
+			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
+			
+			if (!name.equals(pointNode.getName())) {
+				Node newnode = node.createChild(name).build();
+				node.removeChild(pointNode);
+				pointNode = newnode;
+			}
+			pointNode.setAttribute("type", new Value(type.toString()));
+			pointNode.setAttribute("offset", new Value(offset));
+			pointNode.setAttribute("number of registers", new Value(numRegs));
+			pointNode.setAttribute("data type", new Value(dataType.toString()));
+			pointNode.setAttribute("scaling", new Value(scaling));
+			pointNode.setAttribute("writable", new Value(writable));
+			pointNode.clearChildren();
+			setupPointActions(pointNode);
+			link.setupPoint(pointNode, root);
+			pointNode.setAttribute("restoreType", new Value("point"));
 		}
 	}
 	
@@ -169,8 +230,12 @@ public class SlaveFolder {
 			case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
 			}
 			ReadResponse response = (ReadResponse) root.master.send(request);
+			if (response.getExceptionCode()!=-1) {
+				System.out.println("errorresponse"+response.getExceptionMessage());
+				return;
+			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
-				System.out.println(Arrays.toString(response.getBooleanData()));
+				System.out.println("it works?" +Arrays.toString(response.getBooleanData()));
 				for (boolean b: response.getBooleanData()) {
 					val.addBoolean(b);
 				}
@@ -256,7 +321,7 @@ public class SlaveFolder {
 			}
 			return retval;
 		}
-		if (dt == DataType.INT16 || dt == DataType.UINT16) retval = new short[jarr.size()];
+		if (dt == DataType.INT16 || dt == DataType.UINT16 || dt == DataType.BCD16) retval = new short[jarr.size()];
 		else retval = new short[2*jarr.size()];
 		for (int i=0;i<jarr.size();i++) {
 			Object o = jarr.get(i);
@@ -271,11 +336,25 @@ public class SlaveFolder {
 				retval[i/2] = (short) (aslong/65536);
 				retval[(i/2)+1] = (short) (aslong%65536); break;
 			}
+			case INT32SWAP:
+			case UINT32SWAP: {
+				long aslong = n.longValue();
+				retval[(i/2)+1] = (short) (aslong/65536);
+				retval[(i/2)] = (short) (aslong%65536); break;
+			}
 			case INT32M10K:
 			case UINT32M10K: { 
 				long aslong = n.longValue();
 				retval[i/2] = (short) (aslong/10000);
 				retval[(i/2)+1] = (short) (aslong%10000); break;
+			}
+			case BCD16: {
+				short bcd = 0;
+				for (int j=0;j<4;j++) {
+					int d = (n.intValue()%((int)Math.pow(10, j+1)))/(int)(Math.pow(10, j));
+					bcd = (short) (bcd | (d << (j*4)));
+				}
+				retval[i] = bcd; break;
 			}
 			default: break;
 			}
@@ -301,12 +380,30 @@ public class SlaveFolder {
 					retval.addNumber(num/scaling);
 				}
 				break;
+			case INT32SWAP: if (regnum == 0) {
+					regnum += 1;
+					last = Short.toUnsignedInt(s);
+				} else {
+					regnum = 0;
+					int num = s*65536 + last;
+					retval.addNumber(num/scaling);
+				}
+				break;
 			case UINT32:  if (regnum == 0) {
 					regnum += 1;
 					last = Short.toUnsignedInt(s);
 				} else {
 					regnum = 0;
 					long num = Integer.toUnsignedLong(last*65536 + Short.toUnsignedInt(s));
+					retval.addNumber(num/scaling);
+				}
+				break;
+			case UINT32SWAP:  if (regnum == 0) {
+					regnum += 1;
+					last = Short.toUnsignedInt(s);
+				} else {
+					regnum = 0;
+					long num = Integer.toUnsignedLong(Short.toUnsignedInt(s)*65536 + last);
 					retval.addNumber(num/scaling);
 				}
 				break;
@@ -328,6 +425,15 @@ public class SlaveFolder {
 					retval.addNumber(num/scaling);
 				}
 				break;
+			case BCD16: {
+				int total = 0;
+				for (int i=0;i<4;i++) {
+					int d = getDigitFromBcd(s, i);
+					total = total + d*((int) Math.pow(10, i));
+				}
+				retval.addNumber(total/scaling);
+				}
+				break;
 			case BOOLEAN: for (int i=0; i<16; i++) {
 					retval.addBoolean(((s >> i) & 1) != 0);
 				}
@@ -336,6 +442,10 @@ public class SlaveFolder {
 			}
 		}
 		return retval;
+	}
+	
+	private int getDigitFromBcd(int bcd, int position) {
+		return (bcd >>> (position*4)) & 15;
 	}
 	
 

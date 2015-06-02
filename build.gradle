@@ -14,19 +14,26 @@ repositories {
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
     }
 }
- 
+
+
 dependencies {
+
     compile 'org.iot-dsa:dslink:0.3.0-SNAPSHOT'
     compile 'com.infiniteautomation:modbus4j:2.1.1'
     compile fileTree('external')
 }
+
 
 run {
     args System.getProperty("exec.args", "").split()
     workingDir project.buildDir
 }
 
+
 tasks.withType(FindBugs) {
+	//classes = classes.filter {
+    //    !it.path.contains(new File('com/serotonin').path)
+    //}
     reports {
         xml.enabled = false
         html.enabled = true

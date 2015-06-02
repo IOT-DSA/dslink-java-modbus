@@ -36,16 +36,11 @@ public class ModbusLink {
 		
 		restoreLastSession();
 		
-		Action act = new Action(Permission.READ, new AddDeviceHandler());
+		Action act = new Action(Permission.READ, new AddDeviceHandler(false));
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("transport type", ValueType.STRING));
-		act.addParameter(new Parameter("(ip) host", ValueType.STRING, new Value("")));
-		act.addParameter(new Parameter("(ip) port", ValueType.NUMBER, new Value(502)));
-		act.addParameter(new Parameter("(serial) comm port id", ValueType.STRING, new Value("")));
-		act.addParameter(new Parameter("(serial) baud rate", ValueType.NUMBER, new Value(9600)));
-		act.addParameter(new Parameter("(serial) data bits", ValueType.NUMBER, new Value(8)));
-		act.addParameter(new Parameter("(serial) stop bits", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("(serial) parity", ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter("transport type", ValueType.makeEnum("TCP", "UDP")));
+		act.addParameter(new Parameter("host", ValueType.STRING, new Value("")));
+		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, new Value(5)));
 		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
@@ -55,7 +50,30 @@ public class ModbusLink {
 		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
-		node.createChild("add device").setAction(act).build().setSerializable(false);
+		node.createChild("add ip device").setAction(act).build().setSerializable(false);
+		
+		act = new Action(Permission.READ, new AddDeviceHandler(true));
+		act.addParameter(new Parameter("name", ValueType.STRING));
+		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII")));
+		act.addParameter(new Parameter("comm port id", ValueType.STRING, new Value("")));
+		act.addParameter(new Parameter("baud rate", ValueType.NUMBER, new Value(9600)));
+		act.addParameter(new Parameter("data bits", ValueType.NUMBER, new Value(8)));
+		act.addParameter(new Parameter("stop bits", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("parity", ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE")));
+		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, new Value(5)));
+		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
+		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
+		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
+		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, new Value(125)));
+		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, new Value(120)));
+		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter("send requests all at once", ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter("set custom spacing", ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter("message frame spacing", ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter("character spacing", ValueType.NUMBER, new Value(0)));
+		node.createChild("add serial device").setAction(act).build().setSerializable(false);
 		
 	}
 	
@@ -79,11 +97,22 @@ public class ModbusLink {
 			Value maxwrc = child.getAttribute("max write register count");
 			Value ddd = child.getAttribute("discard data delay");
 			Value mwo = child.getAttribute("use multiple write commands only");
-			if (transType!=null && host!=null && port!=null && commPortId!=null && 
-					baudRate!=null && dataBits!=null && stopBits!=null && parity!=null && 
-					slaveId!=null && interval!=null && timeout!=null && retries!=null && 
-					maxrbc!=null && maxrrc!=null && maxwrc!=null && ddd!=null && mwo!=null) {
-				SlaveNode sn = new SlaveNode(getMe(), child);
+			Value useMods = child.getAttribute("send requests all at once");
+			Value useCustomSpacing = child.getAttribute("set custom spacing");
+			Value msgSpacing = child.getAttribute("message frame spacing");
+			Value charSpacing = child.getAttribute("character spacing");
+			if (transType!=null && host!=null && port!=null && commPortId!=null && baudRate!=null 
+					&& dataBits!=null && stopBits!=null && parity!=null && maxrbc!=null && 
+					maxrrc!=null && maxwrc!=null && ddd!=null && mwo!= null && slaveId!=null 
+					&& interval!=null && timeout!=null && retries!=null && useMods!=null 
+					&& useCustomSpacing!=null && msgSpacing!=null && charSpacing!=null) {
+				String transString = transType.getString().toUpperCase();
+				boolean ser = (transString.equals("RTU") || transString.equals("ASCII"));
+				if (!ser && !transString.equals("TCP") && !transString.equals("UDP")) {
+					node.removeChild(child);
+					return;
+				}
+				SlaveNode sn = new SlaveNode(getMe(), child, ser);
 				sn.restoreLastSession();
 			} else {
 				node.removeChild(child);
@@ -93,16 +122,32 @@ public class ModbusLink {
 	
 	
 	private class AddDeviceHandler implements Handler<ActionResult> {
+		private boolean isSerial;
+		AddDeviceHandler(boolean isser) {
+			isSerial = isser;
+		}
 		public void handle(ActionResult event) {
+			String commPortId = "na"; String host = "na"; String parityString = "NONE";
+			int baudRate = 0; int dataBits = 0; int stopBits = 0; int port = 0;
+			long msgSpacing = 0; long charSpacing = 0;
+			boolean useMods = false; boolean useCustomSpacing = false;
+			if (isSerial) {
+				commPortId = event.getParameter("comm port id", ValueType.STRING).getString();
+				baudRate = event.getParameter("baud rate", ValueType.NUMBER).getNumber().intValue();
+				dataBits = event.getParameter("data bits", ValueType.NUMBER).getNumber().intValue();
+				stopBits = event.getParameter("stop bits", ValueType.NUMBER).getNumber().intValue();
+				parityString = event.getParameter("parity").getString();
+				useMods = event.getParameter("send requests all at once", ValueType.BOOL).getBool();
+				useCustomSpacing = event.getParameter("set custom spacing", ValueType.BOOL).getBool();
+				msgSpacing = event.getParameter("message frame spacing", ValueType.NUMBER).getNumber().longValue();
+				charSpacing = event.getParameter("character spacing", ValueType.NUMBER).getNumber().longValue();
+			} else {
+				host = event.getParameter("host", ValueType.STRING).getString();
+				port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
+			}
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			String transtype = event.getParameter("transport type", ValueType.STRING).getString();
-			String host = event.getParameter("(ip) host", ValueType.STRING).getString();
-			int port = event.getParameter("(ip) port", ValueType.NUMBER).getNumber().intValue();
-			String commPortId = event.getParameter("(serial) comm port id", ValueType.STRING).getString();
-			int baudRate = event.getParameter("(serial) baud rate", ValueType.NUMBER).getNumber().intValue();
-			int dataBits = event.getParameter("(serial) data bits", ValueType.NUMBER).getNumber().intValue();
-			int stopBits = event.getParameter("(serial) stop bits", ValueType.NUMBER).getNumber().intValue();
-			int parity = event.getParameter("(serial) parity", ValueType.NUMBER).getNumber().intValue();
+			String transtype = event.getParameter("transport type").getString();
+			
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			long interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
 			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
@@ -121,7 +166,7 @@ public class ModbusLink {
 			snode.setAttribute("baud rate", new Value(baudRate));
 			snode.setAttribute("data bits", new Value(dataBits));
 			snode.setAttribute("stop bits", new Value(stopBits));
-			snode.setAttribute("parity", new Value(parity));
+			snode.setAttribute("parity", new Value(parityString));
 			snode.setAttribute("slave id", new Value(slaveid));
 			snode.setAttribute("refresh interval", new Value(interval));
 			snode.setAttribute("timeout", new Value(timeout));
@@ -131,8 +176,12 @@ public class ModbusLink {
 			snode.setAttribute("max write register count", new Value(maxwrc));
 			snode.setAttribute("discard data delay", new Value(ddd));
 			snode.setAttribute("use multiple write commands only", new Value(mwo));
+			snode.setAttribute("send requests all at once", new Value(useMods));
+			snode.setAttribute("set custom spacing", new Value(useCustomSpacing));
+			snode.setAttribute("message frame spacing", new Value(msgSpacing));
+			snode.setAttribute("character spacing", new Value(charSpacing));
 			
-	        new SlaveNode(getMe(), snode);
+	        new SlaveNode(getMe(), snode, isSerial);
 		}
 	}
 	
@@ -166,5 +215,18 @@ public class ModbusLink {
 	 private ModbusLink getMe() {
 			return this;
 		}
+	 
+	 static int parseParity(String parstr) {
+		 int parint = 0;
+		 switch(parstr.toUpperCase()) {
+		 case "NONE": break;
+		 case "ODD": parint=1;break;
+		 case "EVEN": parint=2;break;
+		 case "MARK": parint=3;break;
+		 case "SPACE": parint=4;break;
+		 default: break;
+		 }
+		 return parint;
+	 }
 
 }
