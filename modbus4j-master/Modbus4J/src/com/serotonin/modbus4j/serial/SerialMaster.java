@@ -23,11 +23,14 @@ package com.serotonin.modbus4j.serial;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.serotonin.io.serial.ModSerialUtils;
 import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.io.serial.SerialPortException;
 import com.serotonin.io.serial.SerialPortProxy;
 import com.serotonin.io.serial.SerialUtils;
+import com.serotonin.messaging.EpollStreamTransport;
 import com.serotonin.messaging.EpollStreamTransportCharSpaced;
+import com.serotonin.messaging.StreamTransport;
 import com.serotonin.messaging.StreamTransportCharSpaced;
 import com.serotonin.messaging.Transport;
 import com.serotonin.modbus4j.ModbusMaster;
@@ -44,6 +47,8 @@ abstract public class SerialMaster extends ModbusMaster {
     public static final int SYNC_SLAVE = 2;
 	@Deprecated
     public static final int SYNC_FUNCTION = 3;
+	
+	
 
     //
     // Configuration fields.
@@ -62,15 +67,26 @@ abstract public class SerialMaster extends ModbusMaster {
 
     @Override
     public void init() throws ModbusInitException {
+    	System.out.println("Hi from serial master");
         try {
-            serialPort = SerialUtils.openSerialPort(serialParameters);
-            
-            
-            if (getePoll() != null)
-                transport = new EpollStreamTransportCharSpaced(serialPort.getInputStream(), serialPort.getOutputStream(),
-                        getePoll(), this.characterSpacing);
-            else
-                transport = new StreamTransportCharSpaced(serialPort.getInputStream(), serialPort.getOutputStream(), this.characterSpacing);
+        	
+        	if (!(serialParameters instanceof ModSerialParameters)) {
+	            serialPort = SerialUtils.openSerialPort(serialParameters);
+	            
+	            if (getePoll() != null)
+	                transport = new EpollStreamTransportCharSpaced(serialPort.getInputStream(), serialPort.getOutputStream(),
+	                        getePoll(), this.characterSpacing);
+	            else
+	                transport = new StreamTransportCharSpaced(serialPort.getInputStream(), serialPort.getOutputStream(), this.characterSpacing);
+        	} else {
+              serialPort = ModSerialUtils.openSerialPort(serialParameters);
+              
+              if (getePoll() != null)
+                  transport = new EpollStreamTransport(serialPort.getInputStream(), serialPort.getOutputStream(),
+                          getePoll());
+              else
+                  transport = new StreamTransport(serialPort.getInputStream(), serialPort.getOutputStream());
+        	}
         }
         catch (Exception e) {
             throw new ModbusInitException(e);
@@ -79,7 +95,7 @@ abstract public class SerialMaster extends ModbusMaster {
 
     public void close() {
         try {
-			SerialUtils.close(serialPort);
+			ModSerialUtils.close(serialPort);
 		} catch (SerialPortException e) {
 			LOG.error(e.getMessage(), e);
 		}
