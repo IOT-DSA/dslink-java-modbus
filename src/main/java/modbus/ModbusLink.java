@@ -13,22 +13,28 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.serializer.Deserializer;
+import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.Objects;
 import org.vertx.java.core.Handler;
 
 public class ModbusLink {
 	
 	private Node node;
+	Serializer copySerializer;
+	Deserializer copyDeserializer;
 	private final Map<Node, ScheduledFuture<?>> futures;
 	
-	private ModbusLink(Node node) {
+	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
+		this.copySerializer = ser;
+		this.copyDeserializer = deser;
 		this.futures = new ConcurrentHashMap<>();
 	}
 	
-	public static void start(Node parent) {
+	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
 		Node node = parent.createChild("MODBUS").build();
-		final ModbusLink link = new ModbusLink(node);
+		final ModbusLink link = new ModbusLink(node, copyser, copydeser);
 		link.init();
 	}
 	

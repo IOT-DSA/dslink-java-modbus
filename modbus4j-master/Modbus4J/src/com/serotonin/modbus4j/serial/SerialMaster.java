@@ -95,6 +95,7 @@ abstract public class SerialMaster extends ModbusMaster {
 
     public void close() {
         try {
+        	SerialUtils.close(serialPort);
 			ModSerialUtils.close(serialPort);
 		} catch (SerialPortException e) {
 			LOG.error(e.getMessage(), e);

@@ -8,11 +8,11 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.json.JsonObject;
 
 import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.serial.ModSerialParameters;
 
@@ -155,12 +155,7 @@ public class SlaveNode extends SlaveFolder {
         master.setMaxWriteRegisterCount(maxwrc);
         master.setDiscardDataDelay(ddd);
         master.setMultipleWritesOnly(mwo);
-        try {
-			master.init();
-		} catch (ModbusInitException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        
         return master;
 	}
 	
@@ -211,7 +206,7 @@ public class SlaveNode extends SlaveFolder {
 				node.setAttribute("message frame spacing", new Value(msgSpacing));
 				node.setAttribute("character spacing", new Value(charSpacing));
 			}
-			//String name = event.getParameter("name", ValueType.STRING).getString();
+			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
 			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
@@ -222,11 +217,9 @@ public class SlaveNode extends SlaveFolder {
 			int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
 			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
 			
-//			if (!name.equals(node.getName())) {
-//				Node newnode = node.getParent().createChild(name).build();
-//				node.getParent().removeChild(node);
-//				node = newnode;
-//			}
+			if (!name.equals(node.getName())) {
+				rename(name);
+			}
 			node.setAttribute("transport type", new Value(transtype.toString()));
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("refresh interval", new Value(interval));
@@ -243,6 +236,22 @@ public class SlaveNode extends SlaveFolder {
 			node.removeChild("edit");
 			makeEditAction();
 		}
+	}
+
+	@Override
+	protected void duplicate(String name) {
+		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject nodeobj = jobj.getObject("MODBUS").getObject(node.getName());
+		jobj.getObject("MODBUS").putObject(name, nodeobj);
+		link.copyDeserializer.deserialize(jobj);
+		Node newnode = node.getParent().getChild(name);
+		Value transType = newnode.getAttribute("transport type");
+		String transString = transType.getString().toUpperCase();
+		boolean ser = (transString.equals("RTU") || transString.equals("ASCII"));
+		SlaveNode sn = new SlaveNode(link, newnode, ser);
+		sn.restoreLastSession();
+		return;
+		
 	}
 
 }
