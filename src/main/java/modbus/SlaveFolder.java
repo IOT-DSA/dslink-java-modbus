@@ -20,7 +20,6 @@ import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
 import com.serotonin.modbus4j.msg.ModbusRequest;
-import com.serotonin.modbus4j.msg.ModbusResponse;
 import com.serotonin.modbus4j.msg.ReadCoilsRequest;
 import com.serotonin.modbus4j.msg.ReadDiscreteInputsRequest;
 import com.serotonin.modbus4j.msg.ReadHoldingRegistersRequest;
@@ -373,7 +372,7 @@ public class SlaveFolder {
 				default:break;
 				}
 				if (request!=null) System.out.println("set request: " + request.toString());
-				ModbusResponse response = root.master.send(request);
+				root.master.send(request);
 				//System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
