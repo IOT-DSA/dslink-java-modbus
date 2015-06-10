@@ -42,4 +42,4 @@ tasks.withType(FindBugs) {
     }
 }
 
-applicationDistribution.from new File(project.projectDir, "/dslink.json")
+applicationDistribution.from new File(project.projectDir, "dslink.json")

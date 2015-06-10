@@ -311,12 +311,12 @@ public class SlaveFolder {
 			}
 			ReadResponse response = (ReadResponse) root.master.send(request);
 			if (response.getExceptionCode()!=-1) {
-				System.out.println("errorresponse"+response.getExceptionMessage());
+				//System.out.println("errorresponse "+response.getExceptionMessage());
 				return;
 			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
 				boolean[] booldat = response.getBooleanData();
-				System.out.println("it works?" +Arrays.toString(booldat));
+				System.out.println(Arrays.toString(booldat));
 				for (int j=0;j<numRegs;j++) {
 					boolean b = booldat[j];
 					val.addBoolean(b);
@@ -374,7 +374,7 @@ public class SlaveFolder {
 				}
 				if (request!=null) System.out.println("set request: " + request.toString());
 				ModbusResponse response = root.master.send(request);
-				System.out.println(response.getExceptionMessage());
+				//System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
 				System.out.println("Modbus transpot exception");
