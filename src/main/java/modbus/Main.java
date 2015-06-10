@@ -23,8 +23,10 @@ import com.serotonin.modbus4j.serial.ModSerialParameters;
 public class Main extends DSLinkHandler {
 	
 	public static void main(String[] args) {
-			args = new String[] { "-b", "http://localhost:8080/conn" };
+			//args = new String[] { "-b", "http://localhost:8080/conn" };
 			DSLinkFactory.startResponder("modbusResponder", args, new Main());
+			
+			
 //		SerialParameters serialParameters = new SerialParameters();
 //        serialParameters.setCommPortId("COM3");
 //        serialParameters.setBaudRate(19200);
