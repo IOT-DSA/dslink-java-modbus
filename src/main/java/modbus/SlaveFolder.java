@@ -532,10 +532,10 @@ public class SlaveFolder {
 			case UINT32M10K: for (short s: responseData) {
 				if (regnum == 0) {
 					regnum += 1;
-					last = Short.toUnsignedInt(s);
+					last = toUnsignedInt(s);
 				} else {
 					regnum = 0;
-					long num = Integer.toUnsignedLong(last*10000 + Short.toUnsignedInt(s));
+					long num = toUnsignedLong(last*10000 + toUnsignedInt(s));
 					retval.addNumber(num/scaling + addscaling);
 				}
 				}
@@ -545,6 +545,16 @@ public class SlaveFolder {
 		}
 		return retval;
 	}
+	
+	static int toUnsignedInt(short x) {
+		return ((int) x) & 0xffff;
+	}
+	
+	static long toUnsignedLong(int x) {
+        return ((long) x) & 0xffffffffL;
+    }
+	
+	
 	
 	private static int getPointTypeInt(PointType pt) {
 		switch (pt) {
