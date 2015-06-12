@@ -179,11 +179,9 @@ public class SlaveNode extends SlaveFolder {
 				e.printStackTrace();
 				return;
 			}
-			String host;
-			int port;
 			if (!isSerial) {
-				host = event.getParameter("host", ValueType.STRING).getString();
-				port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
+				String host = event.getParameter("host", ValueType.STRING).getString();
+				int port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
 				node.setAttribute("host", new Value(host));
 				node.setAttribute("port", new Value(port));
 			} else {
@@ -217,9 +215,6 @@ public class SlaveNode extends SlaveFolder {
 			int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
 			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
 			
-			if (!name.equals(node.getName())) {
-				rename(name);
-			}
 			node.setAttribute("transport type", new Value(transtype.toString()));
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("refresh interval", new Value(interval));
@@ -230,6 +225,10 @@ public class SlaveNode extends SlaveFolder {
 			node.setAttribute("max write register count", new Value(maxwrc));
 			node.setAttribute("discard data delay", new Value(ddd));
 			node.setAttribute("use multiple write commands only", new Value(mwo));
+			
+			if (!name.equals(node.getName())) {
+				rename(name);
+			}
 			
 			master = getMaster();
 			
