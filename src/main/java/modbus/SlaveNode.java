@@ -7,6 +7,8 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.json.JsonObject;
 
@@ -17,6 +19,11 @@ import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 public class SlaveNode extends SlaveFolder {
+	private static final Logger LOGGER;
+	
+	static {
+		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
+	}
 	
 	ModbusMaster master;
 	long interval;
@@ -78,8 +85,8 @@ public class SlaveNode extends SlaveFolder {
 		try {
 			transtype = TransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
 		} catch (Exception e1) {
-			System.out.println("invalid transport type");
-			e1.printStackTrace();
+			LOGGER.error("invalid transport type");
+			LOGGER.debug("error: ", e1);
 			return null;
 		}
 		String host = node.getAttribute("host").getString();
@@ -175,8 +182,8 @@ public class SlaveNode extends SlaveFolder {
 			try {
 				transtype = TransportType.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
-				System.out.println("invalid transport type");
-				e.printStackTrace();
+				LOGGER.error("invalid transport type");
+				LOGGER.debug("error: ", e);
 				return;
 			}
 			if (!isSerial) {

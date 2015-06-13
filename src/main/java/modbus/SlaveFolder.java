@@ -10,6 +10,8 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
@@ -29,6 +31,12 @@ import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveFolder {
+	private static final Logger LOGGER;
+	
+	static {
+		LOGGER = LoggerFactory.getLogger(SlaveFolder.class);
+	}
+	
 	protected ModbusLink link;
 	protected Node node;
 	protected SlaveNode root;
@@ -171,8 +179,8 @@ public class SlaveFolder {
 			try {
 				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
-				System.out.println("invalid type");
-				e.printStackTrace();
+				LOGGER.error("invalid type");
+				LOGGER.debug("error: ", e);
 				return;
 			}
 			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
@@ -183,8 +191,8 @@ public class SlaveFolder {
 			else try {
 				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e1) {
-				System.out.println("invalid data type");
-				e1.printStackTrace();
+				LOGGER.error("invalid data type");
+				LOGGER.debug("error: ", e1);
 				return;
 			}
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
@@ -237,8 +245,8 @@ public class SlaveFolder {
 			try {
 				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
-				System.out.println("invalid type");
-				e.printStackTrace();
+				LOGGER.error("invalid type");
+				LOGGER.debug("error: ", e);
 				return;
 			}
 			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
@@ -249,8 +257,8 @@ public class SlaveFolder {
 			else try {
 				dataType = DataType.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e1) {
-				System.out.println("invalid data type");
-				e1.printStackTrace();
+				LOGGER.error("invalid data type");
+				LOGGER.debug("error: ", e1);
 				return;
 			}
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
@@ -299,7 +307,7 @@ public class SlaveFolder {
 			root.master.init();
 		} catch (ModbusInitException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOGGER.debug("error: ", e);
 		}
 		try {
 			switch (type) {
@@ -315,18 +323,18 @@ public class SlaveFolder {
 			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
 				boolean[] booldat = response.getBooleanData();
-				System.out.println(Arrays.toString(booldat));
+				LOGGER.debug(Arrays.toString(booldat));
 				for (int j=0;j<numRegs;j++) {
 					boolean b = booldat[j];
 					val.addBoolean(b);
 				}
 			} else {
-				System.out.println(Arrays.toString(response.getShortData()));
+				LOGGER.debug(Arrays.toString(response.getShortData()));
 				val = parseResponse(response, dataType, scaling, addscale, type, id, offset);
 			}
 		} catch (ModbusTransportException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOGGER.debug("error: ", e);
 		} finally {
 			root.master.destroy();
 		}
@@ -355,14 +363,14 @@ public class SlaveFolder {
 			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
 			JsonArray valarr = new JsonArray(valstr);
 			if (valarr.size() != numThings) {
-				System.out.println("wrong number of values");
+				LOGGER.error("wrong number of values");
 				return;
 			}
 			try {
 				root.master.init();
 			} catch (ModbusInitException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				LOGGER.debug("error: ", e);
 			}
 			ModbusRequest request = null;
 			try {
@@ -371,18 +379,18 @@ public class SlaveFolder {
 				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType, scaling, addscale, type, id, offset, numRegs));break;
 				default:break;
 				}
-				if (request!=null) System.out.println("set request: " + request.toString());
+				if (request!=null) LOGGER.debug("set request: " + request.toString());
 				root.master.send(request);
 				//System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
-				System.out.println("Modbus transpot exception");
-				e.printStackTrace();
+				LOGGER.error("Modbus transpot exception");
+				LOGGER.debug("error: ", e);
 				return;
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
-				System.out.println("make arr exception");
-				e.printStackTrace();
+				LOGGER.error("make arr exception");
+				LOGGER.debug("error: ", e);
 				return;
 			} finally {
 				root.master.destroy();

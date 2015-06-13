@@ -10,6 +10,8 @@ import org.dsa.iot.dslink.node.NodeManager;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.SerializationManager;
 import org.dsa.iot.dslink.serializer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.modbus4j.ModbusFactory;
@@ -21,6 +23,8 @@ import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 @SuppressWarnings("unused")
 public class Main extends DSLinkHandler {
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 	
 	public static void main(String[] args) {
 			//args = new String[] { "-b", "http://localhost:8080/conn" };
@@ -98,6 +102,8 @@ public class Main extends DSLinkHandler {
 	
 	@Override
 	public void onResponderConnected(DSLink link) {
+		LOGGER.info("Connected");
+		
 		NodeManager manager = link.getNodeManager();
 		Serializer copyser = new Serializer(manager);
 		Deserializer copydeser = new Deserializer(manager);
