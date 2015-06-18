@@ -20,7 +20,7 @@ import org.vertx.java.core.Handler;
 
 public class ModbusLink {
 	
-	private Node node;
+	Node node;
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
 	private final Map<Node, ScheduledFuture<?>> futures;
@@ -33,7 +33,7 @@ public class ModbusLink {
 	}
 	
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
-		Node node = parent.createChild("MODBUS").build();
+		Node node = parent;
 		final ModbusLink link = new ModbusLink(node, copyser, copydeser);
 		link.init();
 	}
@@ -48,7 +48,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("host", ValueType.STRING, new Value("")));
 		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, new Value(5)));
+		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
 		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
@@ -67,7 +67,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("stop bits", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("parity", ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE")));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, new Value(5)));
+		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
 		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
@@ -95,7 +95,7 @@ public class ModbusLink {
 			Value stopBits = child.getAttribute("stop bits");
 			Value parity = child.getAttribute("parity");
 			Value slaveId = child.getAttribute("slave id");
-			Value interval = child.getAttribute("refresh interval");
+			Value interval = child.getAttribute("polling interval");
 			Value timeout = child.getAttribute("timeout");
 			Value retries = child.getAttribute("retries");
 			Value maxrbc = child.getAttribute("max read bit count");
@@ -155,7 +155,7 @@ public class ModbusLink {
 			String transtype = event.getParameter("transport type").getString();
 			
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			long interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
+			long interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
 			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
@@ -174,7 +174,7 @@ public class ModbusLink {
 			snode.setAttribute("stop bits", new Value(stopBits));
 			snode.setAttribute("parity", new Value(parityString));
 			snode.setAttribute("slave id", new Value(slaveid));
-			snode.setAttribute("refresh interval", new Value(interval));
+			snode.setAttribute("polling interval", new Value(interval));
 			snode.setAttribute("timeout", new Value(timeout));
 			snode.setAttribute("retries", new Value(retries));
 			snode.setAttribute("max read bit count", new Value(maxrbc));

@@ -145,7 +145,7 @@ public class SlaveFolder {
 	}
 
 	private JsonObject getParentJson(JsonObject jobj, Node n) {
-		if (n == root.node) return jobj.getObject("MODBUS");
+		if (n == root.node) return jobj;
 		else return getParentJson(jobj, n.getParent()).getObject(n.getParent().getName());
 	}
 
@@ -226,12 +226,41 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("writable", ValueType.BOOL, pointNode.getAttribute("writable")));
 		pointNode.createChild("edit").setAction(act).build().setSerializable(false);
 		
+		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
+		act.addParameter(new Parameter("name", ValueType.STRING));
+		pointNode.createChild("make copy").setAction(act).build().setSerializable(false);
+		
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
 			act = new Action(Permission.READ, new SetHandler(pointNode));
 			act.addParameter(new Parameter("value", ValueType.STRING));
 			pointNode.createChild("set").setAction(act).build().setSerializable(false);
 		}
+	}
+	
+	protected class CopyPointHandler implements Handler<ActionResult> {
+		private Node pointNode;
+		CopyPointHandler(Node pnode) {
+			pointNode = pnode;
+		}
+		public void handle(ActionResult event) {
+			String name = event.getParameter("name", ValueType.STRING).getString();
+			if (name.length() > 1 && !name.equals(pointNode.getName())) {
+				copyPoint(pointNode, name);
+			}
+		}
+	}
+	
+	private Node copyPoint(Node pointNode, String name) {
+		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject parentobj = getParentJson(jobj).getObject(node.getName());
+		JsonObject pointnodeobj = parentobj.getObject(pointNode.getName());
+		parentobj.putObject(name, pointnodeobj);
+		link.copyDeserializer.deserialize(jobj);
+		Node newnode = node.getChild(name);
+		setupPointActions(newnode);
+		link.setupPoint(newnode, root);
+		return newnode;
 	}
 	
 	protected class EditPointHandler implements Handler<ActionResult> {
@@ -265,7 +294,7 @@ public class SlaveFolder {
 			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
 			
 			if (!name.equals(pointNode.getName())) {
-				Node newnode = node.createChild(name).build();
+				Node newnode = copyPoint(pointNode, name);
 				node.removeChild(pointNode);
 				pointNode = newnode;
 			}

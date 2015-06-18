@@ -40,7 +40,7 @@ public class SlaveNode extends SlaveFolder {
 			node.getParent().removeChild(node);
 			return;
 		}
-		this.interval = node.getAttribute("refresh interval").getNumber().longValue();
+		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 		
 		makeEditAction();
 	}
@@ -63,7 +63,7 @@ public class SlaveNode extends SlaveFolder {
 			act.addParameter(new Parameter("parity",  ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE"), node.getAttribute("parity")));
 		}
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
-		act.addParameter(new Parameter("refresh interval", ValueType.NUMBER, node.getAttribute("refresh interval")));
+		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, node.getAttribute("polling interval")));
 		act.addParameter(new Parameter("timeout", ValueType.NUMBER, node.getAttribute("timeout")));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
@@ -213,7 +213,7 @@ public class SlaveNode extends SlaveFolder {
 			}
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			interval = event.getParameter("refresh interval", ValueType.NUMBER).getNumber().longValue();
+			interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
 			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
@@ -224,7 +224,7 @@ public class SlaveNode extends SlaveFolder {
 			
 			node.setAttribute("transport type", new Value(transtype.toString()));
 			node.setAttribute("slave id", new Value(slaveid));
-			node.setAttribute("refresh interval", new Value(interval));
+			node.setAttribute("polling interval", new Value(interval));
 			node.setAttribute("timeout", new Value(timeout));
 			node.setAttribute("retries", new Value(retries));
 			node.setAttribute("max read bit count", new Value(maxrbc));
@@ -247,8 +247,8 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	protected void duplicate(String name) {
 		JsonObject jobj = link.copySerializer.serialize();
-		JsonObject nodeobj = jobj.getObject("MODBUS").getObject(node.getName());
-		jobj.getObject("MODBUS").putObject(name, nodeobj);
+		JsonObject nodeobj = jobj.getObject(node.getName());
+		jobj.putObject(name, nodeobj);
 		link.copyDeserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name);
 		Value transType = newnode.getAttribute("transport type");
