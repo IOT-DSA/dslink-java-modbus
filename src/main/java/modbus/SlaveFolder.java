@@ -5,10 +5,12 @@ import java.util.Arrays;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
+import org.dsa.iot.dslink.node.Writable;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -232,9 +234,13 @@ public class SlaveFolder {
 		
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
-			act = new Action(Permission.READ, new SetHandler(pointNode));
-			act.addParameter(new Parameter("value", ValueType.STRING));
-			pointNode.createChild("set").setAction(act).build().setSerializable(false);
+			
+			pointNode.setWritable(Writable.WRITE);
+			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
+			
+//			act = new Action(Permission.READ, new SetHandler(pointNode));
+//			act.addParameter(new Parameter("value", ValueType.STRING));
+//			pointNode.createChild("set").setAction(act).build().setSerializable(false);
 		}
 	}
 	
@@ -372,12 +378,13 @@ public class SlaveFolder {
 		pointNode.setValue(new Value(valString));
 	}
 	
-	protected class SetHandler implements Handler<ActionResult> {
+	protected class SetHandler implements Handler<ValuePair> {
 		private Node vnode;
 		SetHandler(Node vnode) {
 			this.vnode = vnode;
 		}
-		public void handle(ActionResult event) {
+		public void handle(ValuePair event) {
+			if (!event.isFromExternalSource()) return;
 			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
 			int offset = vnode.getAttribute("offset").getNumber().intValue();
 			int id = root.node.getAttribute("slave id").getNumber().intValue();
@@ -388,7 +395,7 @@ public class SlaveFolder {
 			String oldstr = vnode.getValue().getString();
 			if (!oldstr.startsWith("[")) oldstr = "["+oldstr+"]";
 			int numThings = new JsonArray(oldstr).size();
-			String valstr = event.getParameter("value", ValueType.STRING).getString();
+			String valstr = event.getCurrent().getString();
 			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
 			JsonArray valarr = new JsonArray(valstr);
 			if (valarr.size() != numThings) {
