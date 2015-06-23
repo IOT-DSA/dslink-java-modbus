@@ -77,7 +77,9 @@ public class SlaveNode extends SlaveFolder {
 			act.addParameter(new Parameter("message frame spacing", ValueType.NUMBER, node.getAttribute("message frame spacing")));
 			act.addParameter(new Parameter("character spacing", ValueType.NUMBER, node.getAttribute("character spacing")));
 		}
-		node.createChild("edit").setAction(act).build().setSerializable(false);
+		Node anode = node.getChild("edit");
+		if (anode == null) node.createChild("edit").setAction(act).build().setSerializable(false);
+		else anode.setAction(act);
 	}
 	
 	ModbusMaster getMaster() {
@@ -239,7 +241,6 @@ public class SlaveNode extends SlaveFolder {
 			
 			master = getMaster();
 			
-			node.removeChild("edit");
 			makeEditAction();
 		}
 	}

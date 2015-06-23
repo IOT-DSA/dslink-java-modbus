@@ -215,7 +215,9 @@ public class SlaveFolder {
 	
 	protected void setupPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
-		pointNode.createChild("remove").setAction(act).build().setSerializable(false);
+		Node anode = pointNode.getChild("remove");
+		if (anode == null) pointNode.createChild("remove").setAction(act).build().setSerializable(false);
+		else anode.setAction(act);
 		
 		act = new Action(Permission.READ, new EditPointHandler(pointNode));
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(pointNode.getName())));
@@ -226,11 +228,15 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("scaling", ValueType.NUMBER, pointNode.getAttribute("scaling")));
 		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, pointNode.getAttribute("scaling offset")));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, pointNode.getAttribute("writable")));
-		pointNode.createChild("edit").setAction(act).build().setSerializable(false);
+		anode = pointNode.getChild("edit");
+		if (anode == null) pointNode.createChild("edit").setAction(act).build().setSerializable(false);
+		else anode.setAction(act);
 		
 		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		pointNode.createChild("make copy").setAction(act).build().setSerializable(false);
+		anode = pointNode.getChild("make copy");
+		if (anode == null) pointNode.createChild("make copy").setAction(act).build().setSerializable(false);
+		else anode.setAction(act);
 		
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
@@ -311,7 +317,6 @@ public class SlaveFolder {
 			pointNode.setAttribute("scaling", new Value(scaling));
 			pointNode.setAttribute("scaling offset", new Value(addscale));
 			pointNode.setAttribute("writable", new Value(writable));
-			pointNode.clearChildren();
 			setupPointActions(pointNode);
 			link.setupPoint(pointNode, root);
 			pointNode.setAttribute("restoreType", new Value("point"));
