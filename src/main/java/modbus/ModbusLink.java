@@ -49,7 +49,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
-		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
+		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
 		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, new Value(125)));
@@ -68,7 +68,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("parity", ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE")));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
-		act.addParameter(new Parameter("timeout", ValueType.NUMBER, new Value(500)));
+		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
 		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, new Value(125)));
@@ -96,7 +96,7 @@ public class ModbusLink {
 			Value parity = child.getAttribute("parity");
 			Value slaveId = child.getAttribute("slave id");
 			Value interval = child.getAttribute("polling interval");
-			Value timeout = child.getAttribute("timeout");
+			Value timeout = child.getAttribute("Timeout");
 			Value retries = child.getAttribute("retries");
 			Value maxrbc = child.getAttribute("max read bit count");
 			Value maxrrc = child.getAttribute("max read register count");
@@ -156,7 +156,7 @@ public class ModbusLink {
 			
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			long interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
-			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
+			int timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
 			int maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
@@ -175,7 +175,7 @@ public class ModbusLink {
 			snode.setAttribute("parity", new Value(parityString));
 			snode.setAttribute("slave id", new Value(slaveid));
 			snode.setAttribute("polling interval", new Value(interval));
-			snode.setAttribute("timeout", new Value(timeout));
+			snode.setAttribute("Timeout", new Value(timeout));
 			snode.setAttribute("retries", new Value(retries));
 			snode.setAttribute("max read bit count", new Value(maxrbc));
 			snode.setAttribute("max read register count", new Value(maxrrc));

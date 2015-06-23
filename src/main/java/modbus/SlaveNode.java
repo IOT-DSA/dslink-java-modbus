@@ -64,7 +64,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, node.getAttribute("polling interval")));
-		act.addParameter(new Parameter("timeout", ValueType.NUMBER, node.getAttribute("timeout")));
+		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
 		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, node.getAttribute("max read register count")));
@@ -98,7 +98,7 @@ public class SlaveNode extends SlaveFolder {
 		int dataBits = node.getAttribute("data bits").getNumber().intValue();
 		int stopBits = node.getAttribute("stop bits").getNumber().intValue();
 		int parity = ModbusLink.parseParity(node.getAttribute("parity").getString());
-		int timeout = node.getAttribute("timeout").getNumber().intValue();
+		int timeout = node.getAttribute("Timeout").getNumber().intValue();
 		int retries = node.getAttribute("retries").getNumber().intValue();
 		int maxrbc = node.getAttribute("max read bit count").getNumber().intValue();
 		int maxrrc = node.getAttribute("max read register count").getNumber().intValue();
@@ -216,7 +216,7 @@ public class SlaveNode extends SlaveFolder {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
-			int timeout = event.getParameter("timeout", ValueType.NUMBER).getNumber().intValue();
+			int timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
 			int maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
@@ -227,7 +227,7 @@ public class SlaveNode extends SlaveFolder {
 			node.setAttribute("transport type", new Value(transtype.toString()));
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
-			node.setAttribute("timeout", new Value(timeout));
+			node.setAttribute("Timeout", new Value(timeout));
 			node.setAttribute("retries", new Value(retries));
 			node.setAttribute("max read bit count", new Value(maxrbc));
 			node.setAttribute("max read register count", new Value(maxrrc));
