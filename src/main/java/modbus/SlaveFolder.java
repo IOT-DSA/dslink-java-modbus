@@ -94,7 +94,7 @@ public class SlaveFolder {
 					setupPointActions(child);
 					link.setupPoint(child, root);
 				}
-			} else if (child.getAction() == null) {
+			} else if (child.getAction() == null && child.getName() != "STATUS") {
 				node.removeChild(child);
 			}
 		}

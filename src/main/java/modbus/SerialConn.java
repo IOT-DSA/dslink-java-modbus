@@ -31,6 +31,7 @@ public class SerialConn {
 	}
 	
 	Node node;
+	private Node statnode;
 	private ModbusLink link;
 	ModbusMaster master;
 	Set<SlaveNode> slaves;
@@ -38,18 +39,12 @@ public class SerialConn {
 	SerialConn(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
+		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up connection")).build();
 		slaves = new HashSet<SlaveNode>();
 		node.setAttribute("restoreType", new Value("conn"));
 	}
 	
 	void init() {
-		
-		master = getMaster();
-		if (master == null) {
-			node.clearChildren();
-			node.getParent().removeChild(node);
-			return;
-		}
 		
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
@@ -83,14 +78,19 @@ public class SerialConn {
 		if (anode == null) node.createChild("edit").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
 		
-		act = new Action(Permission.READ, link.new AddDeviceHandler(this));
-		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
-		anode = node.getChild("add serial device");
-		if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
-		else anode.setAction(act);
+		master = getMaster();
 		
+		if (master != null) {
+			statnode.setValue(new Value("Connected"));
+			
+			act = new Action(Permission.READ, link.new AddDeviceHandler(this));
+			act.addParameter(new Parameter("name", ValueType.STRING));
+			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
+			act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
+			anode = node.getChild("add serial device");
+			if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
+			else anode.setAction(act);
+		}
 	}
 	
 	private class EditHandler implements Handler<ActionResult> {
@@ -161,6 +161,7 @@ public class SerialConn {
 		} catch (Exception e1) {
 			LOGGER.error("invalid transport type");
 			LOGGER.debug("error: ", e1);
+			statnode.setValue(new Value("invalid transport type"));
 			return null;
 		}
 		String commPortId = node.getAttribute("comm port id").getString();
@@ -225,6 +226,7 @@ public class SerialConn {
 			master.init();
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
+			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
 			return null;
 		}
         for (SlaveNode sn: slaves) {
@@ -266,7 +268,7 @@ public class SerialConn {
 			if (slaveId!=null && interval!=null) {
 				SlaveNode sn = new SlaveNode(link, child, this);
 				sn.restoreLastSession();
-			} else if (child.getAction() == null) {
+			} else if (child.getAction() == null && child.getName() != "STATUS") {
 				node.removeChild(child);
 			}
 		}

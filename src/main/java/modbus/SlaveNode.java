@@ -28,6 +28,7 @@ public class SlaveNode extends SlaveFolder {
 	long interval;
 	boolean isSerial;
 	SerialConn conn;
+	private Node statnode;
 	
 	SlaveNode(ModbusLink link, Node node, SerialConn conn) {
 		super(link, node);
@@ -38,15 +39,26 @@ public class SlaveNode extends SlaveFolder {
 			conn.slaves.add(this);
 		}
 		this.root = this;
+		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up device")).build();
 		this.master = getMaster();
-		if (master == null) {
-			node.clearChildren();
-			node.getParent().removeChild(node);
-			return;
-		}
+		checkConnection();
+		
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 		
 		makeEditAction();
+	}
+	
+	void checkConnection() {
+		if (master != null) {
+			boolean connected = false;
+			try {
+				connected = master.testSlaveNode(node.getAttribute("slave id") .getNumber().intValue());
+			} catch (Exception e) {
+				LOGGER.debug("error: ", e);
+			}
+			if (connected) statnode.setValue(new Value("Ready"));
+			else statnode.setValue(new Value("Failure to connect to device"));
+		}
 	}
 	
 	enum TransportType {TCP, UDP, RTU, ASCII}
@@ -78,12 +90,14 @@ public class SlaveNode extends SlaveFolder {
 	
 	ModbusMaster getMaster() {
 		if (isSerial) return conn.master;
+		statnode.setValue(new Value("connecting to device"));
 		TransportType transtype = null;
 		try {
 			transtype = TransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
 		} catch (Exception e1) {
 			LOGGER.error("invalid transport type");
 			LOGGER.debug("error: ", e1);
+			statnode.setValue(new Value("invalid transport type"));
 			return null;
 		}
 		String host = node.getAttribute("host").getString();
@@ -127,6 +141,7 @@ public class SlaveNode extends SlaveFolder {
 			master.init();
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
+			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
 			return null;
 		}
         
@@ -193,6 +208,7 @@ public class SlaveNode extends SlaveFolder {
 			}
 			
 			master = getMaster();
+			checkConnection();
 			
 			makeEditAction();
 		}
