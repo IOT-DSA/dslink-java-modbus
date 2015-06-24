@@ -19,7 +19,6 @@ import org.vertx.java.core.json.JsonArray;
 import org.vertx.java.core.json.JsonObject;
 
 import com.serotonin.modbus4j.code.RegisterRange;
-import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
@@ -147,7 +146,7 @@ public class SlaveFolder {
 	}
 
 	private JsonObject getParentJson(JsonObject jobj, Node n) {
-		if (n == root.node) return jobj;
+		if ((!root.isSerial && n == root.node) || (root.isSerial && n == root.conn.node)) return jobj;
 		else return getParentJson(jobj, n.getParent()).getObject(n.getParent().getName());
 	}
 
