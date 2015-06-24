@@ -358,6 +358,7 @@ public class SlaveFolder {
 			if (request!=null) LOGGER.debug("Sending request: " + request.toString());
 			ReadResponse response = (ReadResponse) root.master.send(request);
 			LOGGER.debug("Got response: " + response.toString());
+			root.statnode.setValue(new Value("Ready"));
 			if (response.getExceptionCode()!=-1) {
 				LOGGER.debug("error response: "+response.getExceptionMessage());
 				return;

@@ -28,7 +28,7 @@ public class SlaveNode extends SlaveFolder {
 	long interval;
 	boolean isSerial;
 	SerialConn conn;
-	private Node statnode;
+	Node statnode;
 	
 	SlaveNode(ModbusLink link, Node node, SerialConn conn) {
 		super(link, node);
@@ -57,7 +57,7 @@ public class SlaveNode extends SlaveFolder {
 				LOGGER.debug("error: ", e);
 			}
 			if (connected) statnode.setValue(new Value("Ready"));
-			else statnode.setValue(new Value("Failure to connect to device"));
+			else statnode.setValue(new Value("Device ping failed"));
 		}
 	}
 	
