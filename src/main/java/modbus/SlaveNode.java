@@ -15,6 +15,7 @@ import org.vertx.java.core.json.JsonObject;
 import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.serial.ModSerialParameters;
 
@@ -63,7 +64,8 @@ public class SlaveNode extends SlaveFolder {
 			act.addParameter(new Parameter("parity",  ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE"), node.getAttribute("parity")));
 		}
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
-		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, node.getAttribute("polling interval")));
+		double defint = node.getAttribute("polling interval").getNumber().doubleValue()/1000;
+		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
 		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
@@ -134,6 +136,7 @@ public class SlaveNode extends SlaveFolder {
 			params.setDataBits(dataBits);
 			params.setStopBits(stopBits);
 			params.setParity(parity);
+			LOGGER.debug("Getting RTU master");
 			if (useCustomSpacing) {
 				master = new ModbusFactory().createRtuMaster(params, charSpacing, msgSpacing);
 			} else {
@@ -165,20 +168,35 @@ public class SlaveNode extends SlaveFolder {
         master.setDiscardDataDelay(ddd);
         master.setMultipleWritesOnly(mwo);
         
+        try {
+			master.init();
+		} catch (ModbusInitException e) {
+			LOGGER.error("error initializing master");
+			return null;
+		}
+        
         return master;
 	}
 	
 	@Override
 	protected void remove() {
 		super.remove();
-		master.destroy();
+		try {
+			master.destroy();
+		} catch (Exception e) {
+			LOGGER.debug("error destroying last master");
+		}
 		
 	}
 	
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			if (master != null) {
-				master.destroy();
+				try {
+					master.destroy();
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master");
+				}
 			}
 			TransportType transtype;
 			try {
@@ -215,7 +233,7 @@ public class SlaveNode extends SlaveFolder {
 			}
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
+			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
 			int timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();

@@ -343,12 +343,12 @@ public class SlaveFolder {
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request=null;
 		JsonArray val = new JsonArray();
-		try {
-			root.master.init();
-		} catch (ModbusInitException e) {
-			// TODO Auto-generated catch block
-			LOGGER.debug("error: ", e);
-		}
+//		try {
+//			root.master.init();
+//		} catch (ModbusInitException e) {
+//			// TODO Auto-generated catch block
+//			LOGGER.debug("error: ", e);
+//		}
 		try {
 			switch (type) {
 			case COIL: request = new ReadCoilsRequest(id, offset, numRegs);break;
@@ -356,9 +356,11 @@ public class SlaveFolder {
 			case HOLDING: request = new ReadHoldingRegistersRequest(id, offset, numRegs);break;
 			case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
 			}
+			if (request!=null) LOGGER.debug("Sending request: " + request.toString());
 			ReadResponse response = (ReadResponse) root.master.send(request);
+			LOGGER.debug("Got response: " + response.toString());
 			if (response.getExceptionCode()!=-1) {
-				//System.out.println("errorresponse "+response.getExceptionMessage());
+				LOGGER.debug("error response: "+response.getExceptionMessage());
 				return;
 			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
@@ -376,7 +378,11 @@ public class SlaveFolder {
 			// TODO Auto-generated catch block
 			LOGGER.debug("error: ", e);
 		} finally {
-			root.master.destroy();
+//			try {
+//				root.master.destroy();
+//			} catch (Exception e) {
+//				LOGGER.debug("error destroying last master");
+//			}
 		}
 		String valString = val.toString();
 		if (val.size() == 1) valString = val.get(0).toString();
@@ -407,12 +413,12 @@ public class SlaveFolder {
 				LOGGER.error("wrong number of values");
 				return;
 			}
-			try {
-				root.master.init();
-			} catch (ModbusInitException e) {
-				// TODO Auto-generated catch block
-				LOGGER.debug("error: ", e);
-			}
+//			try {
+//				root.master.init();
+//			} catch (ModbusInitException e) {
+//				// TODO Auto-generated catch block
+//				LOGGER.debug("error: ", e);
+//			}
 			ModbusRequest request = null;
 			try {
 				switch (type) {
@@ -433,9 +439,9 @@ public class SlaveFolder {
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
-			} finally {
-				root.master.destroy();
-			}
+			} //finally {
+//				root.master.destroy();
+//			}
 			
 		}
 	}

@@ -155,7 +155,7 @@ public class ModbusLink {
 			String transtype = event.getParameter("transport type").getString();
 			
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			long interval = event.getParameter("polling interval", ValueType.NUMBER).getNumber().longValue();
+			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
 			int timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
 			int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
 			int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
@@ -203,7 +203,7 @@ public class ModbusLink {
 	                    public void run() {
 	                    	if (event.getAttribute("offset") != null) slave.readPoint(event);
 	                    }
-	                }, 0, slave.interval, TimeUnit.SECONDS);
+	                }, 0, slave.interval, TimeUnit.MILLISECONDS);
 	                futures.put(event, fut);
 	            }
 	        });
