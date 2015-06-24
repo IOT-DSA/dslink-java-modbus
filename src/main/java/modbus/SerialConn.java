@@ -268,7 +268,7 @@ public class SerialConn {
 			if (slaveId!=null && interval!=null) {
 				SlaveNode sn = new SlaveNode(link, child, this);
 				sn.restoreLastSession();
-			} else if (child.getAction() == null && child.getName() != "STATUS") {
+			} else if (child.getAction() == null && !child.getName().equals("STATUS")) {
 				node.removeChild(child);
 			}
 		}
