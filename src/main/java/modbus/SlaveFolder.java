@@ -385,8 +385,28 @@ public class SlaveFolder {
 //			}
 		}
 		String valString = val.toString();
-		if (val.size() == 1) valString = val.get(0).toString();
-		pointNode.setValue(new Value(valString));
+		Value v = new Value(valString);
+		ValueType vt = ValueType.STRING;
+		if (val.size() == 1) {
+			valString = val.get(0).toString();
+			if (dataType == DataType.BOOLEAN) {
+				vt = ValueType.BOOL;
+				v = new Value(Boolean.parseBoolean(valString));
+			} else if (dataType.isString()) {
+				vt = ValueType.STRING;
+				v = new Value(valString);
+			} else {
+				try {
+					vt = ValueType.NUMBER;
+					v = new Value(new BigDecimal(valString));
+				} catch (Exception e) {
+					vt = ValueType.STRING;
+					v = new Value(valString);
+				}
+			}
+		}
+		pointNode.setValueType(vt);
+		pointNode.setValue(v);
 	}
 	
 	protected class SetHandler implements Handler<ValuePair> {
@@ -403,14 +423,28 @@ public class SlaveFolder {
 			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
 			double scaling = vnode.getAttribute("scaling").getNumber().doubleValue();
 			double addscale = vnode.getAttribute("scaling offset").getNumber().doubleValue();
-			String oldstr = vnode.getValue().getString();
-			if (!oldstr.startsWith("[")) oldstr = "["+oldstr+"]";
-			int numThings = new JsonArray(oldstr).size();
-			String valstr = event.getCurrent().getString();
-			if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
-			JsonArray valarr = new JsonArray(valstr);
-			if (valarr.size() != numThings) {
-				LOGGER.error("wrong number of values");
+			Value oldval = event.getPrevious();
+			Value newval = event.getCurrent();
+			JsonArray valarr;
+			if (newval.getType() == ValueType.STRING && oldval.getType() == ValueType.STRING) {
+				String valstr = newval.getString();
+				String oldstr = oldval.getString();
+				if (!oldstr.startsWith("[")) oldstr = "["+oldstr+"]";
+				int numThings = new JsonArray(oldstr).size();
+				if (!valstr.startsWith("[")) valstr = "["+valstr+"]";
+				valarr = new JsonArray(valstr);
+				if (valarr.size() != numThings) {
+					LOGGER.error("wrong number of values");
+					return;
+				}
+			} else if (newval.getType().compare(ValueType.BOOL)) {
+				valarr = new JsonArray();
+				valarr.addBoolean(newval.getBool());
+			} else if (newval.getType() == ValueType.NUMBER) {
+				valarr = new JsonArray();
+				valarr.addNumber(newval.getNumber());
+			} else {
+				LOGGER.error("Unexpected value type");
 				return;
 			}
 //			try {
