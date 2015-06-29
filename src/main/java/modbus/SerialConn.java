@@ -1,6 +1,7 @@
 package modbus;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import modbus.SlaveNode.TransportType;
@@ -17,7 +18,10 @@ import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.json.JsonObject;
 
+import com.serotonin.io.serial.CommPortConfigException;
+import com.serotonin.io.serial.CommPortProxy;
 import com.serotonin.io.serial.SerialParameters;
+import com.serotonin.io.serial.SerialUtils;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
@@ -55,10 +59,66 @@ public class SerialConn {
 		if (anode == null) node.createChild("remove").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
 		
-		act = new Action(Permission.READ, new EditHandler());
+		act = getEditAction();
+		anode = node.getChild("edit");
+		if (anode == null) {
+			anode = node.createChild("edit").setAction(act).build();
+			anode.setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+		final Node fanode = anode;
+		fanode.getListener().setOnListHandler(new Handler<Node>() {
+			//private String marker = "sc";
+			public void handle(Node event) {
+				//TODO
+				//System.out.println("doing the other thing");
+				fanode.setAction(getEditAction());
+			}
+		});
+		
+		act = new Action(Permission.READ, new RestartHandler());
+		node.createChild("restart").setAction(act).build().setSerializable(false);
+		
+		master = getMaster();
+		
+		if (master != null) {
+			statnode.setValue(new Value("Connected"));
+			
+			act = new Action(Permission.READ, link.new AddDeviceHandler(this));
+			act.addParameter(new Parameter("name", ValueType.STRING));
+			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
+			act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
+			anode = node.getChild("add serial device");
+			if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
+			else anode.setAction(act);
+		}
+	}
+	
+	private Action getEditAction() {
+		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII"), node.getAttribute("transport type")));
-		act.addParameter(new Parameter("comm port id", ValueType.STRING, node.getAttribute("comm port id")));
+		Set<String> portids = new HashSet<String>();
+		try {
+			List<CommPortProxy> cports = SerialUtils.getCommPorts();
+			for (CommPortProxy port: cports)  {
+				portids.add(port.getId());
+			}
+		} catch (CommPortConfigException e) {
+			// TODO Auto-generated catch block
+		}
+		if (portids.size() > 0) {
+			 if (portids.contains(node.getAttribute("comm port id").getString())) {
+				 act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids), node.getAttribute("comm port id")));
+				 act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING));
+			 } else {
+				 act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids)));
+				 act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING, node.getAttribute("comm port id")));
+			 }
+		} else {
+			act.addParameter(new Parameter("comm port id", ValueType.STRING, node.getAttribute("comm port id")));
+		}
 		act.addParameter(new Parameter("baud rate", ValueType.NUMBER, node.getAttribute("baud rate")));
 		act.addParameter(new Parameter("data bits", ValueType.NUMBER, node.getAttribute("data bits")));
 		act.addParameter(new Parameter("stop bits", ValueType.NUMBER, node.getAttribute("stop bits")));
@@ -74,23 +134,7 @@ public class SerialConn {
 		act.addParameter(new Parameter("set custom spacing", ValueType.BOOL, node.getAttribute("set custom spacing")));
 		act.addParameter(new Parameter("message frame spacing", ValueType.NUMBER, node.getAttribute("message frame spacing")));
 		act.addParameter(new Parameter("character spacing", ValueType.NUMBER, node.getAttribute("character spacing")));
-		anode = node.getChild("edit");
-		if (anode == null) node.createChild("edit").setAction(act).build().setSerializable(false);
-		else anode.setAction(act);
-		
-		master = getMaster();
-		
-		if (master != null) {
-			statnode.setValue(new Value("Connected"));
-			
-			act = new Action(Permission.READ, link.new AddDeviceHandler(this));
-			act.addParameter(new Parameter("name", ValueType.STRING));
-			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
-			act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
-			anode = node.getChild("add serial device");
-			if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
-			else anode.setAction(act);
-		}
+		return act;
 	}
 	
 	private class EditHandler implements Handler<ActionResult> {
@@ -110,7 +154,13 @@ public class SerialConn {
 				LOGGER.debug("error: ", e);
 				return;
 			}
-			String commPortId = event.getParameter("comm port id", ValueType.STRING).getString();
+			String commPortId;
+			Value customPort = event.getParameter("comm port id (manual entry)");
+			if (customPort != null && customPort.getString() != null && customPort.getString().trim().length() > 0) {
+				commPortId = customPort.getString();
+			} else {
+				commPortId = event.getParameter("comm port id").getString();
+			}
 			int baudRate = event.getParameter("baud rate", ValueType.NUMBER).getNumber().intValue();
 			int dataBits = event.getParameter("data bits", ValueType.NUMBER).getNumber().intValue();
 			int stopBits = event.getParameter("stop bits", ValueType.NUMBER).getNumber().intValue();
@@ -150,6 +200,19 @@ public class SerialConn {
 				rename(name);
 			}
 			
+			init();
+		}
+	}
+	
+	private class RestartHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			if (master != null) {
+				try {
+					master.destroy();
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master");
+				}
+			}
 			init();
 		}
 	}
@@ -226,6 +289,7 @@ public class SerialConn {
 			master.init();
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
+			LOGGER.debug("error: ", e);
 			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
 			return null;
 		}
@@ -238,6 +302,11 @@ public class SerialConn {
 	}
 	
 	protected void remove() {
+		try {
+			master.destroy();
+		} catch (Exception e) {
+			LOGGER.debug("error destroying master");
+		}
 		node.clearChildren();
 		node.getParent().removeChild(node);
 	}

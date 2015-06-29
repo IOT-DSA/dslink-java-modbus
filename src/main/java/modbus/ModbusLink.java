@@ -1,6 +1,9 @@
 package modbus;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -17,6 +20,10 @@ import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.Objects;
 import org.vertx.java.core.Handler;
+
+import com.serotonin.io.serial.CommPortConfigException;
+import com.serotonin.io.serial.CommPortProxy;
+import com.serotonin.io.serial.SerialUtils;
 
 public class ModbusLink {
 	
@@ -56,12 +63,42 @@ public class ModbusLink {
 		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
-		node.createChild("add ip device").setAction(act).build().setSerializable(false);
+		Node aanode = node.createChild("add ip device").setAction(act).build();
+		aanode.setSerializable(false);
 		
-		act = new Action(Permission.READ, new AddSerialHandler());
+		act = getAddSerialAction();
+		final Node anode = node.createChild("add serial connection").setAction(act).build();
+		anode.setSerializable(false);
+		anode.getListener().setOnListHandler(new Handler<Node>() {
+			//private String marker = "ml";
+			public void handle(Node event) {
+				//TODO
+				//System.out.println("doing the thing");
+				anode.setAction(getAddSerialAction());
+			}
+		});
+		
+	}
+	
+	private Action getAddSerialAction() {
+		Action act = new Action(Permission.READ, new AddSerialHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII")));
-		act.addParameter(new Parameter("comm port id", ValueType.STRING, new Value("")));
+		Set<String> portids = new HashSet<String>();
+		try {
+			List<CommPortProxy> cports = SerialUtils.getCommPorts();
+			for (CommPortProxy port: cports)  {
+				portids.add(port.getId());
+			}
+		} catch (CommPortConfigException e) {
+			// TODO Auto-generated catch block
+		}
+		if (portids.size() > 0) {
+			act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids)));
+			act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING));
+		} else {
+			act.addParameter(new Parameter("comm port id", ValueType.STRING));
+		}
 		act.addParameter(new Parameter("baud rate", ValueType.NUMBER, new Value(9600)));
 		act.addParameter(new Parameter("data bits", ValueType.NUMBER, new Value(8)));
 		act.addParameter(new Parameter("stop bits", ValueType.NUMBER, new Value(1)));
@@ -77,9 +114,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("set custom spacing", ValueType.BOOL, new Value(false)));
 		act.addParameter(new Parameter("message frame spacing", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("character spacing", ValueType.NUMBER, new Value(0)));
-		node.createChild("add serial connection").setAction(act).build().setSerializable(false);
-		
-		
+		return act;
 	}
 	
 	private void restoreLastSession() {
@@ -134,7 +169,13 @@ public class ModbusLink {
 	
 	private class AddSerialHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			String commPortId = event.getParameter("comm port id", ValueType.STRING).getString();
+			String commPortId;
+			Value customPort = event.getParameter("comm port id (manual entry)");
+			if (customPort != null && customPort.getString() != null && customPort.getString().trim().length() > 0) {
+				commPortId = customPort.getString();
+			} else {
+				commPortId = event.getParameter("comm port id").getString();
+			}
 			int baudRate = event.getParameter("baud rate", ValueType.NUMBER).getNumber().intValue();
 			int dataBits = event.getParameter("data bits", ValueType.NUMBER).getNumber().intValue();
 			int stopBits = event.getParameter("stop bits", ValueType.NUMBER).getNumber().intValue();
