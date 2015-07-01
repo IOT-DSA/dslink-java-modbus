@@ -151,6 +151,10 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	protected void remove() {
 		super.remove();
+		if (isSerial) {
+			conn.slaves.remove(this);
+			return;
+		}
 		try {
 			master.destroy();
 		} catch (Exception e) {

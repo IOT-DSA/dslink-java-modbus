@@ -43,6 +43,7 @@ public class SerialConn {
 	SerialConn(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
+		link.serialConns.add(this);
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up connection")).build();
 		slaves = new HashSet<SlaveNode>();
 		node.setAttribute("restoreType", new Value("conn"));
@@ -67,23 +68,21 @@ public class SerialConn {
 		} else {
 			anode.setAction(act);
 		}
-		final Node fanode = anode;
-		fanode.getListener().setOnListHandler(new Handler<Node>() {
-			//private String marker = "sc";
-			public void handle(Node event) {
-				//TODO
-				//System.out.println("doing the other thing");
-				fanode.setAction(getEditAction());
-			}
-		});
 		
 		act = new Action(Permission.READ, new RestartHandler());
-		node.createChild("restart").setAction(act).build().setSerializable(false);
+		anode = node.getChild("restart");
+		if (anode == null) node.createChild("restart").setAction(act).build().setSerializable(false);
+		else anode.setAction(act);
 		
 		master = getMaster();
 		
 		if (master != null) {
 			statnode.setValue(new Value("Connected"));
+			
+			act = new Action(Permission.READ, new StopHandler());
+			anode = node.getChild("stop");
+			if (anode == null) node.createChild("stop").setAction(act).build().setSerializable(false);
+			else anode.setAction(act);
 			
 			act = new Action(Permission.READ, link.new AddDeviceHandler(this));
 			act.addParameter(new Parameter("name", ValueType.STRING));
@@ -95,7 +94,7 @@ public class SerialConn {
 		}
 	}
 	
-	private Action getEditAction() {
+	Action getEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII"), node.getAttribute("transport type")));
@@ -139,13 +138,6 @@ public class SerialConn {
 	
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			if (master != null) {
-				try {
-					master.destroy();
-				} catch (Exception e) {
-					LOGGER.debug("error destroying last master");
-				}
-			}
 			TransportType transtype;
 			try {
 				transtype = TransportType.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
@@ -196,28 +188,44 @@ public class SerialConn {
 			node.setAttribute("discard data delay", new Value(ddd));
 			node.setAttribute("use multiple write commands only", new Value(mwo));
 			
+			stop();
+			
 			if (!name.equals(node.getName())) {
 				rename(name);
 			}
 			
-			init();
+			restoreLastSession();
+		}
+	}
+	
+	void stop() {
+		if (master != null) {
+			try {
+				master.destroy();
+			} catch (Exception e) {
+				LOGGER.debug("error destroying last master");
+			}
+			master = null;
+			node.removeChild("stop");
+			node.removeChild("add serial device");
+			statnode.setValue(new Value("Stopped"));
+		}
+	}
+	
+	private class StopHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			stop();
 		}
 	}
 	
 	private class RestartHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			if (master != null) {
-				try {
-					master.destroy();
-				} catch (Exception e) {
-					LOGGER.debug("error destroying last master");
-				}
-			}
-			init();
+			stop();
+			restoreLastSession();
 		}
 	}
 	
-	ModbusMaster getMaster() {
+	private ModbusMaster getMaster() {
 		TransportType transtype = null;
 		try {
 			transtype = TransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
@@ -291,6 +299,7 @@ public class SerialConn {
 			LOGGER.error("error initializing master");
 			LOGGER.debug("error: ", e);
 			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
+			stop();
 			return null;
 		}
         for (SlaveNode sn: slaves) {
@@ -301,13 +310,10 @@ public class SerialConn {
         return master;
 	}
 	
-	protected void remove() {
-		try {
-			master.destroy();
-		} catch (Exception e) {
-			LOGGER.debug("error destroying master");
-		}
+	private void remove() {
+		stop();
 		node.clearChildren();
+		link.serialConns.remove(this);
 		node.getParent().removeChild(node);
 	}
 	

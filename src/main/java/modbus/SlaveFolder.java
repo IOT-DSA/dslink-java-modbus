@@ -333,6 +333,10 @@ public class SlaveFolder {
 	}
 	
 	protected void readPoint(Node pointNode) {
+		if (root.master == null) {
+			if (root.isSerial) root.conn.stop();
+			return;
+		}
 		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
 		int offset = pointNode.getAttribute("offset").getNumber().intValue();
 		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
@@ -415,6 +419,10 @@ public class SlaveFolder {
 			this.vnode = vnode;
 		}
 		public void handle(ValuePair event) {
+			if (root.master == null) {
+				if (root.isSerial) root.conn.stop();
+				return;
+			}
 			if (!event.isFromExternalSource()) return;
 			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
 			int offset = vnode.getAttribute("offset").getNumber().intValue();

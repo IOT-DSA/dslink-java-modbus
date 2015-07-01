@@ -31,12 +31,14 @@ public class ModbusLink {
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
 	private final Map<Node, ScheduledFuture<?>> futures;
+	final Set<SerialConn> serialConns;
 	
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
 		this.copySerializer = ser;
 		this.copyDeserializer = deser;
 		this.futures = new ConcurrentHashMap<>();
+		this.serialConns = new HashSet<SerialConn>();
 	}
 	
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
@@ -63,21 +65,34 @@ public class ModbusLink {
 		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
-		Node aanode = node.createChild("add ip device").setAction(act).build();
-		aanode.setSerializable(false);
+		node.createChild("add ip device").setAction(act).build().setSerializable(false);
 		
 		act = getAddSerialAction();
-		final Node anode = node.createChild("add serial connection").setAction(act).build();
-		anode.setSerializable(false);
-		anode.getListener().setOnListHandler(new Handler<Node>() {
-			//private String marker = "ml";
-			public void handle(Node event) {
-				//TODO
-				//System.out.println("doing the thing");
-				anode.setAction(getAddSerialAction());
-			}
-		});
+		node.createChild("add serial connection").setAction(act).build().setSerializable(false);
 		
+		act = new Action(Permission.READ, new PortScanHandler());
+		node.createChild("scan for serial ports").setAction(act).build().setSerializable(false);
+	}
+	
+	private class PortScanHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			Action act = getAddSerialAction();
+			Node anode = node.getChild("add serial connection");
+			if (anode == null) {
+				anode = node.createChild("add serial connection").setAction(act).build();
+				anode.setSerializable(false);
+			} else {
+				anode.setAction(act);
+			}
+			
+			for (SerialConn conn: serialConns) {
+				anode = conn.node.getChild("edit");
+				if (anode != null) { 
+					act = conn.getEditAction();
+					anode.setAction(act);
+				}
+			}
+		}
 	}
 	
 	private Action getAddSerialAction() {

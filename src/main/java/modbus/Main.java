@@ -27,7 +27,7 @@ public class Main extends DSLinkHandler {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 	
 	public static void main(String[] args) {
-			//args = new String[] { "-b", "http://localhost:8080/conn"};//, "-l", "debug" };
+			//args = new String[] { "-b", "http://localhost:8080/conn", "-l", "debug" };
 			DSLinkFactory.startResponder("Modbus", args, new Main());
 			
 			
