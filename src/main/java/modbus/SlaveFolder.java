@@ -597,8 +597,7 @@ public class SlaveFolder {
 				int regsPerVal = nloc.getRegisterCount();
 				for (int i=0;i<responseData.length;i+=regsPerVal) {
 					Number num = nloc.bytesToValueRealOffset(byteData, i);
-					if (dataType.isFloat()) retval.addNumber(new BigDecimal(num.doubleValue()/scaling + addscaling));
-					else retval.addNumber((new BigDecimal(num.doubleValue()/scaling + addscaling)).toBigInteger());
+					retval.addNumber(new BigDecimal(num.doubleValue()/scaling + addscaling));
 				}
 			} else {
 				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt, responseData.length);
