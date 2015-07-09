@@ -1,5 +1,7 @@
 package modbus;
 
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -7,6 +9,7 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
@@ -29,6 +32,7 @@ public class SlaveNode extends SlaveFolder {
 	boolean isSerial;
 	SerialConn conn;
 	Node statnode;
+	private final ScheduledThreadPoolExecutor stpe;
 	
 	SlaveNode(ModbusLink link, Node node, SerialConn conn) {
 		super(link, node);
@@ -37,6 +41,9 @@ public class SlaveNode extends SlaveFolder {
 		this.isSerial = (conn!=null);
 		if (isSerial) {
 			conn.slaves.add(this);
+			stpe = conn.getDaemonThreadPool();
+		} else {
+			stpe = Objects.createDaemonThreadPool();
 		}
 		this.root = this;
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up device")).build();
@@ -59,6 +66,10 @@ public class SlaveNode extends SlaveFolder {
 			if (connected) statnode.setValue(new Value("Ready"));
 			else statnode.setValue(new Value("Device ping failed"));
 		}
+	}
+	
+	ScheduledThreadPoolExecutor getDaemonThreadPool() {
+		return stpe;
 	}
 	
 	enum TransportType {TCP, UDP, RTU, ASCII}
@@ -160,6 +171,7 @@ public class SlaveNode extends SlaveFolder {
 		} catch (Exception e) {
 			LOGGER.debug("error destroying last master");
 		}
+		if (!isSerial) stpe.shutdown();
 		
 	}
 	

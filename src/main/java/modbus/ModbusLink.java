@@ -18,7 +18,6 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
-import org.dsa.iot.dslink.util.Objects;
 import org.vertx.java.core.Handler;
 
 import com.serotonin.io.serial.CommPortConfigException;
@@ -319,7 +318,7 @@ public class ModbusLink {
 	                if (futures.containsKey(event)) {
 	                    return;
 	                }
-	                ScheduledThreadPoolExecutor stpe = Objects.getDaemonThreadPool();
+	                ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
 	                ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
 	                    @Override
 	                    public void run() {

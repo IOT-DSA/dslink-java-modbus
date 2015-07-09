@@ -3,6 +3,7 @@ package modbus;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import modbus.SlaveNode.TransportType;
 
@@ -13,6 +14,7 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
@@ -39,6 +41,8 @@ public class SerialConn {
 	private ModbusLink link;
 	ModbusMaster master;
 	Set<SlaveNode> slaves;
+	
+	private final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
 	
 	SerialConn(ModbusLink link, Node node) {
 		this.link = link;
@@ -315,6 +319,7 @@ public class SerialConn {
 		node.clearChildren();
 		link.serialConns.remove(this);
 		node.getParent().removeChild(node);
+		stpe.shutdown();
 	}
 	
 	protected void rename(String newname) {
@@ -347,6 +352,10 @@ public class SerialConn {
 				node.removeChild(child);
 			}
 		}
+	}
+
+	public ScheduledThreadPoolExecutor getDaemonThreadPool() {
+		return stpe;
 	}
 	
 
