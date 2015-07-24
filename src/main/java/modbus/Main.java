@@ -28,7 +28,7 @@ public class Main extends DSLinkHandler {
 	
 	public static void main(String[] args) {
 			//args = new String[] { "-b", "http://localhost:8080/conn", "-l", "debug" };
-			DSLinkFactory.startResponder("Modbus", args, new Main());
+			DSLinkFactory.start(args, new Main());
 			
 			
 //		SerialParameters serialParameters = new SerialParameters();
@@ -99,6 +99,11 @@ public class Main extends DSLinkHandler {
 //            System.out.println("Time: " + (System.currentTimeMillis() - start));
 //            master.destroy();
 		}
+	
+	@Override
+	public boolean isResponder() {
+		return true;
+	}
 	
 	@Override
 	public void onResponderConnected(DSLink link) {

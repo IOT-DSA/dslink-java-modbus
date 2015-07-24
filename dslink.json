@@ -1,6 +1,6 @@
 {
   "name": "dslink-java-modbus",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A dslink for modbus",
   "license": "GNU GPL",
   "main": "bin/dslink-java-modbus",
@@ -16,6 +16,10 @@
     "url": "https://github.com/IOT-DSA/dslink-java-modbus/issues"
   },
   "configs": {
+  	"name": {
+      "type": "string",
+      "default": "Modbus"
+    },
     "broker": {
       "type": "url"
     },
@@ -30,6 +34,10 @@
     "log": {
       "type": "enum",
       "default": "info"
+    },
+    "handler_class": {
+      "type": "string",
+      "default": "modbus.Main"
     }
   }
 }
