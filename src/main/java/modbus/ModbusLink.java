@@ -313,11 +313,10 @@ public class ModbusLink {
 	}
 	
 	void handleEdit(SlaveNode slave) {
-		if (slave.node.getChildren() == null) return;
-		for (Node child: slave.node.getChildren().values()) {
-			if (futures.containsKey(child)) {
-				handleUnsub(slave, child);
-				handleSub(slave, child);
+		for (Node event: futures.keySet()) {
+			if (event.getMetaData() == slave) {
+				handleUnsub(slave, event);
+				handleSub(slave, event);
 			}
 		}
 	}
@@ -344,6 +343,7 @@ public class ModbusLink {
 	}
 	
 	void setupPoint(Node child, final SlaveNode slave) {
+			child.setMetaData(slave);
 	        child.getListener().setOnSubscribeHandler(new Handler<Node>() {
 	            public void handle(final Node event) {
 	               handleSub(slave, event);
