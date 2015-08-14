@@ -49,7 +49,7 @@ public class SerialConn {
 		this.node = node;
 		link.serialConns.add(this);
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up connection")).build();
-		slaves = new HashSet<SlaveNode>();
+		slaves = new HashSet<>();
 		node.setAttribute("restoreType", new Value("conn"));
 	}
 	
@@ -77,7 +77,7 @@ public class SerialConn {
 		anode = node.getChild("restart");
 		if (anode == null) node.createChild("restart").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
-		
+
 		master = getMaster();
 		
 		if (master != null) {
@@ -335,8 +335,6 @@ public class SerialConn {
 		Node newnode = node.getParent().getChild(name);
 		SerialConn sn = new SerialConn(link, newnode);
 		sn.restoreLastSession();
-		return;
-		
 	}
 	
 	void restoreLastSession() {

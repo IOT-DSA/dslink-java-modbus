@@ -48,7 +48,12 @@ public class SlaveNode extends SlaveFolder {
 		this.root = this;
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up device")).build();
 		this.master = getMaster();
-		checkConnection();
+		stpe.execute(new Runnable() {
+			@Override
+			public void run() {
+				checkConnection();
+			}
+		});
 		
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 		
