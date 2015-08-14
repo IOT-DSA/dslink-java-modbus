@@ -2,7 +2,6 @@ package modbus;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -52,7 +51,7 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
 		act.addParameter(new Parameter("offset", ValueType.NUMBER));
 		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32", "INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64", "UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP", "CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K")));
+		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32", "INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64", "UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP", "CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP")));
 		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
@@ -163,7 +162,7 @@ public class SlaveFolder {
 		INT32, UINT32, INT32SWAP, UINT32SWAP, INT32SWAPSWAP, UINT32SWAPSWAP, 
 		FLOAT32, FLOAT32SWAP, INT64, UINT64, INT64SWAP, UINT64SWAP, 
 		FLOAT64, FLOAT64SWAP, BCD16, BCD32, BCD32SWAP, CHARSTRING,
-		VARCHARSTRING, INT32M10K, UINT32M10K;
+		VARCHARSTRING, INT32M10K, UINT32M10K, INT32M10KSWAP, UINT32M10KSWAP;
 
 		public boolean isFloat() {
 			return (this == FLOAT32 || this == FLOAT32SWAP || this == FLOAT64 || this == FLOAT64SWAP);
@@ -223,7 +222,7 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT"), pointNode.getAttribute("type")));
 		act.addParameter(new Parameter("offset", ValueType.NUMBER, pointNode.getAttribute("offset")));
 		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, pointNode.getAttribute("number of registers")));
-		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32", "INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64", "UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP", "CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K"), pointNode.getAttribute("data type")));
+		act.addParameter(new Parameter("data type", ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32", "INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64", "UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP", "CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP"), pointNode.getAttribute("data type")));
 		act.addParameter(new Parameter("scaling", ValueType.NUMBER, pointNode.getAttribute("scaling")));
 		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, pointNode.getAttribute("scaling offset")));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, pointNode.getAttribute("writable")));
@@ -534,15 +533,21 @@ public class SlaveFolder {
 				retval[i] = element;
 			}
 			return retval;
-		} else if (dt == DataType.INT32M10K || dt == DataType.UINT32M10K) {
+		} else if (dt == DataType.INT32M10K || dt == DataType.UINT32M10K || dt == DataType.INT32M10KSWAP || dt == DataType.UINT32M10KSWAP) {
 			retval = new short[2*jarr.size()];
 			for (int i=0;i<jarr.size();i++) {
 				Object o = jarr.get(i);
 				if (!(o instanceof Number)) throw new Exception("not an int array");
 				Number n = ((Number) o).doubleValue()*scaling - addscaling; 
 				long aslong = n.longValue();
-				retval[i*2] = (short) (aslong/10000);
-				retval[(i*2)+1] = (short) (aslong%10000); break;
+				if (dt == DataType.INT32M10K || dt == DataType.UINT32M10K) {
+					retval[i*2] = (short) (aslong/10000);
+					retval[(i*2)+1] = (short) (aslong%10000);
+				} else {
+					retval[i*2] = (short) (aslong%10000);
+					retval[(i*2)+1] = (short) (aslong/10000);
+				}
+				
 			}
 		}
 		return retval;
@@ -613,25 +618,32 @@ public class SlaveFolder {
 				}
 				}
 				break;
-			
+			case INT32M10KSWAP:
 			case INT32M10K: for (short s: responseData) {
 				if (regnum == 0) {
 					regnum += 1;
 					last = s;
 				} else {
 					regnum = 0;
-					int num = last*10000 + s;
+					int num;
+					boolean swap = (dataType == DataType.INT32M10KSWAP);
+					if (swap) num = s*10000 + last;
+					else num = last*10000 + s;
 					retval.addNumber(num/scaling + addscaling);
 				}
 				}
 				break;
+			case UINT32M10KSWAP:
 			case UINT32M10K: for (short s: responseData) {
 				if (regnum == 0) {
 					regnum += 1;
 					last = toUnsignedInt(s);
 				} else {
 					regnum = 0;
-					long num = toUnsignedLong(last*10000 + toUnsignedInt(s));
+					long num;
+					boolean swap = (dataType == DataType.UINT32M10KSWAP);
+					if (swap) num = toUnsignedLong(toUnsignedInt(s)*10000 + last);
+					else num = toUnsignedLong(last*10000 + toUnsignedInt(s));
 					retval.addNumber(num/scaling + addscaling);
 				}
 				}

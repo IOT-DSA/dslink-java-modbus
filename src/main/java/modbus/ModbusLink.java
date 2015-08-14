@@ -312,30 +312,48 @@ public class ModbusLink {
 		}
 	}
 	
-	 void setupPoint(Node child, final SlaveNode slave) {
+	void handleEdit(SlaveNode slave) {
+		for (Node event: futures.keySet()) {
+			if (event.getMetaData() == slave) {
+				handleUnsub(slave, event);
+				handleSub(slave, event);
+			}
+		}
+	}
+	
+	private void handleSub(final SlaveNode slave, final Node event) {
+		 if (futures.containsKey(event)) {
+             return;
+         }
+         ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
+         ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
+             @Override
+             public void run() {
+             	if (event.getAttribute("offset") != null) slave.readPoint(event);
+             }
+         }, 0, slave.interval, TimeUnit.MILLISECONDS);
+         futures.put(event, fut);
+	}
+	
+	private void handleUnsub(SlaveNode slave, Node event) {
+		ScheduledFuture<?> fut = futures.remove(event);
+        if (fut != null) {
+            fut.cancel(false);
+        }
+	}
+	
+	void setupPoint(Node child, final SlaveNode slave) {
+			child.setMetaData(slave);
 	        child.getListener().setOnSubscribeHandler(new Handler<Node>() {
 	            public void handle(final Node event) {
-	                if (futures.containsKey(event)) {
-	                    return;
-	                }
-	                ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-	                ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
-	                    @Override
-	                    public void run() {
-	                    	if (event.getAttribute("offset") != null) slave.readPoint(event);
-	                    }
-	                }, 0, slave.interval, TimeUnit.MILLISECONDS);
-	                futures.put(event, fut);
+	               handleSub(slave, event);
 	            }
 	        });
 
 	        child.getListener().setOnUnsubscribeHandler(new Handler<Node>() {
 	            @Override
 	            public void handle(Node event) {
-	                ScheduledFuture<?> fut = futures.remove(event);
-	                if (fut != null) {
-	                    fut.cancel(false);
-	                }
+	                handleUnsub(slave, event);
 	            }
 	        });
 	    }

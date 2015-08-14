@@ -221,6 +221,7 @@ public class SlaveNode extends SlaveFolder {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
+			link.handleEdit(root);
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
 			
