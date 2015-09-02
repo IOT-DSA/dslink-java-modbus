@@ -605,8 +605,7 @@ public class SlaveFolder {
                         Number num = nloc.bytesToValueRealOffset(byteData, i);
                         retval.addNumber(new BigDecimal(num.doubleValue() / scaling + addscaling));
                     } catch (Exception e) {
-                        LOGGER.warn("Error retrieving numeric value", e);
-                        break;
+                        LOGGER.debug("Error retrieving numeric value", e);
                     }
 				}
 			} else {
