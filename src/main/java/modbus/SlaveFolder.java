@@ -601,8 +601,13 @@ public class SlaveFolder {
 				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pointType), offset, dt);
 				int regsPerVal = nloc.getRegisterCount();
 				for (int i=0;i<responseData.length;i+=regsPerVal) {
-					Number num = nloc.bytesToValueRealOffset(byteData, i);
-					retval.addNumber(new BigDecimal(num.doubleValue()/scaling + addscaling));
+					try {
+                        Number num = nloc.bytesToValueRealOffset(byteData, i);
+                        retval.addNumber(new BigDecimal(num.doubleValue() / scaling + addscaling));
+                    } catch (Exception e) {
+                        LOGGER.warn("Error retrieving numeric value", e);
+                        break;
+                    }
 				}
 			} else {
 				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt, responseData.length);
