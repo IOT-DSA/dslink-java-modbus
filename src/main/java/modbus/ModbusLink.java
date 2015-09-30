@@ -18,7 +18,7 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
-import org.vertx.java.core.Handler;
+import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.io.serial.CommPortConfigException;
 import com.serotonin.io.serial.CommPortProxy;
