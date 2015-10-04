@@ -400,7 +400,7 @@ public class SlaveFolder {
 			} else {
 				try {
 					vt = ValueType.NUMBER;
-					v = new Value(valString);
+					v = new Value(Double.parseDouble(valString));
 				} catch (Exception e) {
 					vt = ValueType.STRING;
 					v = new Value(valString);
