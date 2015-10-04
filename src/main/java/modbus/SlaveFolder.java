@@ -1,6 +1,5 @@
 package modbus;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -401,7 +400,7 @@ public class SlaveFolder {
 			} else {
 				try {
 					vt = ValueType.NUMBER;
-					v = new Value(new BigDecimal(valString));
+					v = new Value(valString);
 				} catch (Exception e) {
 					vt = ValueType.STRING;
 					v = new Value(valString);
@@ -603,7 +602,7 @@ public class SlaveFolder {
 				for (int i=0;i<responseData.length;i+=regsPerVal) {
 					try {
                         Number num = nloc.bytesToValueRealOffset(byteData, i);
-                        retval.add(new BigDecimal(num.doubleValue() / scaling + addscaling));
+                        retval.add(num.doubleValue() / scaling + addscaling);
                     } catch (Exception e) {
                         LOGGER.debug("Error retrieving numeric value", e);
                     }
