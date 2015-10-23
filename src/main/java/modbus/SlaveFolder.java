@@ -1,6 +1,5 @@
 package modbus;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -11,11 +10,11 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.json.JsonArray;
+import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.json.JsonArray;
-import org.vertx.java.core.json.JsonObject;
+import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.code.RegisterRange;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
@@ -132,8 +131,8 @@ public class SlaveFolder {
 	protected void duplicate(String name) {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
-		JsonObject nodeobj = parentobj.getObject(node.getName());
-		parentobj.putObject(name, nodeobj);
+		JsonObject nodeobj = parentobj.get(node.getName());
+		parentobj.put(name, nodeobj);
 		link.copyDeserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name);
 		SlaveFolder sf = new SlaveFolder(link, newnode, root);
@@ -146,7 +145,7 @@ public class SlaveFolder {
 
 	private JsonObject getParentJson(JsonObject jobj, Node n) {
 		if ((!root.isSerial && n == root.node) || (root.isSerial && n == root.conn.node)) return jobj;
-		else return getParentJson(jobj, n.getParent()).getObject(n.getParent().getName());
+		else return getParentJson(jobj, n.getParent()).get(n.getParent().getName());
 	}
 
 	protected class AddFolderHandler implements Handler<ActionResult> {
@@ -263,9 +262,9 @@ public class SlaveFolder {
 	
 	private Node copyPoint(Node pointNode, String name) {
 		JsonObject jobj = link.copySerializer.serialize();
-		JsonObject parentobj = getParentJson(jobj).getObject(node.getName());
-		JsonObject pointnodeobj = parentobj.getObject(pointNode.getName());
-		parentobj.putObject(name, pointnodeobj);
+		JsonObject parentobj = getParentJson(jobj).get(node.getName());
+		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
+		parentobj.put(name, pointnodeobj);
 		link.copyDeserializer.deserialize(jobj);
 		Node newnode = node.getChild(name);
 		setupPointActions(newnode);
@@ -371,7 +370,7 @@ public class SlaveFolder {
 				LOGGER.debug(Arrays.toString(booldat));
 				for (int j=0;j<numRegs;j++) {
 					boolean b = booldat[j];
-					val.addBoolean(b);
+					val.add(b);
 				}
 			} else {
 				LOGGER.debug(Arrays.toString(response.getShortData()));
@@ -401,7 +400,7 @@ public class SlaveFolder {
 			} else {
 				try {
 					vt = ValueType.NUMBER;
-					v = new Value(new BigDecimal(valString));
+					v = new Value(Double.parseDouble(valString));
 				} catch (Exception e) {
 					vt = ValueType.STRING;
 					v = new Value(valString);
@@ -446,10 +445,10 @@ public class SlaveFolder {
 				}
 			} else if (newval.getType().compare(ValueType.BOOL)) {
 				valarr = new JsonArray();
-				valarr.addBoolean(newval.getBool());
+				valarr.add(newval.getBool());
 			} else if (newval.getType() == ValueType.NUMBER) {
 				valarr = new JsonArray();
-				valarr.addNumber(newval.getNumber());
+				valarr.add(newval.getNumber());
 			} else {
 				LOGGER.error("Unexpected value type");
 				return;
@@ -492,7 +491,7 @@ public class SlaveFolder {
 		for (int i=0;i<jarr.size();i++) {
 			Object o = jarr.get(i);
 			if (!(o instanceof Boolean)) throw new Exception("not a boolean array");
-			else retval[i] = (boolean) o;
+			else retval[i] = (Boolean) o;
 		}
 		return retval;
 	}
@@ -525,7 +524,7 @@ public class SlaveFolder {
 					if (i+j < jarr.size()) {
 						Object o = jarr.get(i+j);
 						if (!(o instanceof Boolean)) throw new Exception("not a boolean array");
-						if ((boolean) o ) bit = 1;
+						if ((Boolean) o ) bit = 1;
 					}
 					element = (short) (element & (bit << (15 - j)));
 					jarr.get(i+j);
@@ -603,14 +602,14 @@ public class SlaveFolder {
 				for (int i=0;i<responseData.length;i+=regsPerVal) {
 					try {
                         Number num = nloc.bytesToValueRealOffset(byteData, i);
-                        retval.addNumber(new BigDecimal(num.doubleValue() / scaling + addscaling));
+                        retval.add(num.doubleValue() / scaling + addscaling);
                     } catch (Exception e) {
                         LOGGER.debug("Error retrieving numeric value", e);
                     }
 				}
 			} else {
 				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt, responseData.length);
-				retval.addString(sloc.bytesToValueRealOffset(byteData, 0));
+				retval.add(sloc.bytesToValueRealOffset(byteData, 0));
 			}
 		} else {
 			int last = 0;
@@ -618,7 +617,7 @@ public class SlaveFolder {
 			switch (dataType) {
 			case BOOLEAN: for (short s: responseData) {
 				for (int i=0; i<16; i++) {
-					retval.addBoolean(((s >> i) & 1) != 0);
+					retval.add(((s >> i) & 1) != 0);
 				}
 				}
 				break;
@@ -633,7 +632,7 @@ public class SlaveFolder {
 					boolean swap = (dataType == DataType.INT32M10KSWAP);
 					if (swap) num = s*10000 + last;
 					else num = last*10000 + s;
-					retval.addNumber(num/scaling + addscaling);
+					retval.add(num/scaling + addscaling);
 				}
 				}
 				break;
@@ -648,7 +647,7 @@ public class SlaveFolder {
 					boolean swap = (dataType == DataType.UINT32M10KSWAP);
 					if (swap) num = toUnsignedLong(toUnsignedInt(s)*10000 + last);
 					else num = toUnsignedLong(last*10000 + toUnsignedInt(s));
-					retval.addNumber(num/scaling + addscaling);
+					retval.add(num/scaling + addscaling);
 				}
 				}
 				break; 
