@@ -18,13 +18,18 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
-
 import com.serotonin.io.serial.CommPortConfigException;
 import com.serotonin.io.serial.CommPortProxy;
 import com.serotonin.io.serial.SerialUtils;
 
 public class ModbusLink {
+	static private final Logger LOGGER;
+	static {
+        LOGGER = LoggerFactory.getLogger(ModbusLink.class);
+    }
 	
 	Node node;
 	Serializer copySerializer;
@@ -71,6 +76,12 @@ public class ModbusLink {
 		
 		act = new Action(Permission.READ, new PortScanHandler());
 		node.createChild("scan for serial ports").setAction(act).build().setSerializable(false);
+		
+//		act = new Action(Permission.READ, new MakeSlaveHandler());
+//		act.addParameter(new Parameter("name", ValueType.STRING));
+//		act.addParameter(new Parameter("transport type", ValueType.makeEnum("TCP", "UDP")));
+//		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
+//		node.createChild("set up ip slave").setAction(act).build().setSerializable(false);
 	}
 	
 	private class PortScanHandler implements Handler<ActionResult> {
@@ -105,7 +116,7 @@ public class ModbusLink {
 				portids.add(port.getId());
 			}
 		} catch (CommPortConfigException e) {
-			// TODO Auto-generated catch block
+			LOGGER.debug("", e);
 		}
 		if (portids.size() > 0) {
 			act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids)));
@@ -231,6 +242,25 @@ public class ModbusLink {
 			conn.init();
 		}
 	}
+	
+//	private class MakeSlaveHandler implements Handler<ActionResult> {
+//		public void handle(ActionResult event) {
+//			String name = event.getParameter("name", ValueType.STRING).getString();
+//			String transtype = event.getParameter("transport type").getString();
+//			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
+//			
+//			Node child = node.createChild(name).build();
+//			child.setAttribute("transport type", new Value(transtype));
+//			child.setAttribute("slave id", new Value(slaveid));
+//			child.createChild("Coils").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
+//			child.createChild("Discrete Inputs").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
+//			child.createChild("Input Registers").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
+//			child.createChild("Holding Registers").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
+//			
+//			new IpSlave(getMe(), child);
+//			
+//		}
+//	}
 	
 	class AddDeviceHandler implements Handler<ActionResult> {
 		private boolean isSerial;
