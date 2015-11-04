@@ -389,6 +389,7 @@ public class SlaveFolder {
 		String valString = val.toString();
 		Value v = new Value(valString);
 		ValueType vt = ValueType.STRING;
+		if (val.size() == 0) return;
 		if (val.size() == 1) {
 			valString = val.get(0).toString();
 			if (dataType == DataType.BOOLEAN) {
