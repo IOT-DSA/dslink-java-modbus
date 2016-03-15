@@ -1,6 +1,10 @@
 package modbus;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -342,7 +346,9 @@ public class SlaveFolder {
 		}
 		return ret;
 	}
-	
+
+	private final Map<String,Boolean> polledNodes = new ConcurrentHashMap<>();
+
 	protected void readPoint(Node pointNode) {
 		if (root.master == null) {
 			if (root.isSerial) root.conn.stop();
@@ -364,6 +370,7 @@ public class SlaveFolder {
 //			// TODO Auto-generated catch block
 //			LOGGER.debug("error: ", e);
 //		}
+		String requestString = "";
 		try {
 			switch (type) {
 			case COIL: request = new ReadCoilsRequest(id, offset, numRegs);break;
@@ -372,7 +379,15 @@ public class SlaveFolder {
 			case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
 			}
 			if (request!=null) LOGGER.debug("Sending request: " + request.toString());
+			requestString = ":" + id + ":" + offset + ":" + numRegs + ":";
+			if (polledNodes.containsKey(requestString))
+			{
+				//LOGGER.info("Skipping already currently polling request: " + requestString);
+				return;
+			}
+			polledNodes.put(requestString, true);
 			ReadResponse response = (ReadResponse) root.master.send(request);
+			polledNodes.remove(requestString);
 			LOGGER.debug("Got response: " + response.toString());
 			root.statnode.setValue(new Value("Ready"));
 			if (response.getExceptionCode()!=-1) {
@@ -391,8 +406,12 @@ public class SlaveFolder {
 				val = parseResponse(response, dataType, scaling, addscale, type, id, offset);
 			}
 		} catch (ModbusTransportException e) {
-			// TODO Auto-generated catch block
+			LOGGER.debug("ModbusTransportException: ", e);
+			polledNodes.remove(requestString);
+		} catch (Exception e)
+		{
 			LOGGER.debug("error: ", e);
+			polledNodes.remove(requestString);
 		} finally {
 //			try {
 //				root.master.destroy();
