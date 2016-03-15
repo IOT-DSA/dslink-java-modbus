@@ -329,6 +329,19 @@ public class SlaveFolder {
 			node.removeChild(toRemove);
 		}
 	}
+
+	protected Double getDoubleValue(Value val)
+	{
+		double ret = 0.0;
+		{
+			if (val.getType() == ValueType.STRING) {
+				ret = Double.parseDouble(val.getString());
+			} else if (val.getType() == ValueType.NUMBER) {
+				ret = val.getNumber().doubleValue();
+			}
+		}
+		return ret;
+	}
 	
 	protected void readPoint(Node pointNode) {
 		if (root.master == null) {
@@ -339,8 +352,9 @@ public class SlaveFolder {
 		int offset = pointNode.getAttribute("offset").getNumber().intValue();
 		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
 		int id = root.node.getAttribute("slave id").getNumber().intValue();
-		double scaling = Double.parseDouble(pointNode.getAttribute("scaling").getString());
-		double addscale = pointNode.getAttribute("scaling offset").getNumber().doubleValue();
+
+		double scaling = getDoubleValue(pointNode.getAttribute("scaling"));
+		double addscale = getDoubleValue(pointNode.getAttribute("scaling offset"));
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request=null;
 		JsonArray val = new JsonArray();
