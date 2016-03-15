@@ -339,7 +339,7 @@ public class SlaveFolder {
 		int offset = pointNode.getAttribute("offset").getNumber().intValue();
 		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
 		int id = root.node.getAttribute("slave id").getNumber().intValue();
-		double scaling = pointNode.getAttribute("scaling").getNumber().doubleValue();
+		double scaling = Double.parseDouble(pointNode.getAttribute("scaling").getString());
 		double addscale = pointNode.getAttribute("scaling offset").getNumber().doubleValue();
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request=null;
