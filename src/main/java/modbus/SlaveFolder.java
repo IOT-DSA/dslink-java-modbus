@@ -323,7 +323,8 @@ public class SlaveFolder {
 			pointNode.setAttribute("restoreType", new Value("point"));
 		}
 	}
-	
+
+
 	protected class RemovePointHandler implements Handler<ActionResult> {
 		private Node toRemove;
 		RemovePointHandler(Node pnode){
