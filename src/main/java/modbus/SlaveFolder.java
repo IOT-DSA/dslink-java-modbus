@@ -35,20 +35,20 @@ import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveFolder {
 	private static final Logger LOGGER;
-	
+
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveFolder.class);
 	}
-	
+
 	protected ModbusLink link;
 	protected Node node;
 	protected SlaveNode root;
-	
+
 	SlaveFolder(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
 		node.setAttribute("restoreType", new Value("folder"));
-		
+
 		Action act = new Action(Permission.READ, new AddPointHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
@@ -59,31 +59,31 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
 		node.createChild("add point").setAction(act).build().setSerializable(false);
-		
+
 		if (!(this instanceof SlaveNode)) {
 			act = new Action(Permission.READ, new RenameHandler());
 			act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 			node.createChild("rename").setAction(act).build().setSerializable(false);
 		}
-		
+
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild("make copy").setAction(act).build().setSerializable(false);
-		
+
 		act = new Action(Permission.READ, new RemoveHandler());
 		node.createChild("remove").setAction(act).build().setSerializable(false);
-		
+
 		act = new Action(Permission.READ, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild("add folder").setAction(act).build().setSerializable(false);
 	}
-	
+
 	SlaveFolder(ModbusLink link, Node node, SlaveNode root) {
 		this(link, node);
 		this.root = root;
-		
+
 	}
-	
+
 	void restoreLastSession() {
 		if (node.getChildren() == null) return;
 		for  (Node child: node.getChildren().values()) {
@@ -101,32 +101,32 @@ public class SlaveFolder {
 			}
 		}
 	}
-	
+
 	protected class CopyHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String newname = event.getParameter("name", ValueType.STRING).getString();
 			if (newname.length() > 0 && !newname.equals(node.getName())) duplicate(newname);
 		}
 	}
-	
+
 	protected class RenameHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String newname = event.getParameter("name", ValueType.STRING).getString();
 			if (newname.length() > 0 && !newname.equals(node.getName())) rename(newname);
 		}
 	}
-	
+
 	protected class RemoveHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			remove();
 		}
 	}
-	
+
 	protected void remove() {
 		node.clearChildren();
 		node.getParent().removeChild(node);
 	}
-	
+
 	protected void rename(String newname) {
 		duplicate(newname);
 		remove();
@@ -159,11 +159,11 @@ public class SlaveFolder {
 			new SlaveFolder(link, child, root);
 		}
 	}
-	
+
 	protected enum PointType {COIL, DISCRETE, HOLDING, INPUT}
-	protected enum DataType {BOOLEAN, INT16, UINT16, INT16SWAP, UINT16SWAP, 
-		INT32, UINT32, INT32SWAP, UINT32SWAP, INT32SWAPSWAP, UINT32SWAPSWAP, 
-		FLOAT32, FLOAT32SWAP, INT64, UINT64, INT64SWAP, UINT64SWAP, 
+	protected enum DataType {BOOLEAN, INT16, UINT16, INT16SWAP, UINT16SWAP,
+		INT32, UINT32, INT32SWAP, UINT32SWAP, INT32SWAPSWAP, UINT32SWAPSWAP,
+		FLOAT32, FLOAT32SWAP, INT64, UINT64, INT64SWAP, UINT64SWAP,
 		FLOAT64, FLOAT64SWAP, BCD16, BCD32, BCD32SWAP, CHARSTRING,
 		VARCHARSTRING, INT32M10K, UINT32M10K, INT32M10KSWAP, UINT32M10KSWAP;
 
@@ -174,7 +174,7 @@ public class SlaveFolder {
 		public boolean isString() {
 			return (this == CHARSTRING || this == VARCHARSTRING);
 		}}
-	
+
 	protected class AddPointHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
@@ -213,13 +213,13 @@ public class SlaveFolder {
 			pnode.setAttribute("restoreType", new Value("point"));
 		}
 	}
-	
+
 	protected void setupPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
 		Node anode = pointNode.getChild("remove");
 		if (anode == null) pointNode.createChild("remove").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
-		
+
 		act = new Action(Permission.READ, new EditPointHandler(pointNode));
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(pointNode.getName())));
 		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT"), pointNode.getAttribute("type")));
@@ -232,25 +232,25 @@ public class SlaveFolder {
 		anode = pointNode.getChild("edit");
 		if (anode == null) pointNode.createChild("edit").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
-		
+
 		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		anode = pointNode.getChild("make copy");
 		if (anode == null) pointNode.createChild("make copy").setAction(act).build().setSerializable(false);
 		else anode.setAction(act);
-		
+
 		boolean writable = pointNode.getAttribute("writable").getBool();
 		if (writable) {
-			
+
 			pointNode.setWritable(Writable.WRITE);
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
-			
+
 //			act = new Action(Permission.READ, new SetHandler(pointNode));
 //			act.addParameter(new Parameter("value", ValueType.STRING));
 //			pointNode.createChild("set").setAction(act).build().setSerializable(false);
 		}
 	}
-	
+
 	protected class CopyPointHandler implements Handler<ActionResult> {
 		private Node pointNode;
 		CopyPointHandler(Node pnode) {
@@ -263,7 +263,7 @@ public class SlaveFolder {
 			}
 		}
 	}
-	
+
 	private Node copyPoint(Node pointNode, String name) {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
@@ -275,7 +275,7 @@ public class SlaveFolder {
 		link.setupPoint(newnode, root);
 		return newnode;
 	}
-	
+
 	protected class EditPointHandler implements Handler<ActionResult> {
 		private Node pointNode;
 		EditPointHandler(Node pnode) {
@@ -305,7 +305,7 @@ public class SlaveFolder {
 			}
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
 			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
-			
+
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
 				node.removeChild(pointNode);
@@ -387,10 +387,10 @@ public class SlaveFolder {
 		String requestString = "";
 		try {
 			switch (type) {
-			case COIL: request = new ReadCoilsRequest(id, offset, numRegs);break;
-			case DISCRETE: request = new ReadDiscreteInputsRequest(id, offset, numRegs);break;
-			case HOLDING: request = new ReadHoldingRegistersRequest(id, offset, numRegs);break;
-			case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
+				case COIL: request = new ReadCoilsRequest(id, offset, numRegs);break;
+				case DISCRETE: request = new ReadDiscreteInputsRequest(id, offset, numRegs);break;
+				case HOLDING: request = new ReadHoldingRegistersRequest(id, offset, numRegs);break;
+				case INPUT: request = new ReadInputRegistersRequest(id, offset, numRegs);break;
 			}
 			if (request!=null) LOGGER.debug("Sending request: " + request.toString());
 			requestString = ":" + id + ":" + offset + ":" + numRegs + ":";
@@ -461,7 +461,7 @@ public class SlaveFolder {
 		pointNode.setValueType(vt);
 		pointNode.setValue(v);
 	}
-	
+
 	protected class SetHandler implements Handler<ValuePair> {
 		private Node vnode;
 		SetHandler(Node vnode) {
@@ -513,9 +513,9 @@ public class SlaveFolder {
 			ModbusRequest request = null;
 			try {
 				switch (type) {
-				case COIL: request = new WriteCoilsRequest(id, offset, makeBoolArr(valarr));break;
-				case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType, scaling, addscale, type, id, offset, numRegs));break;
-				default:break;
+					case COIL: request = new WriteCoilsRequest(id, offset, makeBoolArr(valarr));break;
+					case HOLDING: request = new WriteRegistersRequest(id, offset, makeShortArr(valarr, dataType, scaling, addscale, type, id, offset, numRegs));break;
+					default:break;
 				}
 				if (request!=null) LOGGER.debug("set request: " + request.toString());
 				root.master.send(request);
@@ -533,10 +533,10 @@ public class SlaveFolder {
 			} //finally {
 //				root.master.destroy();
 //			}
-			
+
 		}
 	}
-	
+
 	protected static boolean[] makeBoolArr(JsonArray jarr) throws Exception {
 		boolean[] retval = new boolean[jarr.size()];
 		for (int i=0;i<jarr.size();i++) {
@@ -546,7 +546,7 @@ public class SlaveFolder {
 		}
 		return retval;
 	}
-	
+
 	protected static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt, int slaveid, int offset, int numRegisters) throws Exception {
 		short[] retval = {};
 		Integer dtint = getDataTypeInt(dt);
@@ -588,7 +588,7 @@ public class SlaveFolder {
 			for (int i=0;i<jarr.size();i++) {
 				Object o = jarr.get(i);
 				if (!(o instanceof Number)) throw new Exception("not an int array");
-				Number n = ((Number) o).doubleValue()*scaling - addscaling; 
+				Number n = ((Number) o).doubleValue()*scaling - addscaling;
 				long aslong = n.longValue();
 				if (dt == DataType.INT32M10K || dt == DataType.UINT32M10K) {
 					retval[i*2] = (short) (aslong/10000);
@@ -597,14 +597,14 @@ public class SlaveFolder {
 					retval[i*2] = (short) (aslong%10000);
 					retval[(i*2)+1] = (short) (aslong/10000);
 				}
-				
+
 			}
 		}
 		return retval;
 	}
-	
+
 	private static short[] concatArrays(short[] arr1, short[] arr2) {
-		int len1 = arr1.length; 
+		int len1 = arr1.length;
 		int len2 = arr2.length;
 		short[] retval = new short[len1+len2];
 		System.arraycopy(arr1, 0, retval, 0, len1);
@@ -614,33 +614,33 @@ public class SlaveFolder {
 
 	private static Integer getDataTypeInt(DataType dt) {
 		switch(dt) {
-		case INT16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
-		case UINT16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED;
-		case INT16SWAP: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED_SWAPPED;
-		case UINT16SWAP: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED_SWAPPED;
-		case BCD16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_BCD;
-		case BCD32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD;
-		case BCD32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD_SWAPPED;
-		case INT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
-		case UINT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED;
-		case INT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED;
-		case UINT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED;
-		case INT32SWAPSWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED_SWAPPED;
-		case UINT32SWAPSWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED_SWAPPED;
-		case FLOAT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT;
-		case FLOAT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT_SWAPPED;
-		case INT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED;
-		case UINT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED;
-		case INT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED_SWAPPED;
-		case UINT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED_SWAPPED;
-		case FLOAT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT;
-		case FLOAT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT_SWAPPED;
-		case CHARSTRING: return com.serotonin.modbus4j.code.DataType.CHAR;
-		case VARCHARSTRING: return com.serotonin.modbus4j.code.DataType.VARCHAR;
-		default: return null;
+			case INT16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
+			case UINT16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED;
+			case INT16SWAP: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED_SWAPPED;
+			case UINT16SWAP: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED_SWAPPED;
+			case BCD16: return com.serotonin.modbus4j.code.DataType.TWO_BYTE_BCD;
+			case BCD32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD;
+			case BCD32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD_SWAPPED;
+			case INT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
+			case UINT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED;
+			case INT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED;
+			case UINT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED;
+			case INT32SWAPSWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED_SWAPPED;
+			case UINT32SWAPSWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED_SWAPPED;
+			case FLOAT32: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT;
+			case FLOAT32SWAP: return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT_SWAPPED;
+			case INT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED;
+			case UINT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED;
+			case INT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED_SWAPPED;
+			case UINT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED_SWAPPED;
+			case FLOAT64: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT;
+			case FLOAT64SWAP: return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT_SWAPPED;
+			case CHARSTRING: return com.serotonin.modbus4j.code.DataType.CHAR;
+			case VARCHARSTRING: return com.serotonin.modbus4j.code.DataType.VARCHAR;
+			default: return null;
 		}
 	}
-	
+
 	protected JsonArray parseResponse(ReadResponse response, DataType dataType, double scaling, double addscaling, PointType pointType, int slaveid, int offset) {
 		short[] responseData = response.getShortData();
 		JsonArray retval = new JsonArray();
@@ -652,11 +652,11 @@ public class SlaveFolder {
 				int regsPerVal = nloc.getRegisterCount();
 				for (int i=0;i<responseData.length;i+=regsPerVal) {
 					try {
-                        Number num = nloc.bytesToValueRealOffset(byteData, i);
-                        retval.add(num.doubleValue() / scaling + addscaling);
-                    } catch (Exception e) {
-                        LOGGER.debug("Error retrieving numeric value", e);
-                    }
+						Number num = nloc.bytesToValueRealOffset(byteData, i);
+						retval.add(num.doubleValue() / scaling + addscaling);
+					} catch (Exception e) {
+						LOGGER.debug("Error retrieving numeric value", e);
+					}
 				}
 			} else {
 				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt, responseData.length);
@@ -666,71 +666,72 @@ public class SlaveFolder {
 			int last = 0;
 			int regnum = 0;
 			switch (dataType) {
-			case BOOLEAN: for (short s: responseData) {
-				for (int i=0; i<16; i++) {
-					retval.add(((s >> i) & 1) != 0);
+				case BOOLEAN: for (short s: responseData) {
+					for (int i=0; i<16; i++) {
+						retval.add(((s >> i) & 1) != 0);
+					}
 				}
+					break;
+				case INT32M10KSWAP:
+				case INT32M10K: for (short s: responseData) {
+					if (regnum == 0) {
+						regnum += 1;
+						last = s;
+					} else {
+						regnum = 0;
+						int num;
+						boolean swap = (dataType == DataType.INT32M10KSWAP);
+						if (swap) num = s*10000 + last;
+						else num = last*10000 + s;
+						retval.add(num/scaling + addscaling);
+					}
 				}
-				break;
-			case INT32M10KSWAP:
-			case INT32M10K: for (short s: responseData) {
-				if (regnum == 0) {
-					regnum += 1;
-					last = s;
-				} else {
-					regnum = 0;
-					int num;
-					boolean swap = (dataType == DataType.INT32M10KSWAP);
-					if (swap) num = s*10000 + last;
-					else num = last*10000 + s;
-					retval.add(num/scaling + addscaling);
+					break;
+				case UINT32M10KSWAP:
+				case UINT32M10K: for (short s: responseData) {
+					if (regnum == 0) {
+						regnum += 1;
+						last = toUnsignedInt(s);
+					} else {
+						regnum = 0;
+						long num;
+						boolean swap = (dataType == DataType.UINT32M10KSWAP);
+						if (swap) num = toUnsignedLong(toUnsignedInt(s)*10000 + last);
+						else num = toUnsignedLong(last*10000 + toUnsignedInt(s));
+						retval.add(num/scaling + addscaling);
+					}
 				}
-				}
-				break;
-			case UINT32M10KSWAP:
-			case UINT32M10K: for (short s: responseData) {
-				if (regnum == 0) {
-					regnum += 1;
-					last = toUnsignedInt(s);
-				} else {
-					regnum = 0;
-					long num;
-					boolean swap = (dataType == DataType.UINT32M10KSWAP);
-					if (swap) num = toUnsignedLong(toUnsignedInt(s)*10000 + last);
-					else num = toUnsignedLong(last*10000 + toUnsignedInt(s));
-					retval.add(num/scaling + addscaling);
-				}
-				}
-				break; 
-			default: break;
+					break;
+				default: break;
 			}
 		}
 		return retval;
 	}
-	
+
 	static int toUnsignedInt(short x) {
 		return ((int) x) & 0xffff;
 	}
-	
+
 	static long toUnsignedLong(int x) {
-        return ((long) x) & 0xffffffffL;
-    }
-	
-	
-	
+		return ((long) x) & 0xffffffffL;
+	}
+
+
+
 	private static int getPointTypeInt(PointType pt) {
 		switch (pt) {
-		case COIL: return RegisterRange.COIL_STATUS;
-		case DISCRETE: return RegisterRange.INPUT_STATUS;
-		case HOLDING: return RegisterRange.HOLDING_REGISTER;
-		case INPUT: return RegisterRange.INPUT_REGISTER;
-		default: return 0;
+			case COIL: return RegisterRange.COIL_STATUS;
+			case DISCRETE: return RegisterRange.INPUT_STATUS;
+			case HOLDING: return RegisterRange.HOLDING_REGISTER;
+			case INPUT: return RegisterRange.INPUT_REGISTER;
+			default: return 0;
 		}
 	}
-	
+
 //	private int getDigitFromBcd(int bcd, int position) {
 //		return (bcd >>> (position*4)) & 15;
 //	}
-	
+
 
 }
+
