@@ -347,6 +347,19 @@ public class SlaveFolder {
 		return ret;
 	}
 
+	protected int getIntValue(Value val)
+	{
+		int ret = 0;
+		{
+			if (val.getType() == ValueType.STRING) {
+				ret = Integer.parseInt(val.getString());
+			} else if (val.getType() == ValueType.NUMBER) {
+				ret = val.getNumber().intValue();
+			}
+		}
+		return ret;
+	}
+
 	private final Map<String,Boolean> polledNodes = new ConcurrentHashMap<>();
 
 	protected void readPoint(Node pointNode) {
@@ -355,9 +368,9 @@ public class SlaveFolder {
 			return;
 		}
 		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
-		int offset = pointNode.getAttribute("offset").getNumber().intValue();
-		int numRegs = pointNode.getAttribute("number of registers").getNumber().intValue();
-		int id = root.node.getAttribute("slave id").getNumber().intValue();
+		int offset = getIntValue(pointNode.getAttribute("offset"));
+		int numRegs = getIntValue(pointNode.getAttribute("number of registers"));
+		int id = getIntValue(root.node.getAttribute("slave id"));
 
 		double scaling = getDoubleValue(pointNode.getAttribute("scaling"));
 		double addscale = getDoubleValue(pointNode.getAttribute("scaling offset"));
