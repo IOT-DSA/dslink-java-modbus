@@ -1,6 +1,6 @@
 {
   "name": "dslink-java-modbus",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A dslink for modbus",
   "license": "GNU GPL",
   "main": "bin/dslink-java-modbus",

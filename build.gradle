@@ -5,7 +5,7 @@ apply plugin: 'java'
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
-version = '0.1.7-SNAPSHOT'
+version = '0.1.8-SNAPSHOT'
 
 repositories {
     mavenCentral()
