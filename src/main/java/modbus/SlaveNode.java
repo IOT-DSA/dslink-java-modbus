@@ -1,5 +1,9 @@
 package modbus;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.dsa.iot.dslink.node.Node;
@@ -15,10 +19,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
+import com.serotonin.modbus4j.BatchRead;
+import com.serotonin.modbus4j.BatchResults;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ErrorResponseException;
 import com.serotonin.modbus4j.exception.ModbusInitException;
+import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.ip.IpParameters;
+import com.serotonin.modbus4j.locator.BaseLocator;
 
 public class SlaveNode extends SlaveFolder {
 	private static final Logger LOGGER;
@@ -33,6 +42,7 @@ public class SlaveNode extends SlaveFolder {
 	SerialConn conn;
 	Node statnode;
 	private final ScheduledThreadPoolExecutor stpe;
+	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 	
 	SlaveNode(ModbusLink link, Node node, SerialConn conn) {
 		super(link, node);
@@ -77,6 +87,22 @@ public class SlaveNode extends SlaveFolder {
 		return stpe;
 	}
 	
+	void addToSub(Node event) {
+		subscribed.put(event, true);
+	}
+	
+	void removeFromSub(Node event) {
+		subscribed.remove(event);
+	}
+	
+	Set<Node> getSubscribed() {
+		return subscribed.keySet();
+	}
+	
+	boolean noneSubscribed() {
+		return subscribed.isEmpty();
+	}
+	
 	enum TransportType {TCP, UDP, RTU, ASCII}
 	
 	private void makeEditAction() {
@@ -90,6 +116,7 @@ public class SlaveNode extends SlaveFolder {
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
 		double defint = node.getAttribute("polling interval").getNumber().doubleValue()/1000;
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
+		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, node.getAttribute("use batch polling")));
 		if (!isSerial) {
 			act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
 			act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
@@ -221,9 +248,11 @@ public class SlaveNode extends SlaveFolder {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
+			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			link.handleEdit(root);
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
+			node.setAttribute("use batch polling", new Value(batchpoll));
 			
 			if (!name.equals(node.getName())) {
 				rename(name);
@@ -246,6 +275,103 @@ public class SlaveNode extends SlaveFolder {
 		Node newnode = node.getParent().getChild(name);
 		SlaveNode sn = new SlaveNode(link, newnode, conn);
 		sn.restoreLastSession();
+	}
+
+	public void readPoints() {
+		if (node.getAttribute("use batch polling").getBool()) {
+			LOGGER.debug("batch polling " + node.getName() + " :");
+			int id = getIntValue(node.getAttribute("slave id"));
+			BatchRead<Node> batch = new BatchRead<Node>();
+			batch.setContiguousRequests(true);
+			Set<Node> polled = new HashSet<Node>();
+			for (Node pnode: subscribed.keySet()) {
+				if (pnode.getAttribute("offset") == null) continue;
+				PointType type = PointType.valueOf(pnode.getAttribute("type").getString());
+				int offset = getIntValue(pnode.getAttribute("offset"));
+				int numRegs = getIntValue(pnode.getAttribute("number of registers"));
+				int bit = getIntValue(pnode.getAttribute("bit"));
+				DataType dataType = DataType.valueOf(pnode.getAttribute("data type").getString());
+			
+				Integer dt = getDataTypeInt(dataType);
+				if (dt == null) dt = com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
+				int range = getPointTypeInt(type);
+				
+				BaseLocator<?> locator = BaseLocator.createLocator(id, range, offset, dt, bit, numRegs);
+
+				batch.addLocator(pnode, locator);
+				polled.add(pnode);
+			}
+			
+			try {
+				BatchResults<Node> response = master.send(batch);
+				for (Node pnode: polled) {
+					Object obj = response.getValue(pnode);
+					LOGGER.debug(pnode.getName() + " : " + obj.toString());
+					
+					DataType dataType = DataType.valueOf(pnode.getAttribute("data type").getString());
+					double scaling = getDoubleValue(pnode.getAttribute("scaling"));
+					double addscale = getDoubleValue(pnode.getAttribute("scaling offset"));
+					
+					ValueType vt;
+					Value v;
+					if (getDataTypeInt(dataType) != null) {
+						if (dataType == DataType.BOOLEAN) {
+							vt = ValueType.BOOL;
+							v = new Value((Boolean) obj);
+						} else if (dataType.isString()) {
+							vt = ValueType.STRING;
+							v = new Value((String) obj);
+						} else {
+							vt = ValueType.NUMBER;
+							Number num  = (Number) obj;
+							v = new Value(num.doubleValue() / scaling + addscale);
+						}
+					} else {
+						switch(dataType) {
+						case INT32M10KSWAP:
+						case INT32M10K: {
+							short shi = (short) (((Number) obj).intValue() >>> 16); 
+							short slo = (short) (((Number) obj).intValue() & 0xffff);
+							boolean swap = (dataType == DataType.INT32M10KSWAP);
+							int num;
+							if (swap) num = ((int) slo)*10000 + (int) shi;
+							else num = ((int) shi)*10000 + (int) slo;
+							vt = ValueType.NUMBER;
+							v = new Value(num/scaling + addscale);
+							break;
+						}
+						case UINT32M10KSWAP:
+						case UINT32M10K: {
+							short shi = (short) (((Number) obj).intValue() >>> 16); 
+							short slo = (short) (((Number) obj).intValue() & 0xffff);
+							boolean swap = (dataType == DataType.INT32M10KSWAP);
+							long num;
+							if (swap) num = toUnsignedLong(toUnsignedInt(slo)*10000 + toUnsignedInt(shi));
+							else num = toUnsignedLong(toUnsignedInt(shi)*10000 + toUnsignedInt(slo));
+							vt = ValueType.NUMBER;
+							v = new Value(num/scaling + addscale);
+							break;
+						}
+						default: vt = null; v =null; break;
+						}
+					}
+					if (v != null) {
+						pnode.setValueType(vt);
+						pnode.setValue(v);
+					}
+				}
+				
+			} catch (ModbusTransportException e) {
+				LOGGER.debug("", e);
+			} catch (ErrorResponseException e) {
+				LOGGER.debug("", e);
+			}
+			
+		} else {
+			for (Node pnode: subscribed.keySet()) {
+				readPoint(pnode);
+			}
+		}
 	}
 
 }

@@ -34,7 +34,7 @@ public class ModbusLink {
 	Node node;
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
-	private final Map<Node, ScheduledFuture<?>> futures;
+	private final Map<SlaveNode, ScheduledFuture<?>> futures;
 	final Set<SerialConn> serialConns;
 	
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
@@ -62,6 +62,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
+		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, new Value(true)));
 		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, new Value(2)));
 		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, new Value(2000)));
@@ -179,9 +180,10 @@ public class ModbusLink {
 				Value port = child.getAttribute("port");
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
+				Value batchpoll = child.getAttribute("use batch polling");
 				if (transType!=null && host!=null && port!=null && maxrbc!=null && 
 						maxrrc!=null && maxwrc!=null && ddd!=null && mwo!= null && slaveId!=null 
-						&& interval!=null && timeout!=null && retries!=null) {
+						&& interval!=null && batchpoll!=null && timeout!=null && retries!=null) {
 					SlaveNode sn = new SlaveNode(getMe(), child, null);
 					sn.restoreLastSession();
 				} else {
@@ -314,7 +316,7 @@ public class ModbusLink {
 			
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
-			
+			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			
 			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("host", new Value(host));
@@ -326,6 +328,7 @@ public class ModbusLink {
 			snode.setAttribute("parity", new Value(parityString));
 			snode.setAttribute("slave id", new Value(slaveid));
 			snode.setAttribute("polling interval", new Value(interval));
+			snode.setAttribute("use batch polling", new Value(batchpoll));
 			snode.setAttribute("Timeout", new Value(timeout));
 			snode.setAttribute("retries", new Value(retries));
 			snode.setAttribute("max read bit count", new Value(maxrbc));
@@ -343,7 +346,7 @@ public class ModbusLink {
 	}
 	
 	void handleEdit(SlaveNode slave) {
-		for (Node event: futures.keySet()) {
+		for (Node event: slave.getSubscribed()) {
 			if (event.getMetaData() == slave) {
 				handleUnsub(slave, event);
 				handleSub(slave, event);
@@ -352,24 +355,30 @@ public class ModbusLink {
 	}
 	
 	private void handleSub(final SlaveNode slave, final Node event) {
-		 if (futures.containsKey(event)) {
-             return;
-         }
-         ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-         ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
-             @Override
-             public void run() {
-             	if (event.getAttribute("offset") != null) slave.readPoint(event);
-             }
-         }, 0, slave.interval, TimeUnit.MILLISECONDS);
-         futures.put(event, fut);
+		slave.addToSub(event);
+		if (futures.containsKey(slave)) {
+			return;
+		}
+		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
+		ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+            	slave.readPoints();
+            }
+        }, 0, slave.interval, TimeUnit.MILLISECONDS);
+		futures.put(slave, fut);
+		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
 	
 	private void handleUnsub(SlaveNode slave, Node event) {
-		ScheduledFuture<?> fut = futures.remove(event);
-        if (fut != null) {
-            fut.cancel(false);
-        }
+		slave.removeFromSub(event);
+		if (slave.noneSubscribed()) {
+			ScheduledFuture<?> fut = futures.remove(slave);
+			if (fut != null) {
+	            fut.cancel(false);
+	        }
+			LOGGER.debug("unsubscribed from " + slave.node.getName());
+		}
 	}
 	
 	void setupPoint(Node child, final SlaveNode slave) {
