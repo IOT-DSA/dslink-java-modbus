@@ -181,9 +181,10 @@ public class ModbusLink {
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
 				Value batchpoll = child.getAttribute("use batch polling");
+				if (batchpoll == null) child.setAttribute("use batch polling", new Value(true));
 				if (transType!=null && host!=null && port!=null && maxrbc!=null && 
 						maxrrc!=null && maxwrc!=null && ddd!=null && mwo!= null && slaveId!=null 
-						&& interval!=null && batchpoll!=null && timeout!=null && retries!=null) {
+						&& interval!=null && timeout!=null && retries!=null) {
 					SlaveNode sn = new SlaveNode(getMe(), child, null);
 					sn.restoreLastSession();
 				} else {

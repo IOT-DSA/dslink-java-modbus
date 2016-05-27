@@ -99,11 +99,12 @@ public class SlaveFolder {
 					Value numRegs = child.getAttribute("number of registers");
 					Value dataType = child.getAttribute("data type");
 					Value bit = child.getAttribute("bit");
+					if (bit == null) child.setAttribute("bit", new Value(-1));
 					Value scaling = child.getAttribute("scaling");
 					Value addScale = child.getAttribute("scaling offset");
 					Value writable = child.getAttribute("writable");
 					if (type!=null && offset!=null && numRegs!=null && dataType!=null &&
-							bit!=null && scaling!=null && addScale!=null && writable!=null) {
+							scaling!=null && addScale!=null && writable!=null) {
 						setupPointActions(child);
 						link.setupPoint(child, root);
 					} else {
