@@ -546,7 +546,7 @@ public class SlaveFolder {
 				//System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
-				LOGGER.error("Modbus transpot exception");
+				LOGGER.error("Modbus transport exception");
 				LOGGER.debug("error: ", e);
 				return;
 			} catch (Exception e) {

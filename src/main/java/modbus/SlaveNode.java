@@ -283,6 +283,7 @@ public class SlaveNode extends SlaveFolder {
 			int id = getIntValue(node.getAttribute("slave id"));
 			BatchRead<Node> batch = new BatchRead<Node>();
 			batch.setContiguousRequests(true);
+			batch.setErrorsInResults(true);
 			Set<Node> polled = new HashSet<Node>();
 			for (Node pnode: subscribed.keySet()) {
 				if (pnode.getAttribute("offset") == null) continue;
@@ -312,16 +313,16 @@ public class SlaveNode extends SlaveFolder {
 					double scaling = getDoubleValue(pnode.getAttribute("scaling"));
 					double addscale = getDoubleValue(pnode.getAttribute("scaling offset"));
 					
-					ValueType vt;
-					Value v;
+					ValueType vt = null;
+					Value v = null;
 					if (getDataTypeInt(dataType) != null) {
-						if (dataType == DataType.BOOLEAN) {
+						if (dataType == DataType.BOOLEAN && obj instanceof Boolean) {
 							vt = ValueType.BOOL;
 							v = new Value((Boolean) obj);
-						} else if (dataType.isString()) {
+						} else if (dataType.isString() && obj instanceof String) {
 							vt = ValueType.STRING;
 							v = new Value((String) obj);
-						} else {
+						} else if (obj instanceof Number) {
 							vt = ValueType.NUMBER;
 							Number num  = (Number) obj;
 							v = new Value(num.doubleValue() / scaling + addscale);
