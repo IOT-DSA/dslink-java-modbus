@@ -321,7 +321,7 @@ public class SlaveFolder {
 				LOGGER.debug("error: ", e1);
 				return;
 			}
-			int bit = event.getParameter("bit", ValueType.NUMBER).getNumber().intValue();
+			int bit = event.getParameter("bit", new Value(-1)).getNumber().intValue();
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
 			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
 

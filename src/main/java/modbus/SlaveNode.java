@@ -14,6 +14,7 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
+import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.locator.BaseLocator;
+import com.serotonin.modbus4j.locator.BinaryLocator;
 
 public class SlaveNode extends SlaveFolder {
 	private static final Logger LOGGER;
@@ -297,6 +299,10 @@ public class SlaveNode extends SlaveFolder {
 				if (dt == null) dt = com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
 				int range = getPointTypeInt(type);
 				
+				if (dataType == DataType.BOOLEAN && !BinaryLocator.isBinaryRange(range) && bit < 0) {
+					dt = com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
+				}
+				
 				BaseLocator<?> locator = BaseLocator.createLocator(id, range, offset, dt, bit, numRegs);
 
 				batch.addLocator(pnode, locator);
@@ -319,6 +325,13 @@ public class SlaveNode extends SlaveFolder {
 						if (dataType == DataType.BOOLEAN && obj instanceof Boolean) {
 							vt = ValueType.BOOL;
 							v = new Value((Boolean) obj);
+						} else if (dataType == DataType.BOOLEAN && obj instanceof Number) {
+							vt = ValueType.ARRAY;
+							JsonArray jarr  = new JsonArray();
+							for (int i=0; i<16; i++) {
+								jarr.add(((((Number) obj).intValue() >> i) & 1) == 1);
+							}
+							v = new Value(jarr);
 						} else if (dataType.isString() && obj instanceof String) {
 							vt = ValueType.STRING;
 							v = new Value((String) obj);
