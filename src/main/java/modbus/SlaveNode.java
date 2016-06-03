@@ -119,6 +119,7 @@ public class SlaveNode extends SlaveFolder {
 		double defint = node.getAttribute("polling interval").getNumber().doubleValue()/1000;
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
 		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, node.getAttribute("use batch polling")));
+		act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL, node.getAttribute("contiguous batch requests only")));
 		if (!isSerial) {
 			act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
 			act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
@@ -251,10 +252,12 @@ public class SlaveNode extends SlaveFolder {
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
+			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
 			link.handleEdit(root);
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
 			node.setAttribute("use batch polling", new Value(batchpoll));
+			node.setAttribute("contiguous batch requests only", new Value(contig));
 			
 			if (!name.equals(node.getName())) {
 				rename(name);
@@ -284,7 +287,7 @@ public class SlaveNode extends SlaveFolder {
 			LOGGER.debug("batch polling " + node.getName() + " :");
 			int id = getIntValue(node.getAttribute("slave id"));
 			BatchRead<Node> batch = new BatchRead<Node>();
-			batch.setContiguousRequests(true);
+			batch.setContiguousRequests(node.getAttribute("contiguous batch requests only").getBool());
 			batch.setErrorsInResults(true);
 			Set<Node> polled = new HashSet<Node>();
 			for (Node pnode: subscribed.keySet()) {

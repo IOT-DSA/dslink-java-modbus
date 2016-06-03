@@ -93,6 +93,7 @@ public class SerialConn {
 			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 			act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
 			act.addParameter(new Parameter("use batch polling", ValueType.BOOL, new Value(true)));
+			act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL, new Value(false)));
 			anode = node.getChild("add serial device");
 			if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
 			else anode.setAction(act);
@@ -345,7 +346,10 @@ public class SerialConn {
 			Value slaveId = child.getAttribute("slave id");
 			Value interval = child.getAttribute("polling interval");
 			Value batchpoll = child.getAttribute("use batch polling");
-			if (slaveId!=null && interval!=null && batchpoll!=null) {
+			if (batchpoll == null) child.setAttribute("use batch polling", new Value(true));
+			Value contig = child.getAttribute("contiguous batch requests only");
+			if (contig == null) child.setAttribute("contiguous batch requests only", new Value(true));
+			if (slaveId!=null && interval!=null) {
 				SlaveNode sn = new SlaveNode(link, child, this);
 				sn.restoreLastSession();
 			} else if (child.getAction() == null && !child.getName().equals("STATUS")) {
