@@ -161,7 +161,7 @@ public class SlaveNode extends SlaveFolder {
 			IpParameters params = new IpParameters();
 			params.setHost(host);
 	        params.setPort(port);
-	        master = new ModbusFactory().createTcpMaster(params, false);
+	        master = new ModbusFactory().createTcpMaster(params, true);
 	        break;
 			}
 		case UDP: {
@@ -188,9 +188,13 @@ public class SlaveNode extends SlaveFolder {
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
 			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
+			try {
+				master.destroy();
+			} catch (Exception e1) {}
 			return null;
 		}
         
+        link.masters.add(master);
         return master;
 	}
 	
@@ -203,6 +207,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 		try {
 			master.destroy();
+			link.masters.remove(master);
 		} catch (Exception e) {
 			LOGGER.debug("error destroying last master");
 		}
@@ -216,6 +221,7 @@ public class SlaveNode extends SlaveFolder {
 				if (master != null) {
 					try {
 						master.destroy();
+						link.masters.remove(master);
 					} catch (Exception e) {
 						LOGGER.debug("error destroying last master");
 					}

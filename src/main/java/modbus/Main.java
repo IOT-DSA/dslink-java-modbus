@@ -29,75 +29,6 @@ public class Main extends DSLinkHandler {
 	public static void main(String[] args) {
 			//args = new String[] { "-b", "http://localhost:8080/conn", "-l", "debug" };
 			DSLinkFactory.start(args, new Main());
-			
-			
-//		SerialParameters serialParameters = new SerialParameters();
-//        serialParameters.setCommPortId("COM3");
-//        serialParameters.setBaudRate(19200);
-//        serialParameters.setParity(2);
-//
-//        ModbusMaster master = new ModbusFactory().createRtuMaster(serialParameters);
-//        master.setTimeout(5000);
-//        master.setRetries(0);
-//        try {
-//			master.init();
-//		} catch (ModbusInitException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//
-//
-//            long start = System.currentTimeMillis();
-//            //System.out.print("Testing " + "117" + "... ");
-//            //System.out.println(master.testSlaveNode(117));
-//            try {
-//				master.send(new ReadCoilsRequest(117, 2000, 1));
-//			} catch (ModbusTransportException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//            System.out.println("Time: " + (System.currentTimeMillis() - start));
-//            
-//
-//        // try {
-//        // System.out.println(master.send(new ReadHoldingRegistersRequest(1, 0, 1)));
-//        // }
-//        // catch (Exception e) {
-//        // e.printStackTrace();
-//        // }
-//
-//        // try {
-//        // // ReadCoilsRequest request = new ReadCoilsRequest(2, 65534, 1);
-//        // ReadHoldingRegistersResponse response = (ReadHoldingRegistersResponse) master
-//        // .send(new ReadHoldingRegistersRequest(2, 0, 1));
-//        // System.out.println(response);
-//        // }
-//        // catch (Exception e) {
-//        // e.printStackTrace();
-//        // }
-//
-//        // System.out.println(master.scanForSlaveNodes());
-//
-//        master.destroy();
-//        try {
-//			master.init();
-//		} catch (ModbusInitException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//
-//
-//            start = System.currentTimeMillis();
-//            //System.out.print("Testing " + "117" + "... ");
-//            //System.out.println(master.testSlaveNode(117));
-//            try {
-//				master.send(new ReadCoilsRequest(117, 2000, 1));
-//			} catch (ModbusTransportException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//            System.out.println("Time: " + (System.currentTimeMillis() - start));
-//            master.destroy();
 		}
 	
 	@Override
@@ -114,5 +45,17 @@ public class Main extends DSLinkHandler {
 		Deserializer copydeser = new Deserializer(manager);
         Node superRoot = manager.getNode("/").getNode();
 		ModbusLink.start(superRoot, copyser, copydeser);
+	}
+	
+	@Override
+	public void stop() {
+		ModbusLink ml = ModbusLink.get();
+		for (ModbusMaster master: ml.masters) {
+			try	{
+				master.destroy();
+			} catch (Exception e) {
+				LOGGER.debug("Error destroying master: ", e);
+			}
+		}
 	}
 }

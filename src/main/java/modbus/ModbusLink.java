@@ -21,9 +21,11 @@ import org.dsa.iot.dslink.serializer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
+
 import com.serotonin.io.serial.CommPortConfigException;
 import com.serotonin.io.serial.CommPortProxy;
 import com.serotonin.io.serial.SerialUtils;
+import com.serotonin.modbus4j.ModbusMaster;
 
 public class ModbusLink {
 	static private final Logger LOGGER;
@@ -36,6 +38,9 @@ public class ModbusLink {
 	Deserializer copyDeserializer;
 	private final Map<SlaveNode, ScheduledFuture<?>> futures;
 	final Set<SerialConn> serialConns;
+	final Set<ModbusMaster> masters;
+	
+	static ModbusLink singleton;
 	
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
@@ -43,12 +48,18 @@ public class ModbusLink {
 		this.copyDeserializer = deser;
 		this.futures = new ConcurrentHashMap<>();
 		this.serialConns = new HashSet<SerialConn>();
+		this.masters = new HashSet<ModbusMaster>();
 	}
 	
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
 		Node node = parent;
 		final ModbusLink link = new ModbusLink(node, copyser, copydeser);
+		singleton = link;
 		link.init();
+	}
+	
+	public static ModbusLink get() {
+		return singleton;
 	}
 	
 	private void init() {

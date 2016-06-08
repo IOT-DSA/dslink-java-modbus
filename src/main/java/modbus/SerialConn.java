@@ -208,6 +208,7 @@ public class SerialConn {
 		if (master != null) {
 			try {
 				master.destroy();
+				link.masters.remove(master);
 			} catch (Exception e) {
 				LOGGER.debug("error destroying last master");
 			}
@@ -312,7 +313,7 @@ public class SerialConn {
         	sn.master = master;
         }
         
-        
+        link.masters.add(master);
         return master;
 	}
 	
