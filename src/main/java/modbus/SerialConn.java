@@ -31,39 +31,42 @@ import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 public class SerialConn {
 	private static final Logger LOGGER;
-	
+
 	static {
 		LOGGER = LoggerFactory.getLogger(SerialConn.class);
 	}
-	
+
 	Node node;
 	private Node statnode;
 	private ModbusLink link;
 	ModbusMaster master;
 	Set<SlaveNode> slaves;
-	
+
 	private final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
-	
+
 	SerialConn(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
 		link.serialConns.add(this);
-		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING).setValue(new Value("Setting up connection")).build();
+		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING)
+				.setValue(new Value("Setting up connection")).build();
 		slaves = new HashSet<>();
 		node.setAttribute("restoreType", new Value("conn"));
 	}
-	
+
 	void init() {
-		
+
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				remove();
 			}
 		});
 		Node anode = node.getChild("remove");
-		if (anode == null) node.createChild("remove").setAction(act).build().setSerializable(false);
-		else anode.setAction(act);
-		
+		if (anode == null)
+			node.createChild("remove").setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+
 		act = getEditAction();
 		anode = node.getChild("edit");
 		if (anode == null) {
@@ -72,22 +75,26 @@ public class SerialConn {
 		} else {
 			anode.setAction(act);
 		}
-		
+
 		act = new Action(Permission.READ, new RestartHandler());
 		anode = node.getChild("restart");
-		if (anode == null) node.createChild("restart").setAction(act).build().setSerializable(false);
-		else anode.setAction(act);
+		if (anode == null)
+			node.createChild("restart").setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
 
 		master = getMaster();
-		
+
 		if (master != null) {
 			statnode.setValue(new Value("Connected"));
-			
+
 			act = new Action(Permission.READ, new StopHandler());
 			anode = node.getChild("stop");
-			if (anode == null) node.createChild("stop").setAction(act).build().setSerializable(false);
-			else anode.setAction(act);
-			
+			if (anode == null)
+				node.createChild("stop").setAction(act).build().setSerializable(false);
+			else
+				anode.setAction(act);
+
 			act = new Action(Permission.READ, link.new AddDeviceHandler(this));
 			act.addParameter(new Parameter("name", ValueType.STRING));
 			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
@@ -95,58 +102,72 @@ public class SerialConn {
 			act.addParameter(new Parameter("use batch polling", ValueType.BOOL, new Value(true)));
 			act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL, new Value(false)));
 			anode = node.getChild("add serial device");
-			if (anode == null) node.createChild("add serial device").setAction(act).build().setSerializable(false);
-			else anode.setAction(act);
+			if (anode == null)
+				node.createChild("add serial device").setAction(act).build().setSerializable(false);
+			else
+				anode.setAction(act);
 		}
 	}
-	
+
 	Action getEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII"), node.getAttribute("transport type")));
+		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII"),
+				node.getAttribute("transport type")));
 		Set<String> portids = new HashSet<String>();
 		try {
 			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-			for (CommPortProxy port: cports)  {
+			for (CommPortProxy port : cports) {
 				portids.add(port.getId());
 			}
 		} catch (CommPortConfigException e) {
 			// TODO Auto-generated catch block
 		}
 		if (portids.size() > 0) {
-			 if (portids.contains(node.getAttribute("comm port id").getString())) {
-				 act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids), node.getAttribute("comm port id")));
-				 act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING));
-			 } else {
-				 act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids)));
-				 act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING, node.getAttribute("comm port id")));
-			 }
+			if (portids.contains(node.getAttribute("comm port id").getString())) {
+				act.addParameter(
+						new Parameter("comm port id", ValueType.makeEnum(portids), node.getAttribute("comm port id")));
+				act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING));
+			} else {
+				act.addParameter(new Parameter("comm port id", ValueType.makeEnum(portids)));
+				act.addParameter(new Parameter("comm port id (manual entry)", ValueType.STRING,
+						node.getAttribute("comm port id")));
+			}
 		} else {
 			act.addParameter(new Parameter("comm port id", ValueType.STRING, node.getAttribute("comm port id")));
 		}
 		act.addParameter(new Parameter("baud rate", ValueType.NUMBER, node.getAttribute("baud rate")));
 		act.addParameter(new Parameter("data bits", ValueType.NUMBER, node.getAttribute("data bits")));
 		act.addParameter(new Parameter("stop bits", ValueType.NUMBER, node.getAttribute("stop bits")));
-		act.addParameter(new Parameter("parity",  ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE"), node.getAttribute("parity")));
+		act.addParameter(new Parameter("parity", ValueType.makeEnum("NONE", "ODD", "EVEN", "MARK", "SPACE"),
+				node.getAttribute("parity")));
 		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
 		act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
-		act.addParameter(new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
-		act.addParameter(new Parameter("max read register count", ValueType.NUMBER, node.getAttribute("max read register count")));
-		act.addParameter(new Parameter("max write register count", ValueType.NUMBER, node.getAttribute("max write register count")));
-		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, node.getAttribute("discard data delay")));
-		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, node.getAttribute("use multiple write commands only")));
-		act.addParameter(new Parameter("send requests all at once", ValueType.BOOL, node.getAttribute("send requests all at once")));
+		act.addParameter(
+				new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
+		act.addParameter(new Parameter("max read register count", ValueType.NUMBER,
+				node.getAttribute("max read register count")));
+		act.addParameter(new Parameter("max write register count", ValueType.NUMBER,
+				node.getAttribute("max write register count")));
+		act.addParameter(
+				new Parameter("discard data delay", ValueType.NUMBER, node.getAttribute("discard data delay")));
+		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL,
+				node.getAttribute("use multiple write commands only")));
+		act.addParameter(new Parameter("send requests all at once", ValueType.BOOL,
+				node.getAttribute("send requests all at once")));
 		act.addParameter(new Parameter("set custom spacing", ValueType.BOOL, node.getAttribute("set custom spacing")));
-		act.addParameter(new Parameter("message frame spacing", ValueType.NUMBER, node.getAttribute("message frame spacing")));
+		act.addParameter(
+				new Parameter("message frame spacing", ValueType.NUMBER, node.getAttribute("message frame spacing")));
 		act.addParameter(new Parameter("character spacing", ValueType.NUMBER, node.getAttribute("character spacing")));
 		return act;
 	}
-	
+
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			TransportType transtype;
 			try {
-				transtype = TransportType.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
+				transtype = TransportType
+						.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
 				LOGGER.error("invalid transport type");
 				LOGGER.debug("error: ", e);
@@ -184,7 +205,7 @@ public class SerialConn {
 			int maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
 			int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
 			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
-			
+
 			node.setAttribute("transport type", new Value(transtype.toString()));
 			node.setAttribute("Timeout", new Value(timeout));
 			node.setAttribute("retries", new Value(retries));
@@ -193,17 +214,17 @@ public class SerialConn {
 			node.setAttribute("max write register count", new Value(maxwrc));
 			node.setAttribute("discard data delay", new Value(ddd));
 			node.setAttribute("use multiple write commands only", new Value(mwo));
-			
+
 			stop();
-			
+
 			if (!name.equals(node.getName())) {
 				rename(name);
 			}
-			
+
 			restoreLastSession();
 		}
 	}
-	
+
 	void stop() {
 		if (master != null) {
 			try {
@@ -218,20 +239,20 @@ public class SerialConn {
 			statnode.setValue(new Value("Stopped"));
 		}
 	}
-	
+
 	private class StopHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			stop();
 		}
 	}
-	
+
 	private class RestartHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			stop();
 			restoreLastSession();
 		}
 	}
-	
+
 	private ModbusMaster getMaster() {
 		TransportType transtype = null;
 		try {
@@ -262,8 +283,10 @@ public class SerialConn {
 		switch (transtype) {
 		case RTU: {
 			SerialParameters params;
-			if (useMods) params = new ModSerialParameters();
-			else params = new SerialParameters();
+			if (useMods)
+				params = new ModSerialParameters();
+			else
+				params = new SerialParameters();
 			params.setCommPortId(commPortId);
 			params.setBaudRate(baudRate);
 			params.setDataBits(dataBits);
@@ -276,11 +299,13 @@ public class SerialConn {
 				master = new ModbusFactory().createRtuMaster(params);
 			}
 			break;
-			}
+		}
 		case ASCII: {
 			SerialParameters params;
-			if (useMods) params = new ModSerialParameters();
-			else params = new SerialParameters();
+			if (useMods)
+				params = new ModSerialParameters();
+			else
+				params = new SerialParameters();
 			params.setCommPortId(commPortId);
 			params.setBaudRate(baudRate);
 			params.setDataBits(dataBits);
@@ -289,18 +314,19 @@ public class SerialConn {
 			master = new ModbusFactory().createAsciiMaster(params);
 			break;
 		}
-		default: return null;
+		default:
+			return null;
 		}
-		
-        master.setTimeout(timeout);
-        master.setRetries(retries);
-        master.setMaxReadBitCount(maxrbc);
-        master.setMaxReadRegisterCount(maxrrc);
-        master.setMaxWriteRegisterCount(maxwrc);
-        master.setDiscardDataDelay(ddd);
-        master.setMultipleWritesOnly(mwo);
-        
-        try {
+
+		master.setTimeout(timeout);
+		master.setRetries(retries);
+		master.setMaxReadBitCount(maxrbc);
+		master.setMaxReadRegisterCount(maxrrc);
+		master.setMaxWriteRegisterCount(maxwrc);
+		master.setDiscardDataDelay(ddd);
+		master.setMultipleWritesOnly(mwo);
+
+		try {
 			master.init();
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
@@ -309,14 +335,14 @@ public class SerialConn {
 			stop();
 			return null;
 		}
-        for (SlaveNode sn: slaves) {
-        	sn.master = master;
-        }
-        
-        link.masters.add(master);
-        return master;
+		for (SlaveNode sn : slaves) {
+			sn.master = master;
+		}
+
+		link.masters.add(master);
+		return master;
 	}
-	
+
 	private void remove() {
 		stop();
 		node.clearChildren();
@@ -324,12 +350,12 @@ public class SerialConn {
 		node.getParent().removeChild(node);
 		stpe.shutdown();
 	}
-	
+
 	protected void rename(String newname) {
 		duplicate(newname);
 		remove();
 	}
-	
+
 	private void duplicate(String name) {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject nodeobj = jobj.get(node.getName());
@@ -339,18 +365,21 @@ public class SerialConn {
 		SerialConn sn = new SerialConn(link, newnode);
 		sn.restoreLastSession();
 	}
-	
+
 	void restoreLastSession() {
 		init();
-		if (node.getChildren() == null) return;
-		for  (Node child: node.getChildren().values()) {
+		if (node.getChildren() == null)
+			return;
+		for (Node child : node.getChildren().values()) {
 			Value slaveId = child.getAttribute("slave id");
 			Value interval = child.getAttribute("polling interval");
 			Value batchpoll = child.getAttribute("use batch polling");
-			if (batchpoll == null) child.setAttribute("use batch polling", new Value(true));
+			if (batchpoll == null)
+				child.setAttribute("use batch polling", new Value(true));
 			Value contig = child.getAttribute("contiguous batch requests only");
-			if (contig == null) child.setAttribute("contiguous batch requests only", new Value(true));
-			if (slaveId!=null && interval!=null) {
+			if (contig == null)
+				child.setAttribute("contiguous batch requests only", new Value(true));
+			if (slaveId != null && interval != null) {
 				SlaveNode sn = new SlaveNode(link, child, this);
 				sn.restoreLastSession();
 			} else if (child.getAction() == null && !child.getName().equals("STATUS")) {
@@ -362,6 +391,5 @@ public class SerialConn {
 	public ScheduledThreadPoolExecutor getDaemonThreadPool() {
 		return stpe;
 	}
-	
 
 }
