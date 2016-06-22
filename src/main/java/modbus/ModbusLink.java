@@ -29,19 +29,20 @@ import com.serotonin.modbus4j.ModbusMaster;
 
 public class ModbusLink {
 	static private final Logger LOGGER;
+
 	static {
-        LOGGER = LoggerFactory.getLogger(ModbusLink.class);
-    }
-	
+		LOGGER = LoggerFactory.getLogger(ModbusLink.class);
+	}
+
 	Node node;
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
 	private final Map<SlaveNode, ScheduledFuture<?>> futures;
 	final Set<SerialConn> serialConns;
 	final Set<ModbusMaster> masters;
-	
+
 	static ModbusLink singleton;
-	
+
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
 		this.copySerializer = ser;
@@ -50,22 +51,22 @@ public class ModbusLink {
 		this.serialConns = new HashSet<SerialConn>();
 		this.masters = new HashSet<ModbusMaster>();
 	}
-	
+
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
 		Node node = parent;
 		final ModbusLink link = new ModbusLink(node, copyser, copydeser);
 		singleton = link;
 		link.init();
 	}
-	
+
 	public static ModbusLink get() {
 		return singleton;
 	}
-	
+
 	private void init() {
-		
+
 		restoreLastSession();
-		
+
 		Action act = new Action(Permission.READ, new AddDeviceHandler(null));
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum("TCP", "UDP")));
@@ -83,20 +84,23 @@ public class ModbusLink {
 		act.addParameter(new Parameter("discard data delay", ValueType.NUMBER, new Value(0)));
 		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
 		node.createChild("add ip device").setAction(act).build().setSerializable(false);
-		
+
 		act = getAddSerialAction();
 		node.createChild("add serial connection").setAction(act).build().setSerializable(false);
-		
+
 		act = new Action(Permission.READ, new PortScanHandler());
 		node.createChild("scan for serial ports").setAction(act).build().setSerializable(false);
-		
-//		act = new Action(Permission.READ, new MakeSlaveHandler());
-//		act.addParameter(new Parameter("name", ValueType.STRING));
-//		act.addParameter(new Parameter("transport type", ValueType.makeEnum("TCP", "UDP")));
-//		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
-//		node.createChild("set up ip slave").setAction(act).build().setSerializable(false);
+
+		// act = new Action(Permission.READ, new MakeSlaveHandler());
+		// act.addParameter(new Parameter("name", ValueType.STRING));
+		// act.addParameter(new Parameter("transport type",
+		// ValueType.makeEnum("TCP", "UDP")));
+		// act.addParameter(new Parameter("slave id", ValueType.NUMBER, new
+		// Value(1)));
+		// node.createChild("set up ip
+		// slave").setAction(act).build().setSerializable(false);
 	}
-	
+
 	private class PortScanHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			Action act = getAddSerialAction();
@@ -107,17 +111,17 @@ public class ModbusLink {
 			} else {
 				anode.setAction(act);
 			}
-			
-			for (SerialConn conn: serialConns) {
+
+			for (SerialConn conn : serialConns) {
 				anode = conn.node.getChild("edit");
-				if (anode != null) { 
+				if (anode != null) {
 					act = conn.getEditAction();
 					anode.setAction(act);
 				}
 			}
 		}
 	}
-	
+
 	private Action getAddSerialAction() {
 		Action act = new Action(Permission.READ, new AddSerialHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -125,7 +129,7 @@ public class ModbusLink {
 		Set<String> portids = new HashSet<String>();
 		try {
 			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-			for (CommPortProxy port: cports)  {
+			for (CommPortProxy port : cports) {
 				portids.add(port.getId());
 			}
 		} catch (CommPortConfigException e) {
@@ -154,12 +158,14 @@ public class ModbusLink {
 		act.addParameter(new Parameter("character spacing", ValueType.NUMBER, new Value(0)));
 		return act;
 	}
-	
+
 	private void restoreLastSession() {
-		if (node.getChildren() == null) return;
-		for (Node child: node.getChildren().values()) {
+		if (node.getChildren() == null)
+			return;
+		for (Node child : node.getChildren().values()) {
 			Value restype = child.getAttribute("restoreType");
-			if (restype == null) return;
+			if (restype == null)
+				return;
 			Value transType = child.getAttribute("transport type");
 			Value timeout = child.getAttribute("Timeout");
 			Value retries = child.getAttribute("retries");
@@ -178,10 +184,10 @@ public class ModbusLink {
 				Value useCustomSpacing = child.getAttribute("set custom spacing");
 				Value msgSpacing = child.getAttribute("message frame spacing");
 				Value charSpacing = child.getAttribute("character spacing");
-				if (transType!=null && commPortId!=null && baudRate!=null 
-						&& dataBits!=null && stopBits!=null && parity!=null && maxrbc!=null && maxrrc!=null 
-						&& maxwrc!=null && ddd!=null && mwo!= null && timeout!=null && retries!=null 
-						&& useMods!=null && useCustomSpacing!=null && msgSpacing!=null && charSpacing!=null) {
+				if (transType != null && commPortId != null && baudRate != null && dataBits != null && stopBits != null
+						&& parity != null && maxrbc != null && maxrrc != null && maxwrc != null && ddd != null
+						&& mwo != null && timeout != null && retries != null && useMods != null
+						&& useCustomSpacing != null && msgSpacing != null && charSpacing != null) {
 					SerialConn sc = new SerialConn(getMe(), child);
 					sc.restoreLastSession();
 				} else {
@@ -193,12 +199,14 @@ public class ModbusLink {
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
 				Value batchpoll = child.getAttribute("use batch polling");
-				if (batchpoll == null) child.setAttribute("use batch polling", new Value(true));
+				if (batchpoll == null)
+					child.setAttribute("use batch polling", new Value(true));
 				Value contig = child.getAttribute("contiguous batch requests only");
-				if (contig == null) child.setAttribute("contiguous batch requests only", new Value(true));
-				if (transType!=null && host!=null && port!=null && maxrbc!=null && 
-						maxrrc!=null && maxwrc!=null && ddd!=null && mwo!= null && slaveId!=null 
-						&& interval!=null && timeout!=null && retries!=null) {
+				if (contig == null)
+					child.setAttribute("contiguous batch requests only", new Value(true));
+				if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
+						&& maxwrc != null && ddd != null && mwo != null && slaveId != null && interval != null
+						&& timeout != null && retries != null) {
 					SlaveNode sn = new SlaveNode(getMe(), child, null);
 					sn.restoreLastSession();
 				} else {
@@ -207,8 +215,7 @@ public class ModbusLink {
 			}
 		}
 	}
-	
-	
+
 	private class AddSerialHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String commPortId;
@@ -235,7 +242,7 @@ public class ModbusLink {
 			int maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
 			int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
 			boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
-		
+
 			Node snode = node.createChild(name).build();
 			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("comm port id", new Value(commPortId));
@@ -254,43 +261,60 @@ public class ModbusLink {
 			snode.setAttribute("set custom spacing", new Value(useCustomSpacing));
 			snode.setAttribute("message frame spacing", new Value(msgSpacing));
 			snode.setAttribute("character spacing", new Value(charSpacing));
-			
+
 			SerialConn conn = new SerialConn(getMe(), snode);
 			conn.init();
 		}
 	}
-	
-//	private class MakeSlaveHandler implements Handler<ActionResult> {
-//		public void handle(ActionResult event) {
-//			String name = event.getParameter("name", ValueType.STRING).getString();
-//			String transtype = event.getParameter("transport type").getString();
-//			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-//			
-//			Node child = node.createChild(name).build();
-//			child.setAttribute("transport type", new Value(transtype));
-//			child.setAttribute("slave id", new Value(slaveid));
-//			child.createChild("Coils").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
-//			child.createChild("Discrete Inputs").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
-//			child.createChild("Input Registers").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
-//			child.createChild("Holding Registers").setValueType(ValueType.MAP).setValue(new Value(new JsonObject())).build();
-//			
-//			new IpSlave(getMe(), child);
-//			
-//		}
-//	}
-	
+
+	// private class MakeSlaveHandler implements Handler<ActionResult> {
+	// public void handle(ActionResult event) {
+	// String name = event.getParameter("name", ValueType.STRING).getString();
+	// String transtype = event.getParameter("transport type").getString();
+	// int slaveid = event.getParameter("slave id",
+	// ValueType.NUMBER).getNumber().intValue();
+	//
+	// Node child = node.createChild(name).build();
+	// child.setAttribute("transport type", new Value(transtype));
+	// child.setAttribute("slave id", new Value(slaveid));
+	// child.createChild("Coils").setValueType(ValueType.MAP).setValue(new
+	// Value(new JsonObject())).build();
+	// child.createChild("Discrete
+	// Inputs").setValueType(ValueType.MAP).setValue(new Value(new
+	// JsonObject())).build();
+	// child.createChild("Input
+	// Registers").setValueType(ValueType.MAP).setValue(new Value(new
+	// JsonObject())).build();
+	// child.createChild("Holding
+	// Registers").setValueType(ValueType.MAP).setValue(new Value(new
+	// JsonObject())).build();
+	//
+	// new IpSlave(getMe(), child);
+	//
+	// }
+	// }
+
 	class AddDeviceHandler implements Handler<ActionResult> {
 		private boolean isSerial;
 		private SerialConn conn;
+
 		AddDeviceHandler(SerialConn conn) {
 			this.conn = conn;
-			this.isSerial = (conn!=null);
+			this.isSerial = (conn != null);
 		}
+
 		public void handle(ActionResult event) {
-			String commPortId = "na"; String host = "na"; String parityString = "NONE";
-			int baudRate = 0; int dataBits = 0; int stopBits = 0; int port = 0;
-			long msgSpacing = 0; long charSpacing = 0;
-			boolean useMods = false; boolean useCustomSpacing = false;
+			String commPortId = "na";
+			String host = "na";
+			String parityString = "NONE";
+			int baudRate = 0;
+			int dataBits = 0;
+			int stopBits = 0;
+			int port = 0;
+			long msgSpacing = 0;
+			long charSpacing = 0;
+			boolean useMods = false;
+			boolean useCustomSpacing = false;
 			int timeout, retries, maxrbc, maxrrc, maxwrc, ddd;
 			boolean mwo;
 			String transtype;
@@ -328,12 +352,13 @@ public class ModbusLink {
 				mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
 				snode = node.createChild(name).build();
 			}
-			
+
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()*1000);
+			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
+					* 1000);
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
-			
+
 			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("host", new Value(host));
 			snode.setAttribute("port", new Value(port));
@@ -357,20 +382,20 @@ public class ModbusLink {
 			snode.setAttribute("set custom spacing", new Value(useCustomSpacing));
 			snode.setAttribute("message frame spacing", new Value(msgSpacing));
 			snode.setAttribute("character spacing", new Value(charSpacing));
-			
-	        new SlaveNode(getMe(), snode, conn);
+
+			new SlaveNode(getMe(), snode, conn);
 		}
 	}
-	
+
 	void handleEdit(SlaveNode slave) {
-		for (Node event: slave.getSubscribed()) {
+		for (Node event : slave.getSubscribed()) {
 			if (event.getMetaData() == slave) {
 				handleUnsub(slave, event);
 				handleSub(slave, event);
 			}
 		}
 	}
-	
+
 	private void handleSub(final SlaveNode slave, final Node event) {
 		slave.addToSub(event);
 		if (futures.containsKey(slave)) {
@@ -378,56 +403,67 @@ public class ModbusLink {
 		}
 		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
 		ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-            	slave.readPoints();
-            }
-        }, 0, slave.interval, TimeUnit.MILLISECONDS);
+			@Override
+			public void run() {
+				slave.readPoints();
+			}
+		}, 0, slave.interval, TimeUnit.MILLISECONDS);
 		futures.put(slave, fut);
 		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
-	
+
 	private void handleUnsub(SlaveNode slave, Node event) {
 		slave.removeFromSub(event);
 		if (slave.noneSubscribed()) {
 			ScheduledFuture<?> fut = futures.remove(slave);
 			if (fut != null) {
-	            fut.cancel(false);
-	        }
+				fut.cancel(false);
+			}
 			LOGGER.debug("unsubscribed from " + slave.node.getName());
 		}
 	}
-	
-	void setupPoint(Node child, final SlaveNode slave) {
-			child.setMetaData(slave);
-	        child.getListener().setOnSubscribeHandler(new Handler<Node>() {
-	            public void handle(final Node event) {
-	               handleSub(slave, event);
-	            }
-	        });
 
-	        child.getListener().setOnUnsubscribeHandler(new Handler<Node>() {
-	            @Override
-	            public void handle(Node event) {
-	                handleUnsub(slave, event);
-	            }
-	        });
-	    }
-	 private ModbusLink getMe() {
-			return this;
+	void setupPoint(Node child, final SlaveNode slave) {
+		child.setMetaData(slave);
+		child.getListener().setOnSubscribeHandler(new Handler<Node>() {
+			public void handle(final Node event) {
+				handleSub(slave, event);
+			}
+		});
+
+		child.getListener().setOnUnsubscribeHandler(new Handler<Node>() {
+			@Override
+			public void handle(Node event) {
+				handleUnsub(slave, event);
+			}
+		});
+	}
+
+	private ModbusLink getMe() {
+		return this;
+	}
+
+	static int parseParity(String parstr) {
+		int parint = 0;
+		switch (parstr.toUpperCase()) {
+		case "NONE":
+			break;
+		case "ODD":
+			parint = 1;
+			break;
+		case "EVEN":
+			parint = 2;
+			break;
+		case "MARK":
+			parint = 3;
+			break;
+		case "SPACE":
+			parint = 4;
+			break;
+		default:
+			break;
 		}
-	 
-	 static int parseParity(String parstr) {
-		 int parint = 0;
-		 switch(parstr.toUpperCase()) {
-		 case "NONE": break;
-		 case "ODD": parint=1;break;
-		 case "EVEN": parint=2;break;
-		 case "MARK": parint=3;break;
-		 case "SPACE": parint=4;break;
-		 default: break;
-		 }
-		 return parint;
-	 }
+		return parint;
+	}
 
 }
