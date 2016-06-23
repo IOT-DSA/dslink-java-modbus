@@ -76,9 +76,10 @@ public class SlaveNode extends SlaveFolder {
 		if (master != null) {
 			boolean connected = false;
 			try {
+				LOGGER.debug("pinging device to test connectivity");
 				connected = master.testSlaveNode(node.getAttribute("slave id") .getNumber().intValue());
 			} catch (Exception e) {
-				LOGGER.debug("error: ", e);
+				LOGGER.debug("error during device ping: ", e);
 			}
 			if (connected) statnode.setValue(new Value("Ready"));
 			else statnode.setValue(new Value("Device ping failed"));
@@ -185,8 +186,10 @@ public class SlaveNode extends SlaveFolder {
         
         try {
 			master.init();
+			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
+			LOGGER.debug("error initializing master", e);
 			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
 			try {
 				master.destroy();
