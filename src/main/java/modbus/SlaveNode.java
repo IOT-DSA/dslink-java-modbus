@@ -22,6 +22,7 @@ import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.BatchRead;
 import com.serotonin.modbus4j.BatchResults;
+import com.serotonin.modbus4j.ExceptionResult;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ErrorResponseException;
@@ -369,7 +370,10 @@ public class SlaveNode extends SlaveFolder {
 							vt = ValueType.NUMBER;
 							Number num = (Number) obj;
 							v = new Value(num.doubleValue() / scaling + addscale);
-						}
+						} else if (obj instanceof ExceptionResult) {
+							ExceptionResult result = (ExceptionResult)obj;
+							vt = ValueType.STRING; 
+							v = new Value((String)result.getExceptionMessage());}
 					} else {
 						switch (dataType) {
 						case INT32M10KSWAP:
