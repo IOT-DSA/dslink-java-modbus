@@ -23,35 +23,36 @@ import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 @SuppressWarnings("unused")
 public class Main extends DSLinkHandler {
-	
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
-	
+
 	public static void main(String[] args) {
-			//args = new String[] { "-b", "http://localhost:8080/conn", "-l", "debug" };
-			DSLinkFactory.start(args, new Main());
-		}
-	
+		// args = new String[] { "-b", "http://localhost:8080/conn", "-l",
+		// "debug" };
+		DSLinkFactory.start(args, new Main());
+	}
+
 	@Override
 	public boolean isResponder() {
 		return true;
 	}
-	
+
 	@Override
 	public void onResponderInitialized(DSLink link) {
 		LOGGER.info("Initialized");
-		
+
 		NodeManager manager = link.getNodeManager();
 		Serializer copyser = new Serializer(manager);
 		Deserializer copydeser = new Deserializer(manager);
-        Node superRoot = manager.getNode("/").getNode();
+		Node superRoot = manager.getNode("/").getNode();
 		ModbusLink.start(superRoot, copyser, copydeser);
 	}
-	
+
 	@Override
 	public void stop() {
 		ModbusLink ml = ModbusLink.get();
-		for (ModbusMaster master: ml.masters) {
-			try	{
+		for (ModbusMaster master : ml.masters) {
+			try {
 				master.destroy();
 			} catch (Exception e) {
 				LOGGER.debug("Error destroying master: ", e);
