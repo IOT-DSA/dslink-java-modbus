@@ -47,7 +47,7 @@ public class ModbusLink {
 	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
 	static final String ATTRIBUTE_PORT = "port";
 	static final String ATTRIBUTE_SLAVE_ID = "slave id";
-	
+	static final String ATTRIBUTE_RESTORE_TYPE = "restoreType";
 	static final String ATTRIBUTE_EDITABLE_FOLDER = "editable folder";
 	
 	Node node;
@@ -245,7 +245,7 @@ public class ModbusLink {
 			return;
 		
 		for (Node child : node.getChildren().values()) {			
-			Value restype = child.getAttribute("restoreType");
+			Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 			if (restype == null)
 				return;
 			
@@ -297,7 +297,13 @@ public class ModbusLink {
 					sn.restoreLastSession();
 				}
 			} else if (restype.getString().equals(ATTRIBUTE_EDITABLE_FOLDER)){
-				node.removeChild(child);
+
+				Value port = child.getAttribute(ATTRIBUTE_PORT);
+				Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
+				if (transType != null &&  port != null && slaveId != null) {
+					EditableFolder folder = new LocalSlaveFolder(getMe(), child);
+					folder.restoreLastSession();
+				}
 			}
 		}
 	}

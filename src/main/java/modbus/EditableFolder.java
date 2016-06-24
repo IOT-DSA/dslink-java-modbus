@@ -64,8 +64,7 @@ public abstract class EditableFolder {
 
 	};
 
-	protected void addFolder(Node child) {
-	};
+	protected void addFolder(Node child) { };
 
 	// action handlers for device folder
 	protected class EditHandler implements Handler<ActionResult> {
@@ -114,8 +113,7 @@ public abstract class EditableFolder {
 		}
 	}
 
-	public void setAddPointAction() {
-	}
+	public void setAddPointAction() { }
 
 	public abstract void setEditAction();
 
