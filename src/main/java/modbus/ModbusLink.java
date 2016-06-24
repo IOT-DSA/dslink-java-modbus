@@ -1,5 +1,6 @@
 package modbus;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,9 @@ import com.serotonin.io.serial.CommPortConfigException;
 import com.serotonin.io.serial.CommPortProxy;
 import com.serotonin.io.serial.SerialUtils;
 import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.ModbusSlaveSet;
+import com.serotonin.modbus4j.ip.tcp.TcpSlave;
+import com.serotonin.modbus4j.ip.udp.UdpSlave;
 
 public class ModbusLink {
 	static private final Logger LOGGER;
@@ -34,6 +38,22 @@ public class ModbusLink {
 		LOGGER = LoggerFactory.getLogger(ModbusLink.class);
 	}
 
+	static final String ACTION_ADD_LOCAL_SLAVE = "setup local slave";
+	static final String ACTION_ADD_REMOTE_DEVICE = "add remote device";
+	static final String ACTION_ADD_SERIAL_CONNECTION = "add serial connection";
+	static final String ACTION_SCAN_SERIAL_PORT = "scan for serial ports";
+
+	static final String ATTRIBUTE_NAME = "name";
+	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
+	static final String ATTRIBUTE_PORT = "port";
+	static final String ATTRIBUTE_SLAVE_ID = "slave id";
+<<<<<<< HEAD
+	static final String ATTRIBUTE_RESTORE_TYPE = "restoreType";
+=======
+	
+>>>>>>> origin/feature/Feature-SlaveSet
+	static final String ATTRIBUTE_EDITABLE_FOLDER = "editable folder";
+	
 	Node node;
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
@@ -42,7 +62,11 @@ public class ModbusLink {
 	final Set<ModbusMaster> masters;
 
 	static ModbusLink singleton;
-
+	
+	// modbus listener map: port <-> SlaveSet
+	private final Map<Integer, ModbusSlaveSet> tcpListeners;
+	private final Map<Integer, ModbusSlaveSet> udpListeners;
+	
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
 		this.copySerializer = ser;
@@ -50,6 +74,9 @@ public class ModbusLink {
 		this.futures = new ConcurrentHashMap<>();
 		this.serialConns = new HashSet<SerialConn>();
 		this.masters = new HashSet<ModbusMaster>();
+		
+		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
+		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
 	}
 
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
@@ -92,14 +119,8 @@ public class ModbusLink {
 		act = new Action(Permission.READ, new PortScanHandler());
 		node.createChild("scan for serial ports").setAction(act).build().setSerializable(false);
 
-		// act = new Action(Permission.READ, new MakeSlaveHandler());
-		// act.addParameter(new Parameter("name", ValueType.STRING));
-		// act.addParameter(new Parameter("transport type",
-		// ValueType.makeEnum("TCP", "UDP")));
-		// act.addParameter(new Parameter("slave id", ValueType.NUMBER, new
-		// Value(1)));
-		// node.createChild("set up ip
-		// slave").setAction(act).build().setSerializable(false);
+		act = getMakeSlaveAction();
+		node.createChild(ACTION_ADD_LOCAL_SLAVE).setAction(act).build().setSerializable(false);
 	}
 
 	private class PortScanHandler implements Handler<ActionResult> {
@@ -123,6 +144,31 @@ public class ModbusLink {
 		}
 	}
 
+	private class MakeSlaveHandler implements Handler<ActionResult> {
+
+		public void handle(ActionResult event) {
+
+			String transtype = "Tcp";
+			String name = event.getParameter(ATTRIBUTE_NAME, ValueType.STRING).getString();
+			Node snode;
+
+
+		    transtype = event.getParameter(ATTRIBUTE_TRANSPORT_TYPE).getString();
+		    snode = node.createChild(name).build();
+
+
+			int port = event.getParameter(ATTRIBUTE_PORT, ValueType.NUMBER).getNumber().intValue();
+			int slaveid = event.getParameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
+
+			snode.setAttribute(ATTRIBUTE_TRANSPORT_TYPE, new Value(transtype));
+			snode.setAttribute(ATTRIBUTE_PORT, new Value(port));
+			snode.setAttribute(ATTRIBUTE_SLAVE_ID, new Value(slaveid));
+			snode.setAttribute("restoreType", new Value("slave"));
+
+			new LocalSlaveFolder(getMe(), snode);
+		}
+	}
+	
 	private Action getAddSerialAction() {
 		Action act = new Action(Permission.READ, new AddSerialHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -160,13 +206,57 @@ public class ModbusLink {
 		return act;
 	}
 
+	private Action getMakeSlaveAction() {
+		Action act = new Action(Permission.READ, new MakeSlaveHandler());
+		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
+		act.addParameter(
+				new Parameter(ATTRIBUTE_TRANSPORT_TYPE, ValueType.makeEnum(Util.enumNames(TransportType.class))));
+		act.addParameter(new Parameter(ATTRIBUTE_PORT, ValueType.NUMBER, new Value(1025)));
+		act.addParameter(new Parameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER, new Value(1)));
+
+		return act;
+	}
+
+	public ModbusSlaveSet getSlaveSet(TransportType transtype, int port) {
+		ModbusSlaveSet slaveSet = null;
+
+		switch (transtype) {
+		case TCP: {
+			if (!tcpListeners.containsKey(port)) {
+				slaveSet = new TcpSlave(port, false);
+				tcpListeners.put(port, slaveSet);
+				return slaveSet;
+			} else {
+				return tcpListeners.get(port);
+			}
+
+		}
+		case UDP: {
+			if (!udpListeners.containsKey(port)) {
+				slaveSet = new UdpSlave(port, false);
+				return slaveSet;
+			} else {
+				return this.udpListeners.get(port);
+			}
+
+		}
+		default:
+			return null;
+		}
+	}	
 	private void restoreLastSession() {
 		if (node.getChildren() == null)
 			return;
-		for (Node child : node.getChildren().values()) {
+		
+		for (Node child : node.getChildren().values()) {			
+<<<<<<< HEAD
+			Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
+=======
 			Value restype = child.getAttribute("restoreType");
+>>>>>>> origin/feature/Feature-SlaveSet
 			if (restype == null)
 				return;
+			
 			Value transType = child.getAttribute("transport type");
 			Value timeout = child.getAttribute("Timeout");
 			Value retries = child.getAttribute("retries");
@@ -175,6 +265,7 @@ public class ModbusLink {
 			Value maxwrc = child.getAttribute("max write register count");
 			Value ddd = child.getAttribute("discard data delay");
 			Value mwo = child.getAttribute("use multiple write commands only");
+			
 			if (restype.getString().equals("conn")) {
 				Value commPortId = child.getAttribute("comm port id");
 				Value baudRate = child.getAttribute("baud rate");
@@ -212,9 +303,20 @@ public class ModbusLink {
 						&& timeout != null && retries != null) {
 					SlaveNode sn = new SlaveNode(getMe(), child, null);
 					sn.restoreLastSession();
-				} else {
-					node.removeChild(child);
+<<<<<<< HEAD
 				}
+			} else if (restype.getString().equals(ATTRIBUTE_EDITABLE_FOLDER)){
+
+				Value port = child.getAttribute(ATTRIBUTE_PORT);
+				Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
+				if (transType != null &&  port != null && slaveId != null) {
+					EditableFolder folder = new LocalSlaveFolder(getMe(), child);
+					folder.restoreLastSession();
+=======
+>>>>>>> origin/feature/Feature-SlaveSet
+				}
+			} else if (restype.getString().equals(ATTRIBUTE_EDITABLE_FOLDER)){
+				node.removeChild(child);
 			}
 		}
 	}
