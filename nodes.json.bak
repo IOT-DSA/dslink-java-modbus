@@ -5,14 +5,14 @@
     "@port" : 1025,
     "@slave id" : 1,
     "@restoreType" : "editable folder",
-    "discrete input group" : {
-      "$is" : "node",
-      "@restoreType" : "register group"
-    },
     "STATUS" : {
       "$is" : "node",
       "$type" : "string",
       "?value" : "Listening started"
+    },
+    "discrete input group" : {
+      "$is" : "node",
+      "@restoreType" : "register group"
     },
     "input register group" : {
       "$is" : "node",
@@ -39,7 +39,7 @@
       "HR1" : {
         "$is" : "node",
         "$type" : "number",
-        "?value" : 19,
+        "?value" : 8,
         "$writable" : "write",
         "@data type" : "UINT16",
         "@offset" : 0,
@@ -51,24 +51,25 @@
   "testSlave" : {
     "$is" : "node",
     "@max read bit count" : 2000,
-    "@set custom spacing" : false,
     "@polling interval" : 5000,
-    "@Timeout" : 500,
+    "@set custom spacing" : false,
     "@transport type" : "TCP",
+    "@Timeout" : 500,
     "@baud rate" : 0,
     "@parity" : "NONE",
-    "@use batch polling" : true,
     "@port" : 1025,
-    "@character spacing" : 0,
+    "@use batch polling" : true,
     "@stop bits" : 0,
+    "@character spacing" : 0,
     "@comm port id" : "na",
     "@slave id" : 1,
     "@max read register count" : 125,
     "@max write register count" : 120,
     "@use multiple write commands only" : false,
+    "@zero on failed poll" : false,
     "@contiguous batch requests only" : false,
-    "@discard data delay" : 0,
     "@data bits" : 0,
+    "@discard data delay" : 0,
     "@host" : "10.0.1.128",
     "@retries" : 2,
     "@send requests all at once" : false,
@@ -82,7 +83,7 @@
     "HR1" : {
       "$is" : "node",
       "$type" : "number",
-      "?value" : 19.0,
+      "?value" : 8.0,
       "@bit" : -1,
       "@scaling offset" : 0.0,
       "@scaling" : 1.0,
