@@ -64,7 +64,12 @@ public abstract class EditableFolder {
 
 	};
 
+<<<<<<< HEAD
 	protected void addFolder(Node child) { };
+=======
+	protected void addFolder(Node child) {
+	};
+>>>>>>> origin/feature/Feature-SlaveSet
 
 	// action handlers for device folder
 	protected class EditHandler implements Handler<ActionResult> {
@@ -113,7 +118,12 @@ public abstract class EditableFolder {
 		}
 	}
 
+<<<<<<< HEAD
 	public void setAddPointAction() { }
+=======
+	public void setAddPointAction() {
+	}
+>>>>>>> origin/feature/Feature-SlaveSet
 
 	public abstract void setEditAction();
 

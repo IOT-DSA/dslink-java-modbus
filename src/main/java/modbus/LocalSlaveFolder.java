@@ -15,6 +15,10 @@ import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
+<<<<<<< HEAD
+=======
+import org.dsa.iot.dslink.util.json.JsonArray;
+>>>>>>> origin/feature/Feature-SlaveSet
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +51,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
 	static final String ATTRIBUTE_PORT = "port";
 	static final String ATTRIBUTE_SLAVE_ID = "slave id";
+<<<<<<< HEAD
 	static final String ATTRIBUTE_OFFSET = "offset";
 	static final String ATTRIBUTE_REGISTER_COUNT = "number of registers";
 
@@ -58,6 +63,13 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String STATUS_SETUP_DEVICE = "Setting up device";
 	static final String STATUS_START_LISTENING = "Listening started";
 	static final String STATUS_STOP_LISTENING = "Listening stoppd";
+=======
+	static final String ATTRIBUTE_STATUS = "point status";
+	static final String ATTRIBUTE_NUMBER = "numeric data";
+	static final String ATTRIBUTE_SETUP_DEVICE = "Setting up device";
+	static final String ATTRIBUTE_START_LISTENING = "Listening started";
+	static final String ATTRIBUTE_STOP_LISTENING = "Listening stoppd";
+>>>>>>> origin/feature/Feature-SlaveSet
 
 	private ModbusSlaveSet activeListener;
 	private final ScheduledThreadPoolExecutor stpe;
@@ -79,6 +91,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		super(link, node);
 
 		this.statusNode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING)
+<<<<<<< HEAD
 				.setValue(new Value(STATUS_SETUP_DEVICE)).build();
 
 		this.coilNode = node.createChild(REGISTERS_COIL).build();
@@ -89,6 +102,14 @@ public class LocalSlaveFolder extends EditableFolder {
 		this.holdingNode.setAttribute("restoreType", new Value(ATTRIBUTE_RESTORE_GROUP));
 		this.inputNode = node.createChild(REGISTERS_INPUT).build();
 		this.inputNode.setAttribute("restoreType", new Value(ATTRIBUTE_RESTORE_GROUP));
+=======
+				.setValue(new Value(ATTRIBUTE_SETUP_DEVICE)).build();
+
+		this.coilNode = node.createChild(REGISTERS_COIL).build();
+		this.discreteNode = node.createChild(REGISTERS_DISCRETE).build();
+		this.holdingNode = node.createChild(REGISTERS_HOLDING).build();
+		this.inputNode = node.createChild(REGISTERS_INPUT).build();
+>>>>>>> origin/feature/Feature-SlaveSet
 
 		this.stpe = Objects.createDaemonThreadPool();
 
@@ -111,7 +132,11 @@ public class LocalSlaveFolder extends EditableFolder {
 				@Override
 				public void run() {
 					try {
+<<<<<<< HEAD
 						statusNode.setValue(new Value(STATUS_START_LISTENING));
+=======
+						statusNode.setValue(new Value(ATTRIBUTE_START_LISTENING));
+>>>>>>> origin/feature/Feature-SlaveSet
 						activeListener.start();
 					} catch (ModbusInitException e) {
 						e.printStackTrace();
@@ -129,7 +154,11 @@ public class LocalSlaveFolder extends EditableFolder {
 				@Override
 				public void run() {
 					try {
+<<<<<<< HEAD
 						statusNode.setValue(new Value(STATUS_STOP_LISTENING));
+=======
+						statusNode.setValue(new Value(ATTRIBUTE_STOP_LISTENING));
+>>>>>>> origin/feature/Feature-SlaveSet
 						activeListener.stop();
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -173,9 +202,15 @@ public class LocalSlaveFolder extends EditableFolder {
 		Action act = new Action(Permission.READ, new AddPointHandler());
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ATTRIBUTE_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class))));
+<<<<<<< HEAD
 		act.addParameter(new Parameter(ATTRIBUTE_OFFSET, ValueType.NUMBER));
 		act.addParameter(new Parameter(ATTRIBUTE_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class))));
 		act.addParameter(new Parameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER));
+=======
+		act.addParameter(new Parameter(ATTRIBUTE_OFFSET, ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter(ATTRIBUTE_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class))));
+
+>>>>>>> origin/feature/Feature-SlaveSet
 		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
 
 	}
@@ -254,7 +289,10 @@ public class LocalSlaveFolder extends EditableFolder {
 	public void addPoint(String name, PointType type, ActionResult event) {
 		Node pointNode = null;
 		DataType dataType;
+<<<<<<< HEAD
 		int registerCount = 0;
+=======
+>>>>>>> origin/feature/Feature-SlaveSet
 
 		int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
 		int range = PointType.getPointTypeInt(type);
@@ -273,7 +311,10 @@ public class LocalSlaveFolder extends EditableFolder {
 
 		boolean defaultStatus = false;
 		double defaultNumber = 0;
+<<<<<<< HEAD
 		String defaultString = " ";
+=======
+>>>>>>> origin/feature/Feature-SlaveSet
 
 		switch (type) {
 		case COIL:
@@ -288,6 +329,7 @@ public class LocalSlaveFolder extends EditableFolder {
 					.build();
 			break;
 		case HOLDING:
+<<<<<<< HEAD
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, defaultString);
@@ -310,16 +352,29 @@ public class LocalSlaveFolder extends EditableFolder {
 				pointNode = inputNode.createChild(name).setValueType(ValueType.NUMBER)
 						.setValue(new Value(defaultNumber)).build();
 			}
+=======
+			processImage.setNumeric(range, offset, dataType.ordinal(), defaultNumber);
+			pointNode = holdingNode.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+					.build();
+			break;
+		case INPUT:
+			processImage.setNumeric(range, offset, dataType.ordinal(), defaultNumber);
+			pointNode = inputNode.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+					.build();
+>>>>>>> origin/feature/Feature-SlaveSet
 			break;
 		}
 
 		pointNode.setAttribute(ATTRIBUTE_POINT_TYPE, new Value(type.toString()));
 		pointNode.setAttribute(ATTRIBUTE_OFFSET, new Value(offset));
 		pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
+<<<<<<< HEAD
 		if (dataType.isString()){
 			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));			
 		}
 		pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
+=======
+>>>>>>> origin/feature/Feature-SlaveSet
 
 		if (!offset2Point.containsKey(offset)) {
 			offset2Point.put(offset, pointNode);
@@ -330,17 +385,26 @@ public class LocalSlaveFolder extends EditableFolder {
 
 	protected void setEditPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
+<<<<<<< HEAD
 		Node child = pointNode.getChild(ACTION_REMOVE);
 		if (child == null)
 			pointNode.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
 		else
 			child.setAction(act);
+=======
+		Node anode = pointNode.getChild(ACTION_REMOVE);
+		if (anode == null)
+			pointNode.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+>>>>>>> origin/feature/Feature-SlaveSet
 
 		act = new Action(Permission.READ, new EditPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(pointNode.getName())));
 		act.addParameter(new Parameter(ATTRIBUTE_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class)),
 				pointNode.getAttribute(ATTRIBUTE_POINT_TYPE)));
 		act.addParameter(new Parameter(ATTRIBUTE_OFFSET, ValueType.NUMBER, pointNode.getAttribute(ATTRIBUTE_OFFSET)));
+<<<<<<< HEAD
 		act.addParameter(new Parameter(ATTRIBUTE_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class)),
 				pointNode.getAttribute(ATTRIBUTE_DATA_TYPE)));
 
@@ -363,6 +427,29 @@ public class LocalSlaveFolder extends EditableFolder {
 		pointNode.setWritable(Writable.WRITE);
 		pointNode.getListener().setValueHandler(new SetValueHandler(pointNode));
 		
+=======
+
+		act.addParameter(new Parameter(ATTRIBUTE_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class)),
+				pointNode.getAttribute(ATTRIBUTE_DATA_TYPE)));
+
+		anode = pointNode.getChild(ACTION_EDIT);
+		if (anode == null)
+			pointNode.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+
+		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
+		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
+		anode = pointNode.getChild(ACTION_MAKE_COPY);
+		if (anode == null)
+			pointNode.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+
+		pointNode.setWritable(Writable.WRITE);
+		pointNode.getListener().setValueHandler(new SetPointHandler(pointNode));
+
+>>>>>>> origin/feature/Feature-SlaveSet
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {
@@ -388,7 +475,11 @@ public class LocalSlaveFolder extends EditableFolder {
 		link.copyDeserializer.deserialize(jobj);
 		Node newnode = node.getChild(name);
 		setEditPointActions(newnode);
+<<<<<<< HEAD
 
+=======
+		// link.setupPoint(newnode, root);
+>>>>>>> origin/feature/Feature-SlaveSet
 		return newnode;
 	}
 
@@ -411,8 +502,14 @@ public class LocalSlaveFolder extends EditableFolder {
 				return;
 			}
 			int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
+<<<<<<< HEAD
 			int registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 
+=======
+
+			boolean writable = (type == PointType.COIL || type == PointType.HOLDING)
+					&& event.getParameter(ATTRIBUTE_OFFSET, ValueType.BOOL).getBool();
+>>>>>>> origin/feature/Feature-SlaveSet
 			DataType dataType;
 			if (type == PointType.COIL || type == PointType.DISCRETE)
 				dataType = DataType.BOOLEAN;
@@ -425,18 +522,41 @@ public class LocalSlaveFolder extends EditableFolder {
 					LOGGER.debug("error: ", e1);
 					return;
 				}
+<<<<<<< HEAD
+=======
+			// int bit = event.getParameter("bit", new
+			// Value(-1)).getNumber().intValue();
+			// double scaling = event.getParameter("scaling",
+			// ValueType.NUMBER).getNumber().doubleValue();
+			// double addscale = event.getParameter("scaling offset",
+			// ValueType.NUMBER).getNumber().doubleValue();
+>>>>>>> origin/feature/Feature-SlaveSet
 
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
 				node.removeChild(pointNode);
 				pointNode = newnode;
 			}
+<<<<<<< HEAD
 			pointNode.setAttribute(ATTRIBUTE_POINT_TYPE, new Value(type.toString()));
 			pointNode.setAttribute(ATTRIBUTE_OFFSET, new Value(offset));
 			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));
 			pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
 			pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
 			setEditPointActions(pointNode);
+=======
+			pointNode.setAttribute("type", new Value(type.toString()));
+			pointNode.setAttribute("offset", new Value(offset));
+			// pointNode.setAttribute("number of registers", new
+			// Value(numRegs));
+			pointNode.setAttribute("data type", new Value(dataType.toString()));
+
+			pointNode.setAttribute("writable", new Value(writable));
+
+			setEditPointActions(pointNode);
+			// link.setupPoint(pointNode, root);
+			pointNode.setAttribute("restoreType", new Value("point"));
+>>>>>>> origin/feature/Feature-SlaveSet
 		}
 	}
 
@@ -452,10 +572,17 @@ public class LocalSlaveFolder extends EditableFolder {
 		}
 	}
 
+<<<<<<< HEAD
 	protected class SetValueHandler implements Handler<ValuePair> {
 		private Node pointNode;
 
 		SetValueHandler(Node node) {
+=======
+	protected class SetPointHandler implements Handler<ValuePair> {
+		private Node pointNode;
+
+		SetPointHandler(Node node) {
+>>>>>>> origin/feature/Feature-SlaveSet
 			this.pointNode = node;
 		}
 
@@ -471,10 +598,38 @@ public class LocalSlaveFolder extends EditableFolder {
 
 			Value oldValue = event.getPrevious();
 			Value newValue = event.getCurrent();
+<<<<<<< HEAD
+=======
+			JsonArray valarr;
+			if (newValue.getType() == ValueType.STRING && oldValue.getType() == ValueType.STRING) {
+				String valstr = newValue.getString();
+				String oldstr = oldValue.getString();
+				if (!oldstr.startsWith("["))
+					oldstr = "[" + oldstr + "]";
+				int numThings = new JsonArray(oldstr).size();
+				if (!valstr.startsWith("["))
+					valstr = "[" + valstr + "]";
+				valarr = new JsonArray(valstr);
+				if (valarr.size() != numThings) {
+					LOGGER.error("wrong number of values");
+					return;
+				}
+			} else if (newValue.getType().compare(ValueType.BOOL)) {
+				valarr = new JsonArray();
+				valarr.add(newValue.getBool());
+			} else if (newValue.getType() == ValueType.NUMBER) {
+				valarr = new JsonArray();
+				valarr.add(newValue.getNumber());
+			} else {
+				LOGGER.error("Unexpected value type");
+				return;
+			}
+>>>>>>> origin/feature/Feature-SlaveSet
 
 			switch (type) {
 			case COIL:
 				processImage.setCoil(offset, newValue.getBool());
+<<<<<<< HEAD
 				break;
 			case DISCRETE:
 				processImage.setInput(offset, newValue.getBool());
@@ -494,6 +649,21 @@ public class LocalSlaveFolder extends EditableFolder {
 				} else {
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), newValue.getNumber());
 				}
+=======
+
+				break;
+			case DISCRETE:
+				processImage.setInput(offset, newValue.getBool());
+
+				break;
+			case HOLDING:
+				processImage.setNumeric(range, offset, dataType.ordinal(), newValue.getNumber());
+
+				break;
+			case INPUT:
+				processImage.setNumeric(range, offset, dataType.ordinal(), newValue.getNumber());
+
+>>>>>>> origin/feature/Feature-SlaveSet
 				break;
 			}
 
@@ -501,6 +671,7 @@ public class LocalSlaveFolder extends EditableFolder {
 
 	}
 
+<<<<<<< HEAD
 	public void restoreLastSession() {
 		restoreLastSession(this.node);
 	}
@@ -540,6 +711,8 @@ public class LocalSlaveFolder extends EditableFolder {
 		}
 	}
 
+=======
+>>>>>>> origin/feature/Feature-SlaveSet
 	private void switchListener(TransportType transtype, Integer port) {
 		activeListener = link.getSlaveSet(transtype, port);
 		activeListener.addProcessImage(processImage);
