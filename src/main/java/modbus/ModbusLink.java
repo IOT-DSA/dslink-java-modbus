@@ -74,6 +74,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("port", ValueType.NUMBER, new Value(502)));
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
+		act.addParameter(new Parameter("zero on failed poll", ValueType.BOOL, new Value(false)));
 		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, new Value(true)));
 		act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL, new Value(false)));
 		act.addParameter(new Parameter("Timeout", ValueType.NUMBER, new Value(500)));
@@ -198,6 +199,8 @@ public class ModbusLink {
 				Value port = child.getAttribute("port");
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
+				Value zerofail = child.getAttribute("zero on failed poll");
+				if (zerofail == null) child.setAttribute("zero on failed poll", new Value(false));
 				Value batchpoll = child.getAttribute("use batch polling");
 				if (batchpoll == null)
 					child.setAttribute("use batch polling", new Value(true));
@@ -356,6 +359,7 @@ public class ModbusLink {
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
 					* 1000);
+			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
 
@@ -369,6 +373,7 @@ public class ModbusLink {
 			snode.setAttribute("parity", new Value(parityString));
 			snode.setAttribute("slave id", new Value(slaveid));
 			snode.setAttribute("polling interval", new Value(interval));
+			snode.setAttribute("zero on failed poll", new Value(zerofail));
 			snode.setAttribute("use batch polling", new Value(batchpoll));
 			snode.setAttribute("contiguous batch requests only", new Value(contig));
 			snode.setAttribute("Timeout", new Value(timeout));

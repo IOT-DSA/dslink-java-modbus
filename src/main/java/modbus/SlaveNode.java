@@ -140,6 +140,7 @@ public class SlaveNode extends SlaveFolder {
 			public void handle(ActionResult event) {
 				if (master != null) {
 					master.destroy();
+					link.masters.remove(master);
 					master = null;
 				}
 				node.removeChild("stop");
@@ -166,6 +167,7 @@ public class SlaveNode extends SlaveFolder {
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
 		double defint = node.getAttribute("polling interval").getNumber().doubleValue() / 1000;
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
+		act.addParameter(new Parameter("zero on failed poll", ValueType.BOOL, node.getAttribute("zero on failed poll")));
 		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, node.getAttribute("use batch polling")));
 		act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL,
 				node.getAttribute("contiguous batch requests only")));
@@ -324,11 +326,13 @@ public class SlaveNode extends SlaveFolder {
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
 					* 1000);
+			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
 			link.handleEdit(root);
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
+			node.setAttribute("zero on failed poll", new Value(zerofail));
 			node.setAttribute("use batch polling", new Value(batchpoll));
 			node.setAttribute("contiguous batch requests only", new Value(contig));
 
@@ -461,6 +465,9 @@ public class SlaveNode extends SlaveFolder {
 					if (v != null) {
 						pnode.setValueType(vt);
 						pnode.setValue(v);
+					} else if (node.getAttribute("zero on failed poll").getBool() 
+							&& pnode.getValueType().compare(ValueType.NUMBER)) {
+						pnode.setValue(new Value(0));
 					}
 				}
 
@@ -469,8 +476,22 @@ public class SlaveNode extends SlaveFolder {
 				if ("Ready".equals(statnode.getValue().getString())) {
 					checkConnection();
 				}
+				if (node.getAttribute("zero on failed poll").getBool()) {
+					for (Node pnode : polled) {
+						if (pnode.getValueType().compare(ValueType.NUMBER)) {
+							pnode.setValue(new Value(0));
+						}
+					}
+				}
 			} catch (ErrorResponseException e) {
 				LOGGER.debug("", e);
+				if (node.getAttribute("zero on failed poll").getBool()) {
+					for (Node pnode : polled) {
+						if (pnode.getValueType().compare(ValueType.NUMBER)) {
+							pnode.setValue(new Value(0));
+						}
+					}
+				}
 			}
 
 		} else {

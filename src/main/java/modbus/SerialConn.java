@@ -99,6 +99,7 @@ public class SerialConn {
 			act.addParameter(new Parameter("name", ValueType.STRING));
 			act.addParameter(new Parameter("slave id", ValueType.NUMBER, new Value(1)));
 			act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(5)));
+			act.addParameter(new Parameter("zero on failed poll", ValueType.BOOL, new Value(false)));
 			act.addParameter(new Parameter("use batch polling", ValueType.BOOL, new Value(true)));
 			act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL, new Value(false)));
 			anode = node.getChild("add serial device");
@@ -373,6 +374,8 @@ public class SerialConn {
 		for (Node child : node.getChildren().values()) {
 			Value slaveId = child.getAttribute("slave id");
 			Value interval = child.getAttribute("polling interval");
+			Value zerofail = child.getAttribute("zero on failed poll");
+			if (zerofail == null) child.setAttribute("zero on failed poll", new Value(false));
 			Value batchpoll = child.getAttribute("use batch polling");
 			if (batchpoll == null)
 				child.setAttribute("use batch polling", new Value(true));
