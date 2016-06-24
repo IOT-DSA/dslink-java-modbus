@@ -71,6 +71,12 @@ public class SlaveNode extends SlaveFolder {
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 
 		makeEditAction();
+		
+		if (master != null) {
+			makeStopAction();
+		} else {
+			makeStartAction();
+		}
 	}
 
 	void checkConnection() {
@@ -113,6 +119,41 @@ public class SlaveNode extends SlaveFolder {
 		TCP, UDP, RTU, ASCII
 	}
 
+	private void makeStartAction() {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			public void handle(ActionResult event) {
+				master = getMaster();
+				checkConnection();
+				node.removeChild("start");
+				makeStopAction();
+			}
+		});
+		Node anode = node.getChild("start");
+		if (anode == null)
+			node.createChild("start").setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+	}
+	
+	private void makeStopAction() {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			public void handle(ActionResult event) {
+				if (master != null) {
+					master.destroy();
+					master = null;
+				}
+				node.removeChild("stop");
+				statnode.setValue(new Value("Stopped"));
+				makeStartAction();
+			}
+		});
+		Node anode = node.getChild("stop");
+		if (anode == null)
+			node.createChild("stop").setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+	}
+	
 	private void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
@@ -205,7 +246,9 @@ public class SlaveNode extends SlaveFolder {
 		} catch (ModbusInitException e) {
 			LOGGER.error("error initializing master");
 			LOGGER.debug("error initializing master", e);
-			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
+			statnode.setValue(new Value("Could not establish connection"));
+			node.removeChild("stop");
+			makeStartAction();
 			try {
 				master.destroy();
 			} catch (Exception e1) {
@@ -227,6 +270,7 @@ public class SlaveNode extends SlaveFolder {
 		try {
 			master.destroy();
 			link.masters.remove(master);
+			master = null;
 		} catch (Exception e) {
 			LOGGER.debug("error destroying last master");
 		}
@@ -242,6 +286,7 @@ public class SlaveNode extends SlaveFolder {
 					try {
 						master.destroy();
 						link.masters.remove(master);
+						master = null;
 					} catch (Exception e) {
 						LOGGER.debug("error destroying last master");
 					}
@@ -311,6 +356,7 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	public void readPoints() {
+		if (master == null) return;
 		if (node.getAttribute("use batch polling").getBool()) {
 			LOGGER.debug("batch polling " + node.getName() + " :");
 			int id = getIntValue(node.getAttribute("slave id"));
@@ -344,6 +390,9 @@ public class SlaveNode extends SlaveFolder {
 
 			try {
 				BatchResults<Node> response = master.send(batch);
+				if ("Device ping failed".equals(statnode.getValue().getString())) {
+					checkConnection();
+				}
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
 					LOGGER.debug(pnode.getName() + " : " + obj.toString());
@@ -417,6 +466,9 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException e) {
 				LOGGER.debug("", e);
+				if ("Ready".equals(statnode.getValue().getString())) {
+					checkConnection();
+				}
 			} catch (ErrorResponseException e) {
 				LOGGER.debug("", e);
 			}
