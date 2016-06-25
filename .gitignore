@@ -4,3 +4,5 @@ build/
 .m2
 .idea
 /bin/
+/nodes.json
+/nodes.json.bak
