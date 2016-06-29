@@ -48,8 +48,8 @@ public class ModbusLink {
 	static final String ATTRIBUTE_PORT = "port";
 	static final String ATTRIBUTE_SLAVE_ID = "slave id";
 	static final String ATTRIBUTE_RESTORE_TYPE = "restoreType";
-	static final String ATTRIBUTE_EDITABLE_FOLDER = "editable folder";
-	
+	static final String ATTRIBUTE_RESTORE_EDITABLE_FOLDER = "editable folder";
+
 	Node node;
 	Serializer copySerializer;
 	Deserializer copyDeserializer;
@@ -58,11 +58,11 @@ public class ModbusLink {
 	final Set<ModbusMaster> masters;
 
 	static ModbusLink singleton;
-	
+
 	// modbus listener map: port <-> SlaveSet
 	private final Map<Integer, ModbusSlaveSet> tcpListeners;
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
-	
+
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
 		this.copySerializer = ser;
@@ -70,7 +70,7 @@ public class ModbusLink {
 		this.futures = new ConcurrentHashMap<>();
 		this.serialConns = new HashSet<SerialConn>();
 		this.masters = new HashSet<ModbusMaster>();
-		
+
 		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
 		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
 	}
@@ -146,25 +146,23 @@ public class ModbusLink {
 
 			String transtype = "Tcp";
 			String name = event.getParameter(ATTRIBUTE_NAME, ValueType.STRING).getString();
-			Node snode;
+			Node slaveNode;
 
-
-		    transtype = event.getParameter(ATTRIBUTE_TRANSPORT_TYPE).getString();
-		    snode = node.createChild(name).build();
-
+			transtype = event.getParameter(ATTRIBUTE_TRANSPORT_TYPE).getString();
+			slaveNode = node.createChild(name).build();
 
 			int port = event.getParameter(ATTRIBUTE_PORT, ValueType.NUMBER).getNumber().intValue();
 			int slaveid = event.getParameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
 
-			snode.setAttribute(ATTRIBUTE_TRANSPORT_TYPE, new Value(transtype));
-			snode.setAttribute(ATTRIBUTE_PORT, new Value(port));
-			snode.setAttribute(ATTRIBUTE_SLAVE_ID, new Value(slaveid));
-			snode.setAttribute("restoreType", new Value("slave"));
+			slaveNode.setAttribute(ATTRIBUTE_TRANSPORT_TYPE, new Value(transtype));
+			slaveNode.setAttribute(ATTRIBUTE_PORT, new Value(port));
+			slaveNode.setAttribute(ATTRIBUTE_SLAVE_ID, new Value(slaveid));
+			slaveNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_EDITABLE_FOLDER));
 
-			new LocalSlaveFolder(getMe(), snode);
+			new LocalSlaveNode(getMe(), slaveNode);
 		}
 	}
-	
+
 	private Action getAddSerialAction() {
 		Action act = new Action(Permission.READ, new AddSerialHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -239,16 +237,17 @@ public class ModbusLink {
 		default:
 			return null;
 		}
-	}	
+	}
+
 	private void restoreLastSession() {
 		if (node.getChildren() == null)
 			return;
-		
-		for (Node child : node.getChildren().values()) {			
+
+		for (Node child : node.getChildren().values()) {
 			Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 			if (restype == null)
 				return;
-			
+
 			Value transType = child.getAttribute("transport type");
 			Value timeout = child.getAttribute("Timeout");
 			Value retries = child.getAttribute("retries");
@@ -257,7 +256,7 @@ public class ModbusLink {
 			Value maxwrc = child.getAttribute("max write register count");
 			Value ddd = child.getAttribute("discard data delay");
 			Value mwo = child.getAttribute("use multiple write commands only");
-			
+
 			if (restype.getString().equals("conn")) {
 				Value commPortId = child.getAttribute("comm port id");
 				Value baudRate = child.getAttribute("baud rate");
@@ -283,7 +282,8 @@ public class ModbusLink {
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
 				Value zerofail = child.getAttribute("zero on failed poll");
-				if (zerofail == null) child.setAttribute("zero on failed poll", new Value(false));
+				if (zerofail == null)
+					child.setAttribute("zero on failed poll", new Value(false));
 				Value batchpoll = child.getAttribute("use batch polling");
 				if (batchpoll == null)
 					child.setAttribute("use batch polling", new Value(true));
@@ -296,16 +296,14 @@ public class ModbusLink {
 					SlaveNode sn = new SlaveNode(getMe(), child, null);
 					sn.restoreLastSession();
 				}
-			} else if (restype.getString().equals(ATTRIBUTE_EDITABLE_FOLDER)){
+			} else if (restype.getString().equals(ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
 
 				Value port = child.getAttribute(ATTRIBUTE_PORT);
 				Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
-				if (transType != null &&  port != null && slaveId != null) {
-					EditableFolder folder = new LocalSlaveFolder(getMe(), child);
+				if (transType != null && port != null && slaveId != null) {
+					EditableFolder folder = new LocalSlaveNode(getMe(), child);
 					folder.restoreLastSession();
 				}
-			} else if (restype.getString().equals(ATTRIBUTE_EDITABLE_FOLDER)){
-				node.removeChild(child);
 			}
 		}
 	}
