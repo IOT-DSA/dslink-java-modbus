@@ -108,6 +108,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	@Override
 	public void edit(ActionResult event) {
 
+		String oldName = node.getName();
+		String oldTransType = node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString();
+		
 		TransportType transtype = getTransportType(event);
 		int port = getTransportPort(event);
 
@@ -118,11 +121,11 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		node.setAttribute(ATTRIBUTE_PORT, new Value(port));
 		node.setAttribute(ATTRIBUTE_SLAVE_ID, new Value(slaveid));
 
-		if (!name.equals(node.getName())) {
+		if (!name.equals(oldName)) {
 			rename(name);
 		}
 
-		if (!transtype.toString().equals(node.getAttribute(transtype.toString()))) {
+		if (!transtype.toString().equals(oldTransType)) {
 			switchListener(transtype, port);
 		}
 
