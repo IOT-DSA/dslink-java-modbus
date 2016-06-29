@@ -165,11 +165,15 @@ public class ModbusLink {
 			return;
 		for (Node child : node.getChildren().values()) {
 			Value restype = child.getAttribute("restoreType");
-			if (restype == null)
-				return;
+			if (restype == null) {
+				node.removeChild(child);
+				continue;
+			}
 			Value transType = child.getAttribute("transport type");
 			Value timeout = child.getAttribute("Timeout");
+			if (timeout == null) child.setAttribute("Timeout", new Value(500));
 			Value retries = child.getAttribute("retries");
+			if (retries == null) child.setAttribute("retries", new Value(2));
 			Value maxrbc = child.getAttribute("max read bit count");
 			Value maxrrc = child.getAttribute("max read register count");
 			Value maxwrc = child.getAttribute("max write register count");
