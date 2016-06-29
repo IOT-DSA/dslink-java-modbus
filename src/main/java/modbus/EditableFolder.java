@@ -166,12 +166,16 @@ public abstract class EditableFolder {
 
 	}
 
-	protected JsonObject getParentJson(JsonObject jobj) {
-		return getParentJson(jobj, node);
+	protected JsonObject getParentJson(JsonObject jsonObj) {
+		return getParentJson(jsonObj, node);
 	}
 
-	private JsonObject getParentJson(JsonObject jobj, Node n) {
-		return getParentJson(jobj, n.getParent()).get(n.getParent().getName());
+	private JsonObject getParentJson(JsonObject jsonObj, Node node) {
+		if (node == root.node) {
+			return jsonObj;
+		} else {
+			return getParentJson(jsonObj, node.getParent()).get(node.getParent().getName());
+		}
 	}
 
 	protected abstract ProcessImage getProcessImage();

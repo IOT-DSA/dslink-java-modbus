@@ -158,7 +158,6 @@ public class LocalSlaveFolder extends EditableFolder {
 		case COIL:
 			processImage.setCoil(offset, defaultStatus);
 			pointNode = node.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
-
 			break;
 		case DISCRETE:
 			processImage.setInput(offset, defaultStatus);
@@ -188,22 +187,27 @@ public class LocalSlaveFolder extends EditableFolder {
 						.build();
 			}
 			break;
+		default:
+			break;
 		}
 
-		pointNode.setAttribute(ATTRIBUTE_POINT_TYPE, new Value(type.toString()));
-		pointNode.setAttribute(ATTRIBUTE_OFFSET, new Value(offset));
-		pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
-		
-		if (dataType.isString()) {
-			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));
-		}
-		pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
+		if (null != pointNode) {
+			pointNode.setAttribute(ATTRIBUTE_POINT_TYPE, new Value(type.toString()));
+			pointNode.setAttribute(ATTRIBUTE_OFFSET, new Value(offset));
+			pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
 
-		if (!offsetToPoint.containsKey(offset)) {
-			offsetToPoint.put(offset, pointNode);
+			if (dataType.isString()) {
+				pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));
+			}
+			pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
+
+			if (!offsetToPoint.containsKey(offset)) {
+				offsetToPoint.put(offset, pointNode);
+			}
+
+			setEditPointActions(pointNode);
 		}
 
-		setEditPointActions(pointNode);
 	}
 
 	protected void setEditPointActions(Node pointNode) {
@@ -290,8 +294,8 @@ public class LocalSlaveFolder extends EditableFolder {
 				LOGGER.debug("error: ", e);
 				return;
 			}
+			
 			int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
-
 			int registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 
 			DataType dataType;
@@ -331,7 +335,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		}
 
 		public void handle(ActionResult event) {
-			pointNode.getParent().removeChild(pointNode);
+			node.removeChild(pointNode);
 		}
 	}
 
@@ -352,7 +356,6 @@ public class LocalSlaveFolder extends EditableFolder {
 			int offset = pointNode.getAttribute(ATTRIBUTE_OFFSET).getNumber().intValue();
 			DataType dataType = DataType.valueOf(pointNode.getAttribute(ATTRIBUTE_DATA_TYPE).getString());
 
-			Value oldValue = event.getPrevious();
 			Value newValue = event.getCurrent();
 			BasicProcessImage processImage = (BasicProcessImage) root.getProcessImage();
 
