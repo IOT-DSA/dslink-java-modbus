@@ -1,8 +1,6 @@
 package modbus;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -13,30 +11,22 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.serotonin.modbus4j.BasicProcessImage;
-import com.serotonin.modbus4j.ProcessImageListener;
-import com.serotonin.modbus4j.ModbusSlaveSet;
+import com.serotonin.modbus4j.ProcessImage;
 
-import com.serotonin.modbus4j.exception.ModbusInitException;
-
+/*
+ * The implementation of Editable Folder 
+ */
 public class LocalSlaveFolder extends EditableFolder {
 	private static final Logger LOGGER;
 
 	static {
 		LOGGER = LoggerFactory.getLogger(LocalSlaveFolder.class);
 	}
-
-	static final String NODE_STATUS = "STATUS";
-
-	static final String REGISTERS_COIL = "coil group";
-	static final String REGISTERS_DISCRETE = "discrete input group";
-	static final String REGISTERS_HOLDING = "holding register group";
-	static final String REGISTERS_INPUT = "input register group";
 
 	static final String ACTION_ADD_POINT = "add point";
 	static final String ACTION_EDIT = "edit";
@@ -59,112 +49,15 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String STATUS_START_LISTENING = "Listening started";
 	static final String STATUS_STOP_LISTENING = "Listening stoppd";
 
+	LocalSlaveFolder(ModbusLink link, EditableFolder root, Node node) {
+		this(link, node);
 
-	private ModbusSlaveSet activeListener;
-	private final ScheduledThreadPoolExecutor stpe;
-
-	private BasicProcessImage processImage;
-	BasicProcessImageListener processImageListener;
-
-	// grouping node for every kind of register
-	private Node coilNode;
-	private Node discreteNode;
-	private Node holdingNode;
-	private Node inputNode;
-
-	private Node statusNode;
-
-	Map<Integer, Node> offset2Point = new HashMap<Integer, Node>();
+		this.root = root;
+	}
 
 	LocalSlaveFolder(ModbusLink link, Node node) {
 		super(link, node);
 
-		this.statusNode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING).setValue(new Value(STATUS_SETUP_DEVICE)).build();
-
-		this.coilNode = node.createChild(REGISTERS_COIL).build();
-		this.coilNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_GROUP));
-		this.discreteNode = node.createChild(REGISTERS_DISCRETE).build();
-		this.discreteNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_GROUP));
-		this.holdingNode = node.createChild(REGISTERS_HOLDING).build();
-		this.holdingNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_GROUP));
-		this.inputNode = node.createChild(REGISTERS_INPUT).build();
-		this.inputNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_GROUP));
-
-		this.stpe = Objects.createDaemonThreadPool();
-
-		this.offset2Point = new HashMap<Integer, Node>();
-
-		this.processImage = getProcessImage();
-		this.processImageListener = getProcessImageListener();
-		this.processImage.addListener(this.processImageListener);
-
-		this.activeListener = getActiveSlaveSet();
-		activeListener.addProcessImage(processImage);
-		startListening();
-
-	}
-
-	void startListening() {
-		if (stpe != null) {
-
-			stpe.execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						statusNode.setValue(new Value(STATUS_START_LISTENING));
-						activeListener.start();
-					} catch (ModbusInitException e) {
-						e.printStackTrace();
-					}
-				}
-			});
-
-		}
-	}
-
-	void stopListening() {
-		if (stpe != null) {
-
-			stpe.execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						statusNode.setValue(new Value(STATUS_STOP_LISTENING));
-						activeListener.stop();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			});
-
-		}
-	}
-
-	private ModbusSlaveSet getActiveSlaveSet() {
-		TransportType transtype = null;
-
-		try {
-			transtype = TransportType.valueOf(node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString().toUpperCase());
-		} catch (Exception e1) {
-			LOGGER.error("invalid transport type");
-			LOGGER.debug("error: ", e1);
-			return null;
-		}
-		int port = node.getAttribute(ATTRIBUTE_PORT).getNumber().intValue();
-
-		return link.getSlaveSet(transtype, port);
-	}
-
-	private BasicProcessImage getProcessImage() {
-		int slaveId = node.getAttribute(ATTRIBUTE_SLAVE_ID).getNumber().intValue();
-		BasicProcessImage processImage = new BasicProcessImage(slaveId);
-		processImage.setInvalidAddressValue(Short.MIN_VALUE);
-
-		return processImage;
-	}
-
-	private BasicProcessImageListener getProcessImageListener() {
-		return new BasicProcessImageListener();
 	}
 
 	@Override
@@ -186,10 +79,6 @@ public class LocalSlaveFolder extends EditableFolder {
 		Action act = new Action(Permission.READ, new EditHandler());
 
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
-		act.addParameter(new Parameter(ATTRIBUTE_TRANSPORT_TYPE,
-				ValueType.makeEnum(Util.enumNames(TransportType.class)), node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE)));
-		act.addParameter(new Parameter(ATTRIBUTE_PORT, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_PORT)));
-		act.addParameter(new Parameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_SLAVE_ID)));
 
 		Node editNode = node.getChild(ACTION_EDIT);
 		if (editNode == null)
@@ -217,31 +106,12 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	@Override
-	public void remove() {
-		this.stopListening();
-		super.remove();
-
-	}
-
-	@Override
 	public void edit(ActionResult event) {
 
-		TransportType transtype = getTransportType(event);
-		int port = getTransportPort(event);
-
 		String name = event.getParameter(ATTRIBUTE_NAME, ValueType.STRING).getString();
-		int slaveid = event.getParameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
-
-		node.setAttribute(ATTRIBUTE_TRANSPORT_TYPE, new Value(transtype.toString()));
-		node.setAttribute(ATTRIBUTE_PORT, new Value(port));
-		node.setAttribute(ATTRIBUTE_SLAVE_ID, new Value(slaveid));
 
 		if (!name.equals(node.getName())) {
 			rename(name);
-		}
-
-		if (!transtype.toString().equals(node.getAttribute(transtype.toString()))) {
-			switchListener(transtype, port);
 		}
 
 		this.setEditAction();
@@ -249,7 +119,11 @@ public class LocalSlaveFolder extends EditableFolder {
 
 	@Override
 	public void duplicate(String name) {
+		super.duplicate(name);
 
+		Node newnode = node.getParent().getChild(name);
+		LocalSlaveFolder folder = new LocalSlaveFolder(link, root, newnode);
+		folder.restoreLastSession();
 	}
 
 	@Override
@@ -258,7 +132,6 @@ public class LocalSlaveFolder extends EditableFolder {
 		DataType dataType;
 
 		int registerCount = 0;
-
 		int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
 		int range = PointType.getPointTypeInt(type);
 
@@ -278,41 +151,41 @@ public class LocalSlaveFolder extends EditableFolder {
 		double defaultNumber = 0;
 		String defaultString = " ";
 
+		BasicProcessImage processImage = (BasicProcessImage) root.getProcessImage();
+		Map<Integer, Node> offsetToPoint = root.getOffsetToPoint();
 
 		switch (type) {
 		case COIL:
 			processImage.setCoil(offset, defaultStatus);
-			pointNode = coilNode.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus))
-					.build();
+			pointNode = node.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
 
 			break;
 		case DISCRETE:
 			processImage.setInput(offset, defaultStatus);
-			pointNode = discreteNode.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus))
-					.build();
+			pointNode = node.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
 			break;
 		case HOLDING:
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, defaultString);
-				pointNode = holdingNode.createChild(name).setValueType(ValueType.STRING)
-						.setValue(new Value(defaultString)).build();
+				pointNode = node.createChild(name).setValueType(ValueType.STRING).setValue(new Value(defaultString))
+						.build();
 			} else {
 				processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), defaultNumber);
-				pointNode = holdingNode.createChild(name).setValueType(ValueType.NUMBER)
-						.setValue(new Value(defaultNumber)).build();
+				pointNode = node.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+						.build();
 			}
 			break;
 		case INPUT:
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, dataType.ordinal(), registerCount, defaultString);
-				pointNode = inputNode.createChild(name).setValueType(ValueType.STRING)
-						.setValue(new Value(defaultString)).build();
+				pointNode = node.createChild(name).setValueType(ValueType.STRING).setValue(new Value(defaultString))
+						.build();
 			} else {
 				processImage.setNumeric(range, offset, dataType.ordinal(), defaultNumber);
-				pointNode = inputNode.createChild(name).setValueType(ValueType.NUMBER)
-						.setValue(new Value(defaultNumber)).build();
+				pointNode = node.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+						.build();
 			}
 			break;
 		}
@@ -320,15 +193,14 @@ public class LocalSlaveFolder extends EditableFolder {
 		pointNode.setAttribute(ATTRIBUTE_POINT_TYPE, new Value(type.toString()));
 		pointNode.setAttribute(ATTRIBUTE_OFFSET, new Value(offset));
 		pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
-
-		if (dataType.isString()){
-			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));			
+		
+		if (dataType.isString()) {
+			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));
 		}
 		pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
 
-
-		if (!offset2Point.containsKey(offset)) {
-			offset2Point.put(offset, pointNode);
+		if (!offsetToPoint.containsKey(offset)) {
+			offsetToPoint.put(offset, pointNode);
 		}
 
 		setEditPointActions(pointNode);
@@ -370,7 +242,7 @@ public class LocalSlaveFolder extends EditableFolder {
 
 		pointNode.setWritable(Writable.WRITE);
 		pointNode.getListener().setValueHandler(new SetValueHandler(pointNode));
-		
+
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {
@@ -422,10 +294,6 @@ public class LocalSlaveFolder extends EditableFolder {
 
 			int registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 
-
-			boolean writable = (type == PointType.COIL || type == PointType.HOLDING)
-					&& event.getParameter(ATTRIBUTE_OFFSET, ValueType.BOOL).getBool();
-
 			DataType dataType;
 			if (type == PointType.COIL || type == PointType.DISCRETE)
 				dataType = DataType.BOOLEAN;
@@ -439,7 +307,6 @@ public class LocalSlaveFolder extends EditableFolder {
 					return;
 				}
 
-
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
 				node.removeChild(pointNode);
@@ -451,6 +318,7 @@ public class LocalSlaveFolder extends EditableFolder {
 			pointNode.setAttribute(ATTRIBUTE_REGISTER_COUNT, new Value(registerCount));
 			pointNode.setAttribute(ATTRIBUTE_DATA_TYPE, new Value(dataType.toString()));
 			pointNode.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_POINT));
+
 			setEditPointActions(pointNode);
 		}
 	}
@@ -486,6 +354,7 @@ public class LocalSlaveFolder extends EditableFolder {
 
 			Value oldValue = event.getPrevious();
 			Value newValue = event.getCurrent();
+			BasicProcessImage processImage = (BasicProcessImage) root.getProcessImage();
 
 			switch (type) {
 			case COIL:
@@ -497,7 +366,8 @@ public class LocalSlaveFolder extends EditableFolder {
 			case HOLDING:
 				if (dataType.isString()) {
 					int registerCount = pointNode.getAttribute(ATTRIBUTE_REGISTER_COUNT).getNumber().intValue();
-					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, newValue.getString());
+					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
+							newValue.getString());
 				} else {
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), newValue.getNumber());
 				}
@@ -505,7 +375,8 @@ public class LocalSlaveFolder extends EditableFolder {
 			case INPUT:
 				if (dataType.isString()) {
 					int registerCount = pointNode.getAttribute(ATTRIBUTE_REGISTER_COUNT).getNumber().intValue();
-					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, newValue.getString());
+					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
+							newValue.getString());
 				} else {
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), newValue.getNumber());
 				}
@@ -529,11 +400,11 @@ public class LocalSlaveFolder extends EditableFolder {
 
 			if (restoreType != null) {
 				if (restoreType.getString().equals(ATTRIBUTE_RESTORE_FOLDER)) {
-					EditableFolder folder = new LocalSlaveFolder(link, child);
+					EditableFolder folder = new LocalSlaveFolder(link, root, child);
 					folder.restoreLastSession();
-				} else if (restoreType.getString().equals(ATTRIBUTE_RESTORE_GROUP)) {
-					restoreLastSession(child);
-				} else if (restoreType.getString().equals(ATTRIBUTE_RESTORE_POINT)) {
+				}
+
+				else if (restoreType.getString().equals(ATTRIBUTE_RESTORE_POINT)) {
 					Value type = child.getAttribute(ATTRIBUTE_POINT_TYPE);
 					Value offset = child.getAttribute(ATTRIBUTE_OFFSET);
 					Value dataType = child.getAttribute(ATTRIBUTE_DATA_TYPE);
@@ -546,38 +417,26 @@ public class LocalSlaveFolder extends EditableFolder {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(child.getName().equals(NODE_STATUS))
-					&& !(child.getName().equals(REGISTERS_COIL)) && !(child.getName().equals(REGISTERS_DISCRETE))
-					&& !(child.getName().equals(REGISTERS_HOLDING)) && !(child.getName().equals(REGISTERS_INPUT))) {
-				System.out.println("delete : " + child.getName());
+			} else if (child.getAction() == null && !(child.getName().equals("STATUS"))) {
 				node.removeChild(child);
 			}
 		}
 	}
 
-	private void switchListener(TransportType transtype, Integer port) {
-		activeListener = link.getSlaveSet(transtype, port);
-		activeListener.addProcessImage(processImage);
+	@Override
+	protected void addFolder(String name) {
+		Node child = node.createChild(name).build();
+		new LocalSlaveFolder(link, root, child);
+
 	}
 
-	private class BasicProcessImageListener implements ProcessImageListener {
+	@Override
+	protected ProcessImage getProcessImage() {
+		return root.getProcessImage();
+	}
 
-		@Override
-		public void coilWrite(int offset, boolean oldValue, boolean newValue) {
-			if (oldValue != newValue) {
-				Node pointNode = offset2Point.get(offset);
-				pointNode.setValue(new Value(newValue));
-			}
-
-		}
-
-		@Override
-		public void holdingRegisterWrite(int offset, short oldValue, short newValue) {
-			if (oldValue != newValue) {
-				Node pointNode = offset2Point.get(offset);
-				pointNode.setValue(new Value(newValue));
-			}
-		}
-
+	@Override
+	protected Map<Integer, Node> getOffsetToPoint() {
+		return null;
 	}
 }
