@@ -1,5 +1,6 @@
 package modbus;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -31,6 +32,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	static final String NODE_STATUS = "STATUS";
+	static final String STATUS_SETUP_DEVICE = "Setting up device";
+	static final String STATUS_START_LISTENING = "Listening started";
+	static final String STATUS_STOP_LISTENING = "Listening stoppd";
 
 	private Node statusNode;
 
@@ -110,7 +114,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 
 		String oldName = node.getName();
 		String oldTransType = node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString();
-		
+
 		TransportType transtype = getTransportType(event);
 		int port = getTransportPort(event);
 
@@ -194,6 +198,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		activeListener.addProcessImage(processImage);
 	}
 
+	/*
+	 * ProcessImageListener listens the write action from the remote master
+	 */
 	private class BasicProcessImageListener implements ProcessImageListener {
 
 		@Override
@@ -209,7 +216,17 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		public void holdingRegisterWrite(int offset, short oldValue, short newValue) {
 			if (oldValue != newValue) {
 				Node pointNode = offsetToPoint.get(offset);
-				pointNode.setValue(new Value(newValue));
+				int size = offsetToPoint.size();
+				DataType dataType = DataType.valueOf(pointNode.getAttribute(ATTRIBUTE_DATA_TYPE).getString());
+				if (dataType.isString()) {
+					ByteBuffer buffer = ByteBuffer.allocate(2);
+					buffer.putShort(newValue);
+					String str = new String(buffer.array());
+					pointNode.setValue(new Value(str));
+				} else {
+					pointNode.setValue(new Value(newValue));
+				}
+
 			}
 		}
 

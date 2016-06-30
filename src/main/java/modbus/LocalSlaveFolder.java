@@ -45,10 +45,6 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String ATTRIBUTE_RESTORE_FOLDER = "editable folder";
 	static final String ATTRIBUTE_RESTORE_GROUP = "register group";
 
-	static final String STATUS_SETUP_DEVICE = "Setting up device";
-	static final String STATUS_START_LISTENING = "Listening started";
-	static final String STATUS_STOP_LISTENING = "Listening stoppd";
-
 	LocalSlaveFolder(ModbusLink link, EditableFolder root, Node node) {
 		this(link, node);
 
