@@ -1,6 +1,7 @@
 package modbus;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -216,13 +217,13 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		public void holdingRegisterWrite(int offset, short oldValue, short newValue) {
 			if (oldValue != newValue) {
 				Node pointNode = offsetToPoint.get(offset);
-				int size = offsetToPoint.size();
 				DataType dataType = DataType.valueOf(pointNode.getAttribute(ATTRIBUTE_DATA_TYPE).getString());
 				if (dataType.isString()) {
 					ByteBuffer buffer = ByteBuffer.allocate(2);
 					buffer.putShort(newValue);
-					String str = new String(buffer.array());
+					String str = new String(buffer.array(), StandardCharsets.UTF_8);
 					pointNode.setValue(new Value(str));
+
 				} else {
 					pointNode.setValue(new Value(newValue));
 				}
