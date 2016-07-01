@@ -39,7 +39,8 @@ public class SlaveFolder {
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveFolder.class);
 	}
-
+    
+	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 	protected ModbusLink link;
 	protected Node node;
 	protected SlaveNode root;
@@ -543,8 +544,10 @@ public class SlaveFolder {
 					root.conn.stop();
 				return;
 			}
+			
 			if (!event.isFromExternalSource())
 				return;
+			
 			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
 			int offset = vnode.getAttribute("offset").getNumber().intValue();
 			int id = root.node.getAttribute("slave id").getNumber().intValue();
@@ -555,26 +558,31 @@ public class SlaveFolder {
 			double addscale = vnode.getAttribute("scaling offset").getNumber().doubleValue();
 			Value oldval = event.getPrevious();
 			Value newval = event.getCurrent();
-			JsonArray valarr;
+			JsonArray newValArr = new JsonArray();
+			JsonArray oldValArr = new JsonArray();
+			
 			if (newval.getType() == ValueType.STRING && oldval.getType() == ValueType.STRING) {
 				String valstr = newval.getString();
 				String oldstr = oldval.getString();
-				if (!oldstr.startsWith("["))
-					oldstr = "[" + oldstr + "]";
-				int numThings = new JsonArray(oldstr).size();
-				if (!valstr.startsWith("["))
-					valstr = "[" + valstr + "]";
-				valarr = new JsonArray(valstr);
-				if (valarr.size() != numThings) {
-					LOGGER.error("wrong number of values");
+
+				if (!valstr.startsWith("[")) {
+					newValArr.add(valstr);
+				}
+
+				if (!oldstr.startsWith("[")) {
+					oldValArr.add(oldstr);
+				}
+
+				if (newValArr.size() != oldValArr.size()) {
+					LOGGER.error(MSG_STRING_SIZE_NOT_MATCHING);
 					return;
 				}
 			} else if (newval.getType().compare(ValueType.BOOL)) {
-				valarr = new JsonArray();
-				valarr.add(newval.getBool());
+				newValArr = new JsonArray();
+				newValArr.add(newval.getBool());
 			} else if (newval.getType() == ValueType.NUMBER) {
-				valarr = new JsonArray();
-				valarr.add(newval.getNumber());
+				newValArr = new JsonArray();
+				newValArr.add(newval.getNumber());
 			} else {
 				LOGGER.error("Unexpected value type");
 				return;
@@ -589,11 +597,11 @@ public class SlaveFolder {
 			try {
 				switch (type) {
 				case COIL:
-					request = new WriteCoilsRequest(id, offset, makeBoolArr(valarr));
+					request = new WriteCoilsRequest(id, offset, makeBoolArr(newValArr));
 					break;
 				case HOLDING:
 					request = new WriteRegistersRequest(id, offset,
-							makeShortArr(valarr, dataType, scaling, addscale, type, id, offset, numRegs, bit));
+							makeShortArr(newValArr, dataType, scaling, addscale, type, id, offset, numRegs, bit));
 					break;
 				default:
 					break;
@@ -613,8 +621,8 @@ public class SlaveFolder {
 				LOGGER.debug("error: ", e);
 				return;
 			} // finally {
-			// root.master.destroy();
-			// }
+				// root.master.destroy();
+				// }
 
 		}
 	}
