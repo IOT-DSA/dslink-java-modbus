@@ -72,7 +72,7 @@ public class SlaveNode extends SlaveFolder {
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 
 		makeEditAction();
-		
+
 		if (master != null) {
 			makeStopAction();
 		} else {
@@ -124,9 +124,12 @@ public class SlaveNode extends SlaveFolder {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				master = getMaster();
-				checkConnection();
-				node.removeChild("start");
-				makeStopAction();
+				if (null != master) {
+					checkConnection();
+					node.removeChild("start");
+					makeStopAction();
+				}
+
 			}
 		});
 		Node anode = node.getChild("start");
@@ -135,7 +138,7 @@ public class SlaveNode extends SlaveFolder {
 		else
 			anode.setAction(act);
 	}
-	
+
 	private void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
@@ -155,7 +158,7 @@ public class SlaveNode extends SlaveFolder {
 		else
 			anode.setAction(act);
 	}
-	
+
 	private void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
@@ -168,7 +171,8 @@ public class SlaveNode extends SlaveFolder {
 		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
 		double defint = node.getAttribute("polling interval").getNumber().doubleValue() / 1000;
 		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
-		act.addParameter(new Parameter("zero on failed poll", ValueType.BOOL, node.getAttribute("zero on failed poll")));
+		act.addParameter(
+				new Parameter("zero on failed poll", ValueType.BOOL, node.getAttribute("zero on failed poll")));
 		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, node.getAttribute("use batch polling")));
 		act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL,
 				node.getAttribute("contiguous batch requests only")));
@@ -194,8 +198,10 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	ModbusMaster getMaster() {
-		if (isSerial)
+		if (isSerial) {
 			return conn.master;
+		}
+
 		statnode.setValue(new Value("connecting to device"));
 		TransportType transtype = null;
 		try {
@@ -254,6 +260,7 @@ public class SlaveNode extends SlaveFolder {
 			makeStartAction();
 			try {
 				master.destroy();
+				LOGGER.debug("Close connection");
 			} catch (Exception e1) {
 			}
 			return null;
@@ -361,7 +368,8 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	public void readPoints() {
-		if (master == null) return;
+		if (master == null)
+			return;
 		if (node.getAttribute("use batch polling").getBool()) {
 			LOGGER.debug("batch polling " + node.getName() + " :");
 			int id = getIntValue(node.getAttribute("slave id"));
@@ -427,9 +435,10 @@ public class SlaveNode extends SlaveFolder {
 							Number num = (Number) obj;
 							v = new Value(num.doubleValue() / scaling + addscale);
 						} else if (obj instanceof ExceptionResult) {
-							ExceptionResult result = (ExceptionResult)obj;
-							vt = ValueType.STRING; 
-							v = new Value((String)result.getExceptionMessage());}
+							ExceptionResult result = (ExceptionResult) obj;
+							vt = ValueType.STRING;
+							v = new Value((String) result.getExceptionMessage());
+						}
 					} else {
 						switch (dataType) {
 						case INT32M10KSWAP:
@@ -469,7 +478,7 @@ public class SlaveNode extends SlaveFolder {
 					if (v != null) {
 						pnode.setValueType(vt);
 						pnode.setValue(v);
-					} else if (node.getAttribute("zero on failed poll").getBool() 
+					} else if (node.getAttribute("zero on failed poll").getBool()
 							&& pnode.getValueType().compare(ValueType.NUMBER)) {
 						pnode.setValue(new Value(0));
 					}
