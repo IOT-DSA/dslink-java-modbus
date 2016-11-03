@@ -40,7 +40,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	private Node statusNode;
 
 	private ModbusSlaveSet activeListener;
-	private final ScheduledThreadPoolExecutor stpe;
+	private final ScheduledThreadPoolExecutor listenerStpe;
 
 	protected BasicProcessImage processImage;
 	protected BasicProcessImageListener processImageListener;
@@ -52,7 +52,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		this.root = this;
 		this.statusNode = getStatusNode();
 
-		this.stpe = Objects.createDaemonThreadPool();
+		this.listenerStpe = Objects.createDaemonThreadPool();
 
 		this.processImage = getProcessImage();
 		this.processImageListener = getProcessImageListener();
@@ -138,9 +138,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	void startListening() {
-		if (stpe != null) {
+		if (listenerStpe != null) {
 
-			stpe.execute(new Runnable() {
+			listenerStpe.execute(new Runnable() {
 				@Override
 				public void run() {
 					try {
@@ -156,9 +156,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	void stopListening() {
-		if (stpe != null) {
+		if (listenerStpe != null) {
 
-			stpe.execute(new Runnable() {
+			listenerStpe.execute(new Runnable() {
 				@Override
 				public void run() {
 					try {

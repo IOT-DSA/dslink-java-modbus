@@ -42,7 +42,7 @@ public class SerialConn {
 	ModbusMaster master;
 	Set<SlaveNode> slaves;
 
-	private final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
+	private final ScheduledThreadPoolExecutor serialStpe = Objects.createDaemonThreadPool();
 
 	SerialConn(ModbusLink link, Node node) {
 		this.link = link;
@@ -349,7 +349,7 @@ public class SerialConn {
 		node.clearChildren();
 		link.serialConns.remove(this);
 		node.getParent().removeChild(node);
-		stpe.shutdown();
+		serialStpe.shutdown();
 	}
 
 	protected void rename(String newname) {
@@ -392,7 +392,7 @@ public class SerialConn {
 	}
 
 	public ScheduledThreadPoolExecutor getDaemonThreadPool() {
-		return stpe;
+		return serialStpe;
 	}
 
 }
