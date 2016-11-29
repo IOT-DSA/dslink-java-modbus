@@ -362,33 +362,6 @@ public class ModbusLink {
 		}
 	}
 
-	// private class MakeSlaveHandler implements Handler<ActionResult> {
-	// public void handle(ActionResult event) {
-	// String name = event.getParameter("name", ValueType.STRING).getString();
-	// String transtype = event.getParameter("transport type").getString();
-	// int slaveid = event.getParameter("slave id",
-	// ValueType.NUMBER).getNumber().intValue();
-	//
-	// Node child = node.createChild(name).build();
-	// child.setAttribute("transport type", new Value(transtype));
-	// child.setAttribute("slave id", new Value(slaveid));
-	// child.createChild("Coils").setValueType(ValueType.MAP).setValue(new
-	// Value(new JsonObject())).build();
-	// child.createChild("Discrete
-	// Inputs").setValueType(ValueType.MAP).setValue(new Value(new
-	// JsonObject())).build();
-	// child.createChild("Input
-	// Registers").setValueType(ValueType.MAP).setValue(new Value(new
-	// JsonObject())).build();
-	// child.createChild("Holding
-	// Registers").setValueType(ValueType.MAP).setValue(new Value(new
-	// JsonObject())).build();
-	//
-	// new IpSlave(getMe(), child);
-	//
-	// }
-	// }
-
 	class AddDeviceHandler implements Handler<ActionResult> {
 		private boolean isSerial;
 		private SerialConn conn;
@@ -499,22 +472,22 @@ public class ModbusLink {
 			return;
 		}
 		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-		ScheduledFuture<?> fut = stpe.scheduleWithFixedDelay(new Runnable() {
+		ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
 			@Override
 			public void run() {
 				slave.readPoints();
 			}
 		}, 0, slave.interval, TimeUnit.MILLISECONDS);
-		futures.put(slave, fut);
+		futures.put(slave, future);
 		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
 
 	private void handleUnsub(SlaveNode slave, Node event) {
 		slave.removeFromSub(event);
 		if (slave.noneSubscribed()) {
-			ScheduledFuture<?> fut = futures.remove(slave);
-			if (fut != null) {
-				fut.cancel(false);
+			ScheduledFuture<?> future = futures.remove(slave);
+			if (future != null) {
+				future.cancel(false);
 			}
 			LOGGER.debug("unsubscribed from " + slave.node.getName());
 		}
