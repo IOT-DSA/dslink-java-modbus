@@ -4,7 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -44,6 +46,10 @@ public class SlaveNode extends SlaveFolder {
 	boolean isSerial;
 	SerialConn conn;
 	Node statnode;
+	private ScheduledFuture<?> reconnectFuture = null;
+	private int retryDelay = 1;
+	private int heartbeatInitDelay = 1;
+	private int heartbeatDelay = 5;
 	private final ScheduledThreadPoolExecutor stpe;
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 
@@ -62,12 +68,15 @@ public class SlaveNode extends SlaveFolder {
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up device")).build();
 		this.master = getMaster();
-		stpe.execute(new Runnable() {
+
+		stpe.scheduleWithFixedDelay(new Runnable() {
+
 			@Override
 			public void run() {
 				checkConnection();
 			}
-		});
+
+		}, heartbeatInitDelay, heartbeatDelay, TimeUnit.SECONDS);
 
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 
@@ -81,8 +90,8 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	void checkConnection() {
+		boolean connected = false;
 		if (master != null) {
-			boolean connected = false;
 			try {
 				LOGGER.debug("pinging device to test connectivity");
 				connected = master.testSlaveNode(node.getAttribute("slave id").getNumber().intValue());
@@ -93,6 +102,25 @@ public class SlaveNode extends SlaveFolder {
 				statnode.setValue(new Value("Ready"));
 			else
 				statnode.setValue(new Value("Device ping failed"));
+		}
+
+		if (!connected) {
+			ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
+			reconnectFuture = reconnectStpe.schedule(new Runnable() {
+
+				@Override
+				public void run() {
+					Value stat = statnode.getValue();
+					if (stat == null || !("Connected".equals(stat.getString())
+							|| "Setting up connection".equals(stat.getString()))) {
+						master = getMaster();
+					}
+				}
+
+			}, retryDelay, TimeUnit.SECONDS);
+			if (retryDelay < 60)
+				retryDelay += 2;
+
 		}
 	}
 
@@ -198,6 +226,11 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	ModbusMaster getMaster() {
+		if (reconnectFuture != null) {
+			reconnectFuture.cancel(false);
+			reconnectFuture = null;
+		}
+
 		if (isSerial) {
 			return conn.master;
 		}
@@ -262,12 +295,18 @@ public class SlaveNode extends SlaveFolder {
 				master.destroy();
 				LOGGER.debug("Close connection");
 			} catch (Exception e1) {
+				LOGGER.debug(e1.getMessage());
 			}
+
+		}
+
+		if (master.isInitialized()) {
+			link.masters.add(master);
+			return master;
+		} else {
 			return null;
 		}
 
-		link.masters.add(master);
-		return master;
 	}
 
 	@Override
