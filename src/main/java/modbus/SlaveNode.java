@@ -111,7 +111,7 @@ public class SlaveNode extends SlaveFolder {
 				@Override
 				public void run() {
 					Value stat = statnode.getValue();
-					if (stat == null || !("Connected".equals(stat.getString())
+					if (stat == null || !("Ready".equals(stat.getString())
 							|| "Setting up connection".equals(stat.getString()))) {
 						master = getMaster();
 					}
@@ -286,8 +286,7 @@ public class SlaveNode extends SlaveFolder {
 			master.init();
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
-			LOGGER.error("error initializing master");
-			LOGGER.debug("error initializing master", e);
+			LOGGER.error("error in initializing master:" + e.getMessage());
 			statnode.setValue(new Value("Could not establish connection"));
 			node.removeChild("stop");
 			makeStartAction();
@@ -301,6 +300,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 
 		if (master.isInitialized()) {
+			LOGGER.info("master is initialized successfully");
 			link.masters.add(master);
 			return master;
 		} else {
