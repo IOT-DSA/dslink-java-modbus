@@ -48,8 +48,7 @@ public class SlaveNode extends SlaveFolder {
 	Node statnode;
 	private ScheduledFuture<?> reconnectFuture = null;
 	private int retryDelay = 1;
-	private int heartbeatInitDelay = 1;
-	private int heartbeatDelay = 5;
+
 	private final ScheduledThreadPoolExecutor stpe;
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 
@@ -69,14 +68,14 @@ public class SlaveNode extends SlaveFolder {
 				.setValue(new Value("Setting up device")).build();
 		this.master = getMaster();
 
-		stpe.scheduleWithFixedDelay(new Runnable() {
+		stpe.execute(new Runnable() {
 
 			@Override
 			public void run() {
 				checkConnection();
 			}
 
-		}, heartbeatInitDelay, heartbeatDelay, TimeUnit.SECONDS);
+		});
 
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 
@@ -286,7 +285,7 @@ public class SlaveNode extends SlaveFolder {
 			master.init();
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
-			LOGGER.error("error in initializing master:" + e.getMessage());
+			LOGGER.error("error in initializing master:" + e.getMessage() + " on " + host + ":" + port);
 			statnode.setValue(new Value("Could not establish connection"));
 			node.removeChild("stop");
 			makeStartAction();
@@ -300,7 +299,6 @@ public class SlaveNode extends SlaveFolder {
 		}
 
 		if (master.isInitialized()) {
-			LOGGER.info("master is initialized successfully");
 			link.masters.add(master);
 			return master;
 		} else {
