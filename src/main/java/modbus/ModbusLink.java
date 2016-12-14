@@ -109,7 +109,7 @@ public class ModbusLink {
 		act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL, new Value(false)));
 		node.createChild("add ip device").setAction(act).build().setSerializable(false);
 
-		act = getAddSerialAction();
+		act = getAddSerialConnectionAction();
 		node.createChild("add serial connection").setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new PortScanHandler());
@@ -121,7 +121,7 @@ public class ModbusLink {
 
 	private class PortScanHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			Action act = getAddSerialAction();
+			Action act = getAddSerialConnectionAction();
 			Node anode = node.getChild("add serial connection");
 			if (anode == null) {
 				anode = node.createChild("add serial connection").setAction(act).build();
@@ -163,8 +163,8 @@ public class ModbusLink {
 		}
 	}
 
-	private Action getAddSerialAction() {
-		Action act = new Action(Permission.READ, new AddSerialHandler());
+	private Action getAddSerialConnectionAction() {
+		Action act = new Action(Permission.READ, new AddSerialConnectionHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum("RTU", "ASCII")));
 		Set<String> portids = new HashSet<String>();
@@ -311,7 +311,7 @@ public class ModbusLink {
 		}
 	}
 
-	private class AddSerialHandler implements Handler<ActionResult> {
+	private class AddSerialConnectionHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String commPortId;
 			Value customPort = event.getParameter("comm port id (manual entry)");
