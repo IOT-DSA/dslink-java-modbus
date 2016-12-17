@@ -88,10 +88,10 @@ public class LocalSlaveFolder extends EditableFolder {
 		return port;
 	}
 
-	public TransportType getTransportType(ActionResult event) {
-		TransportType transtype;
+	public IpTransportType getTransportType(ActionResult event) {
+		IpTransportType transtype;
 		try {
-			transtype = TransportType
+			transtype = IpTransportType
 					.valueOf(event.getParameter(ATTRIBUTE_TRANSPORT_TYPE, ValueType.STRING).getString().toUpperCase());
 			return transtype;
 		} catch (Exception e) {
