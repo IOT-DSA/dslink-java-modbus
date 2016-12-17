@@ -1,5 +1,5 @@
 package modbus;
 
-public enum TransportType {
+public enum IpTransportType {
 		TCP, UDP
 }
