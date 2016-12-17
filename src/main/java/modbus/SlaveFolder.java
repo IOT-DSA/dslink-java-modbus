@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
+import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.code.RegisterRange;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BinaryLocator;
@@ -39,11 +40,11 @@ public class SlaveFolder {
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveFolder.class);
 	}
-    
+
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 	protected ModbusLink link;
 	protected Node node;
-	protected SlaveNode root;
+	protected SlaveFolder root;
 
 	SlaveFolder(ModbusLink link, Node node) {
 		this.link = link;
@@ -84,7 +85,7 @@ public class SlaveFolder {
 		node.createChild("add folder").setAction(act).build().setSerializable(false);
 	}
 
-	SlaveFolder(ModbusLink link, Node node, SlaveNode root) {
+	SlaveFolder(ModbusLink link, Node node, SlaveFolder root) {
 		this(link, node);
 		this.root = root;
 
@@ -171,11 +172,11 @@ public class SlaveFolder {
 		return getParentJson(jobj, node);
 	}
 
-	private JsonObject getParentJson(JsonObject jobj, Node n) {
-		if ((!root.isSerial && n == root.node) || (root.isSerial && n == root.conn.node))
+	private JsonObject getParentJson(JsonObject jobj, Node node) {
+		if ((node == root.getConnection().node))
 			return jobj;
 		else
-			return getParentJson(jobj, n.getParent()).get(n.getParent().getName());
+			return getParentJson(jobj, node.getParent()).get(node.getParent().getName());
 	}
 
 	protected class AddFolderHandler implements Handler<ActionResult> {
@@ -422,11 +423,12 @@ public class SlaveFolder {
 	protected void readPoint(Node pointNode) {
 		if (pointNode.getAttribute("offset") == null)
 			return;
-		if (root.master == null) {
-			if (root.isSerial)
-				root.conn.stop();
+
+		if (root.getMaster() == null) {
+			root.getConnection().stop();
 			return;
 		}
+
 		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
 		int offset = getIntValue(pointNode.getAttribute("offset"));
 		int numRegs = getIntValue(pointNode.getAttribute("number of registers"));
@@ -469,10 +471,10 @@ public class SlaveFolder {
 				return;
 			}
 			polledNodes.put(requestString, true);
-			ReadResponse response = (ReadResponse) root.master.send(request);
+			ReadResponse response = (ReadResponse) root.getMaster().send(request);
 			polledNodes.remove(requestString);
 			LOGGER.debug("Got response: " + response.toString());
-			root.statnode.setValue(new Value("Ready"));
+			root.getStatusNode().setValue(new Value("Ready"));
 			if (response.getExceptionCode() != -1) {
 				LOGGER.debug("error response: " + response.getExceptionMessage());
 				return;
@@ -531,6 +533,10 @@ public class SlaveFolder {
 		LOGGER.debug("read and updated " + pointNode.getName());
 	}
 
+	private Node getStatusNode() {
+		return null;
+	}
+
 	protected class SetHandler implements Handler<ValuePair> {
 		private Node vnode;
 
@@ -539,15 +545,14 @@ public class SlaveFolder {
 		}
 
 		public void handle(ValuePair event) {
-			if (root.master == null) {
-				if (root.isSerial)
-					root.conn.stop();
+			if (root.getMaster() == null) {
+				root.getConnection().stop();
 				return;
 			}
-			
+
 			if (!event.isFromExternalSource())
 				return;
-			
+
 			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
 			int offset = vnode.getAttribute("offset").getNumber().intValue();
 			int id = root.node.getAttribute("slave id").getNumber().intValue();
@@ -560,7 +565,7 @@ public class SlaveFolder {
 			Value newval = event.getCurrent();
 			JsonArray newValArr = new JsonArray();
 			JsonArray oldValArr = new JsonArray();
-			
+
 			if (newval.getType() == ValueType.STRING && oldval.getType() == ValueType.STRING) {
 				String valstr = newval.getString();
 				String oldstr = oldval.getString();
@@ -608,7 +613,7 @@ public class SlaveFolder {
 				}
 				if (request != null)
 					LOGGER.debug("set request: " + request.toString());
-				root.master.send(request);
+				root.getMaster().send(request);
 				// System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
 				// TODO Auto-generated catch block
@@ -637,6 +642,14 @@ public class SlaveFolder {
 				retval[i] = (Boolean) o;
 		}
 		return retval;
+	}
+
+	public ModbusConnection getConnection() {
+		return null;
+	}
+
+	public ModbusMaster getMaster() {
+		return null;
 	}
 
 	protected static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt,
