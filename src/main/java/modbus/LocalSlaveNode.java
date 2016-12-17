@@ -99,7 +99,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
 
 		act.addParameter(new Parameter(ATTRIBUTE_TRANSPORT_TYPE,
-				ValueType.makeEnum(Util.enumNames(TransportType.class)), node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE)));
+				ValueType.makeEnum(Util.enumNames(IpTransportType.class)), node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE)));
 		act.addParameter(new Parameter(ATTRIBUTE_PORT, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_PORT)));
 		act.addParameter(new Parameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_SLAVE_ID)));
 
@@ -116,7 +116,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		String oldName = node.getName();
 		String oldTransType = node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString();
 
-		TransportType transtype = getTransportType(event);
+		IpTransportType transtype = getTransportType(event);
 		int port = getTransportPort(event);
 
 		String name = event.getParameter(ATTRIBUTE_NAME, ValueType.STRING).getString();
@@ -174,10 +174,10 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	private ModbusSlaveSet getActiveSlaveSet() {
-		TransportType transtype = null;
+		IpTransportType transtype = null;
 
 		try {
-			transtype = TransportType.valueOf(node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString().toUpperCase());
+			transtype = IpTransportType.valueOf(node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString().toUpperCase());
 		} catch (Exception e1) {
 			LOGGER.error("invalid transport type");
 			LOGGER.debug("error: ", e1);
@@ -194,7 +194,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		super.remove();
 	}
 
-	protected void switchListener(TransportType transtype, Integer port) {
+	protected void switchListener(IpTransportType transtype, Integer port) {
 		activeListener = link.getSlaveSet(transtype, port);
 		activeListener.addProcessImage(processImage);
 	}

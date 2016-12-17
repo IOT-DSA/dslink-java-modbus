@@ -43,88 +43,36 @@ public class SlaveNode extends SlaveFolder {
 
 	ModbusMaster master;
 	long interval;
-	boolean isSerial;
-	SerialConn conn;
+	ModbusConnection conn;
 	Node statnode;
-	private ScheduledFuture<?> reconnectFuture = null;
-	private int retryDelay = 1;
 
-	private final ScheduledThreadPoolExecutor stpe;
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 
-	SlaveNode(ModbusLink link, Node node, SerialConn conn) {
+	SlaveNode(ModbusLink link, Node node, ModbusConnection conn) {
 		super(link, node);
 
 		this.conn = conn;
-		this.isSerial = (conn != null);
-		if (isSerial) {
-			conn.slaves.add(this);
-			stpe = conn.getDaemonThreadPool();
-		} else {
-			stpe = Objects.createDaemonThreadPool();
-		}
+		conn.slaves.add(this);
 		this.root = this;
 		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up device")).build();
-		this.master = getMaster();
-
-		stpe.execute(new Runnable() {
-
-			@Override
-			public void run() {
-				checkConnection();
-			}
-
-		});
-
+		this.master = conn.getMaster();
+		/*
+		 * reject exception stpe.execute(new Runnable() {
+		 * 
+		 * @Override public void run() { checkConnection(); }
+		 * 
+		 * });
+		 */
 		this.interval = node.getAttribute("polling interval").getNumber().longValue();
 
 		makeEditAction();
 
 		if (master != null) {
-			makeStopAction();
+			makeDisableAction();
 		} else {
-			makeStartAction();
+			makeEnableAction();
 		}
-	}
-
-	void checkConnection() {
-		boolean connected = false;
-		if (master != null) {
-			try {
-				LOGGER.debug("pinging device to test connectivity");
-				connected = master.testSlaveNode(node.getAttribute("slave id").getNumber().intValue());
-			} catch (Exception e) {
-				LOGGER.debug("error during device ping: ", e);
-			}
-			if (connected)
-				statnode.setValue(new Value("Ready"));
-			else
-				statnode.setValue(new Value("Device ping failed"));
-		}
-
-		if (!connected) {
-			ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
-			reconnectFuture = reconnectStpe.schedule(new Runnable() {
-
-				@Override
-				public void run() {
-					Value stat = statnode.getValue();
-					if (stat == null || !("Ready".equals(stat.getString())
-							|| "Setting up connection".equals(stat.getString()))) {
-						master = getMaster();
-					}
-				}
-
-			}, retryDelay, TimeUnit.SECONDS);
-			if (retryDelay < 60)
-				retryDelay += 2;
-
-		}
-	}
-
-	ScheduledThreadPoolExecutor getDaemonThreadPool() {
-		return stpe;
 	}
 
 	void addToSub(Node event) {
@@ -147,76 +95,57 @@ public class SlaveNode extends SlaveFolder {
 		TCP, UDP, RTU, ASCII
 	}
 
-	private void makeStartAction() {
+	private void makeEnableAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				master = getMaster();
-				if (null != master) {
-					checkConnection();
-					node.removeChild("start");
-					makeStopAction();
-				}
-
+				// TBD
+				node.removeChild("enable");
+				statnode.setValue(new Value("enabled"));
+				makeDisableAction();
 			}
 		});
-		Node anode = node.getChild("start");
+		Node anode = node.getChild("enable");
 		if (anode == null)
-			node.createChild("start").setAction(act).build().setSerializable(false);
+			node.createChild("enable").setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
+
+		this.statnode.setValue(new Value("Disabled"));
 	}
 
-	private void makeStopAction() {
+	private void makeDisableAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				if (master != null) {
-					master.destroy();
-					link.masters.remove(master);
-					master = null;
-				}
-				node.removeChild("stop");
-				statnode.setValue(new Value("Stopped"));
-				makeStartAction();
+				// TBD
+				node.removeChild("disalbe");
+				statnode.setValue(new Value("Disabled"));
+				makeEnableAction();
 			}
 		});
-		Node anode = node.getChild("stop");
+
+		Node anode = node.getChild("diable");
 		if (anode == null)
-			node.createChild("stop").setAction(act).build().setSerializable(false);
+			node.createChild("disable").setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
+
+		this.statnode.setValue(new Value("Enabled"));
 	}
 
 	private void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
-		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-		if (!isSerial) {
-			act.addParameter(new Parameter("transport type", ValueType.makeEnum("TCP", "UDP"),
-					node.getAttribute("transport type")));
-			act.addParameter(new Parameter("host", ValueType.STRING, node.getAttribute("host")));
-			act.addParameter(new Parameter("port", ValueType.NUMBER, node.getAttribute("port")));
-		}
-		act.addParameter(new Parameter("slave id", ValueType.NUMBER, node.getAttribute("slave id")));
-		double defint = node.getAttribute("polling interval").getNumber().doubleValue() / 1000;
-		act.addParameter(new Parameter("polling interval", ValueType.NUMBER, new Value(defint)));
-		act.addParameter(
-				new Parameter("zero on failed poll", ValueType.BOOL, node.getAttribute("zero on failed poll")));
-		act.addParameter(new Parameter("use batch polling", ValueType.BOOL, node.getAttribute("use batch polling")));
-		act.addParameter(new Parameter("contiguous batch requests only", ValueType.BOOL,
-				node.getAttribute("contiguous batch requests only")));
-		if (!isSerial) {
-			act.addParameter(new Parameter("Timeout", ValueType.NUMBER, node.getAttribute("Timeout")));
-			act.addParameter(new Parameter("retries", ValueType.NUMBER, node.getAttribute("retries")));
-			act.addParameter(
-					new Parameter("max read bit count", ValueType.NUMBER, node.getAttribute("max read bit count")));
-			act.addParameter(new Parameter("max read register count", ValueType.NUMBER,
-					node.getAttribute("max read register count")));
-			act.addParameter(new Parameter("max write register count", ValueType.NUMBER,
-					node.getAttribute("max write register count")));
-			act.addParameter(
-					new Parameter("discard data delay", ValueType.NUMBER, node.getAttribute("discard data delay")));
-			act.addParameter(new Parameter("use multiple write commands only", ValueType.BOOL,
-					node.getAttribute("use multiple write commands only")));
-		}
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_NAME, ValueType.STRING, new Value(node.getName())));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER,
+				node.getAttribute(ModbusConnection.ATTR_SLAVE_ID)));
+		double defint = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().doubleValue() / 1000;
+		act.addParameter(new Parameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER, new Value(defint)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL,
+				node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL,
+				node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
+				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
+
 		Node anode = node.getChild("edit");
 		if (anode == null)
 			node.createChild("edit").setAction(act).build().setSerializable(false);
@@ -224,149 +153,19 @@ public class SlaveNode extends SlaveFolder {
 			anode.setAction(act);
 	}
 
-	ModbusMaster getMaster() {
-		if (reconnectFuture != null) {
-			reconnectFuture.cancel(false);
-			reconnectFuture = null;
-		}
-
-		if (isSerial) {
-			return conn.master;
-		}
-
-		statnode.setValue(new Value("connecting to device"));
-		TransportType transtype = null;
-		try {
-			transtype = TransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
-		} catch (Exception e1) {
-			LOGGER.error("invalid transport type");
-			LOGGER.debug("error: ", e1);
-			statnode.setValue(new Value("invalid transport type"));
-			return null;
-		}
-		String host = node.getAttribute("host").getString();
-		int port = node.getAttribute("port").getNumber().intValue();
-		int timeout = node.getAttribute("Timeout").getNumber().intValue();
-		int retries = node.getAttribute("retries").getNumber().intValue();
-		int maxrbc = node.getAttribute("max read bit count").getNumber().intValue();
-		int maxrrc = node.getAttribute("max read register count").getNumber().intValue();
-		int maxwrc = node.getAttribute("max write register count").getNumber().intValue();
-		int ddd = node.getAttribute("discard data delay").getNumber().intValue();
-		boolean mwo = node.getAttribute("use multiple write commands only").getBool();
-		ModbusMaster master = null;
-		switch (transtype) {
-		case TCP: {
-			IpParameters params = new IpParameters();
-			params.setHost(host);
-			params.setPort(port);
-			master = new ModbusFactory().createTcpMaster(params, true);
-			break;
-		}
-		case UDP: {
-			IpParameters params = new IpParameters();
-			params.setHost(host);
-			params.setPort(port);
-			master = new ModbusFactory().createUdpMaster(params);
-			break;
-		}
-		default:
-			return null;
-		}
-
-		master.setTimeout(timeout);
-		master.setRetries(retries);
-		master.setMaxReadBitCount(maxrbc);
-		master.setMaxReadRegisterCount(maxrrc);
-		master.setMaxWriteRegisterCount(maxwrc);
-		master.setDiscardDataDelay(ddd);
-		master.setMultipleWritesOnly(mwo);
-
-		try {
-			master.init();
-			LOGGER.debug("Trying to connect");
-		} catch (ModbusInitException e) {
-			LOGGER.error("error in initializing master:" + e.getMessage() + " on " + host + ":" + port);
-			statnode.setValue(new Value("Could not establish connection"));
-			node.removeChild("stop");
-			makeStartAction();
-			try {
-				master.destroy();
-				LOGGER.debug("Close connection");
-			} catch (Exception e1) {
-				LOGGER.debug(e1.getMessage());
-			}
-
-		}
-
-		if (master.isInitialized()) {
-			link.masters.add(master);
-			return master;
-		} else {
-			return null;
-		}
-
-	}
-
 	@Override
 	protected void remove() {
 		super.remove();
-		if (isSerial) {
+
+		{
 			conn.slaves.remove(this);
 			return;
 		}
-		try {
-			master.destroy();
-			link.masters.remove(master);
-			master = null;
-		} catch (Exception e) {
-			LOGGER.debug("error destroying last master");
-		}
-		if (!isSerial)
-			stpe.shutdown();
 
 	}
 
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			if (!isSerial) {
-				if (master != null) {
-					try {
-						master.destroy();
-						link.masters.remove(master);
-						master = null;
-					} catch (Exception e) {
-						LOGGER.debug("error destroying last master");
-					}
-				}
-				TransportType transtype;
-				try {
-					transtype = TransportType
-							.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
-				} catch (Exception e) {
-					LOGGER.error("invalid transport type");
-					LOGGER.debug("error: ", e);
-					return;
-				}
-				String host = event.getParameter("host", ValueType.STRING).getString();
-				int port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
-				node.setAttribute("host", new Value(host));
-				node.setAttribute("port", new Value(port));
-				int timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
-				int retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
-				int maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
-				int maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
-				int maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
-				int ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
-				boolean mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
-				node.setAttribute("transport type", new Value(transtype.toString()));
-				node.setAttribute("Timeout", new Value(timeout));
-				node.setAttribute("retries", new Value(retries));
-				node.setAttribute("max read bit count", new Value(maxrbc));
-				node.setAttribute("max read register count", new Value(maxrrc));
-				node.setAttribute("max write register count", new Value(maxwrc));
-				node.setAttribute("discard data delay", new Value(ddd));
-				node.setAttribute("use multiple write commands only", new Value(mwo));
-			}
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
 			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
@@ -374,20 +173,19 @@ public class SlaveNode extends SlaveFolder {
 			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
 			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
-			link.handleEdit(root);
+
+			if (!name.equals(node.getName())) {
+				rename(name);
+			}
 			node.setAttribute("slave id", new Value(slaveid));
 			node.setAttribute("polling interval", new Value(interval));
 			node.setAttribute("zero on failed poll", new Value(zerofail));
 			node.setAttribute("use batch polling", new Value(batchpoll));
 			node.setAttribute("contiguous batch requests only", new Value(contig));
 
-			if (!name.equals(node.getName())) {
-				rename(name);
-			}
-
-			master = getMaster();
-			checkConnection();
-
+			link.handleEdit(root);
+			master = conn.getMaster();
+			// checkConnection();
 			makeEditAction();
 		}
 	}
@@ -395,7 +193,7 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	protected void duplicate(String name) {
 		JsonObject jobj = link.copySerializer.serialize();
-		JsonObject parentobj = isSerial ? (JsonObject) jobj.get(conn.node.getName()) : jobj;
+		JsonObject parentobj = (JsonObject) jobj.get(conn.node.getName());
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(name, nodeobj);
 		link.copyDeserializer.deserialize(jobj);
@@ -407,6 +205,7 @@ public class SlaveNode extends SlaveFolder {
 	public void readPoints() {
 		if (master == null)
 			return;
+
 		if (node.getAttribute("use batch polling").getBool()) {
 			LOGGER.debug("batch polling " + node.getName() + " :");
 			int id = getIntValue(node.getAttribute("slave id"));
@@ -441,7 +240,7 @@ public class SlaveNode extends SlaveFolder {
 			try {
 				BatchResults<Node> response = master.send(batch);
 				if ("Device ping failed".equals(statnode.getValue().getString())) {
-					checkConnection();
+					// checkConnection();
 				}
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
@@ -523,10 +322,10 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException e) {
 				LOGGER.debug("", e);
-				if ("Ready".equals(statnode.getValue().getString())) {
-					checkConnection();
+				if ("Enabled".equals(statnode.getValue().getString())) {
+					// checkConnection();
 				}
-				if (node.getAttribute("zero on failed poll").getBool()) {
+				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
 							pnode.setValue(new Value(0));
@@ -551,4 +350,17 @@ public class SlaveNode extends SlaveFolder {
 		}
 	}
 
+	public ScheduledThreadPoolExecutor getDaemonThreadPool() {
+		return conn.getDaemonThreadPool();
+	}
+
+	@Override
+	public ModbusMaster getMaster() {
+		return this.master;
+	}
+
+	@Override
+	public ModbusConnection getConnection() {
+		return this.conn;
+	}
 }
