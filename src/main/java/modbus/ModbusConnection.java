@@ -47,7 +47,9 @@ abstract public class ModbusConnection {
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_EDITABLE_FOLDER = "editable folder";
-
+    static final String ATTR_STATUS_NODE = "Status";
+    static final String ATTR_STATUS_READY = "Ready";
+	
 	Node node;
 	Node statnode;
 	ModbusLink link;
@@ -70,7 +72,7 @@ abstract public class ModbusConnection {
 		this.link = link;
 		this.node = node;
 
-		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING)
+		this.statnode = node.createChild(ATTR_STATUS_NODE).setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up connection")).build();
 		slaves = new HashSet<>();
 		node.setAttribute("restoreType", new Value("conn"));
@@ -139,7 +141,7 @@ abstract public class ModbusConnection {
 				child.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
 			}
 			if (slaveId != null && interval != null) {
-				SlaveNode sn = new SlaveNode(link, child, this);
+				SlaveNode sn = new SlaveNode(this, child);
 				sn.restoreLastSession();
 			} else if (child.getAction() == null && !child.getName().equals("STATUS")) {
 				node.removeChild(child);
@@ -148,7 +150,6 @@ abstract public class ModbusConnection {
 	}
 
 	void init() {
-
 		Action act = getRemoveAction();
 
 		Node anode = node.getChild("remove");
@@ -235,7 +236,6 @@ abstract public class ModbusConnection {
 		act.addParameter(new Parameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL, new Value(false)));
 
 		return act;
-
 	}
 
 	void makeStartAction() {
@@ -250,6 +250,7 @@ abstract public class ModbusConnection {
 
 			}
 		});
+		
 		Node anode = node.getChild("start");
 		if (anode == null)
 			node.createChild("start").setAction(act).build().setSerializable(false);
@@ -270,6 +271,7 @@ abstract public class ModbusConnection {
 				makeStartAction();
 			}
 		});
+		
 		Node anode = node.getChild("stop");
 		if (anode == null)
 			node.createChild("stop").setAction(act).build().setSerializable(false);
@@ -287,7 +289,7 @@ abstract public class ModbusConnection {
 				LOGGER.debug("error during device ping: ", e);
 			}
 			if (connected)
-				statnode.setValue(new Value("Ready"));
+				statnode.setValue(new Value(ATTR_STATUS_READY));
 			else
 				statnode.setValue(new Value("Device ping failed"));
 		}

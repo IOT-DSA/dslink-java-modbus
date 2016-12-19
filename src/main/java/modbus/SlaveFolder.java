@@ -42,12 +42,13 @@ public class SlaveFolder {
 	}
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
-	protected ModbusLink link;
+	//protected ModbusLink link;
+	ModbusConnection conn;
 	protected Node node;
 	protected SlaveFolder root;
 
-	SlaveFolder(ModbusLink link, Node node) {
-		this.link = link;
+	SlaveFolder(ModbusConnection conn, Node node) {
+		this.conn = conn;
 		this.node = node;
 		node.setAttribute("restoreType", new Value("folder"));
 
@@ -85,8 +86,8 @@ public class SlaveFolder {
 		node.createChild("add folder").setAction(act).build().setSerializable(false);
 	}
 
-	SlaveFolder(ModbusLink link, Node node, SlaveFolder root) {
-		this(link, node);
+	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
+		this(conn, node);
 		this.root = root;
 
 	}
@@ -98,7 +99,7 @@ public class SlaveFolder {
 			Value restoreType = child.getAttribute("restoreType");
 			if (restoreType != null) {
 				if (restoreType.getString().equals("folder")) {
-					SlaveFolder sf = new SlaveFolder(link, child, root);
+					SlaveFolder sf = new SlaveFolder(conn, child, root);
 					sf.restoreLastSession();
 				} else if (restoreType.getString().equals("point")) {
 					Value type = child.getAttribute("type");
@@ -114,7 +115,7 @@ public class SlaveFolder {
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
 						setupPointActions(child);
-						link.setupPoint(child, root);
+						conn.getLink().setupPoint(child, root);
 					} else {
 						node.removeChild(child);
 					}
@@ -158,13 +159,13 @@ public class SlaveFolder {
 	}
 
 	protected void duplicate(String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(name, nodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name);
-		SlaveFolder sf = new SlaveFolder(link, newnode, root);
+		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
 		sf.restoreLastSession();
 	}
 
@@ -183,7 +184,7 @@ public class SlaveFolder {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			Node child = node.createChild(name).build();
-			new SlaveFolder(link, child, root);
+			new SlaveFolder(conn, child, root);
 		}
 	}
 
@@ -243,7 +244,7 @@ public class SlaveFolder {
 			pnode.setAttribute("scaling offset", new Value(addscale));
 			pnode.setAttribute("writable", new Value(writable));
 			setupPointActions(pnode);
-			link.setupPoint(pnode, root);
+			conn.getLink().setupPoint(pnode, root);
 			pnode.setAttribute("restoreType", new Value("point"));
 		}
 	}
@@ -315,14 +316,14 @@ public class SlaveFolder {
 	}
 
 	private Node copyPoint(Node pointNode, String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
 		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
 		parentobj.put(name, pointnodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
 		Node newnode = node.getChild(name);
 		setupPointActions(newnode);
-		link.setupPoint(newnode, root);
+		conn.getLink().setupPoint(newnode, root);
 		return newnode;
 	}
 
@@ -377,7 +378,7 @@ public class SlaveFolder {
 			pointNode.setAttribute("scaling offset", new Value(addscale));
 			pointNode.setAttribute("writable", new Value(writable));
 			setupPointActions(pointNode);
-			link.setupPoint(pointNode, root);
+			conn.getLink().setupPoint(pointNode, root);
 			pointNode.setAttribute("restoreType", new Value("point"));
 		}
 	}

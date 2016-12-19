@@ -43,13 +43,13 @@ public class SlaveNode extends SlaveFolder {
 
 	ModbusMaster master;
 	long interval;
-	ModbusConnection conn;
+
 	Node statnode;
 
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 
-	SlaveNode(ModbusLink link, Node node, ModbusConnection conn) {
-		super(link, node);
+	SlaveNode(ModbusConnection conn, Node node) {
+		super(conn, node);
 
 		this.conn = conn;
 		conn.slaves.add(this);
@@ -183,23 +183,11 @@ public class SlaveNode extends SlaveFolder {
 			node.setAttribute("use batch polling", new Value(batchpoll));
 			node.setAttribute("contiguous batch requests only", new Value(contig));
 
-			link.handleEdit(root);
+			conn.getLink().handleEdit(root);
 			master = conn.getMaster();
 			// checkConnection();
 			makeEditAction();
 		}
-	}
-
-	@Override
-	protected void duplicate(String name) {
-		JsonObject jobj = link.copySerializer.serialize();
-		JsonObject parentobj = (JsonObject) jobj.get(conn.node.getName());
-		JsonObject nodeobj = parentobj.get(node.getName());
-		parentobj.put(name, nodeobj);
-		link.copyDeserializer.deserialize(jobj);
-		Node newnode = node.getParent().getChild(name);
-		SlaveNode sn = new SlaveNode(link, newnode, conn);
-		sn.restoreLastSession();
 	}
 
 	public void readPoints() {
@@ -357,10 +345,5 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	public ModbusMaster getMaster() {
 		return this.master;
-	}
-
-	@Override
-	public ModbusConnection getConnection() {
-		return this.conn;
 	}
 }
