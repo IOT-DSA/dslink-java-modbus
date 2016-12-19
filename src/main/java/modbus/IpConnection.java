@@ -21,7 +21,6 @@ import modbus.SlaveNode.TransportType;
 public class IpConnection extends ModbusConnection {
 
 	private static final Logger LOGGER;
-
 	static {
 		LOGGER = LoggerFactory.getLogger(IpConnection.class);
 	}
@@ -61,21 +60,21 @@ public class IpConnection extends ModbusConnection {
 			statnode.setValue(new Value("invalid transport type"));
 			return null;
 		}
+		
+		IpParameters params;
 		switch (transtype) {
-		case TCP: {
-			IpParameters params = new IpParameters();
+		case TCP:
+			params = new IpParameters();
 			params.setHost(host);
 			params.setPort(port);
 			master = new ModbusFactory().createTcpMaster(params, true);
 			break;
-		}
-		case UDP: {
-			IpParameters params = new IpParameters();
+		case UDP:
+			params = new IpParameters();
 			params.setHost(host);
 			params.setPort(port);
 			master = new ModbusFactory().createUdpMaster(params);
 			break;
-		}
 		default:
 			return null;
 		}
@@ -96,7 +95,6 @@ public class IpConnection extends ModbusConnection {
 			} catch (Exception e1) {
 				LOGGER.debug(e1.getMessage());
 			}
-
 		}
 
 		if (master.isInitialized()) {
@@ -105,7 +103,6 @@ public class IpConnection extends ModbusConnection {
 		} else {
 			return null;
 		}
-
 	}
 
 	String getAddDeviceActionName() {
@@ -115,7 +112,6 @@ public class IpConnection extends ModbusConnection {
 	@Override
 	Handler<ActionResult> getAddDeviceActionHandler() {
 		return new AddDeviceHandler(this);
-
 	}
 
 	@Override
@@ -159,9 +155,9 @@ public class IpConnection extends ModbusConnection {
 				LOGGER.debug("error: ", e);
 				return;
 			}
-
-			readMasterParameters(event);
 			node.setAttribute("transport type", new Value(transtype.toString()));
+			
+			readMasterParameters(event);
 			setMasterAttributes();
 
 			stop();
@@ -173,11 +169,6 @@ public class IpConnection extends ModbusConnection {
 			restoreLastSession();
 		}
 	}
-	// @Override
-	// Handler<ActionResult> getAddDeviceActionHandler() {
-	// return new AddIpDeviceHandler(this);
-	//
-	// }
 
 	class AddDeviceHandler implements Handler<ActionResult> {
 
@@ -188,12 +179,11 @@ public class IpConnection extends ModbusConnection {
 		}
 
 		public void handle(ActionResult event) {
-
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			Node deviceNode = node.createChild(name).build();
 
 			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
+			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().intValue()
 					* 1000);
 			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
@@ -205,7 +195,7 @@ public class IpConnection extends ModbusConnection {
 			deviceNode.setAttribute("use batch polling", new Value(batchpoll));
 			deviceNode.setAttribute("contiguous batch requests only", new Value(contig));
 
-			new SlaveNode(getLink(), deviceNode, conn);
+			new SlaveNode(conn, deviceNode);
 		}
 	}
 

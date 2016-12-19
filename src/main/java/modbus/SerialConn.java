@@ -378,7 +378,7 @@ public class SerialConn extends ModbusConnection {
 			snode.setAttribute("message frame spacing", new Value(msgSpacing));
 			snode.setAttribute("character spacing", new Value(charSpacing));
 
-			new SlaveNode(getLink(), snode, conn);
+			new SlaveNode(conn, snode);
 		}
 	}
 }
