@@ -47,9 +47,9 @@ abstract public class ModbusConnection {
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_EDITABLE_FOLDER = "editable folder";
-    static final String ATTR_STATUS_NODE = "Status";
-    static final String ATTR_STATUS_READY = "Ready";
-	
+	static final String ATTR_STATUS_NODE = "Status";
+	static final String ATTR_STATUS_READY = "Ready";
+
 	Node node;
 	Node statnode;
 	ModbusLink link;
@@ -250,7 +250,7 @@ abstract public class ModbusConnection {
 
 			}
 		});
-		
+
 		Node anode = node.getChild("start");
 		if (anode == null)
 			node.createChild("start").setAction(act).build().setSerializable(false);
@@ -271,7 +271,7 @@ abstract public class ModbusConnection {
 				makeStartAction();
 			}
 		});
-		
+
 		Node anode = node.getChild("stop");
 		if (anode == null)
 			node.createChild("stop").setAction(act).build().setSerializable(false);
