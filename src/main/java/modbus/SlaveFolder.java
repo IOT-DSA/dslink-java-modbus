@@ -42,7 +42,7 @@ public class SlaveFolder {
 	}
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
-	//protected ModbusLink link;
+	// protected ModbusLink link;
 	ModbusConnection conn;
 	protected Node node;
 	protected SlaveFolder root;
@@ -52,27 +52,12 @@ public class SlaveFolder {
 		this.node = node;
 		node.setAttribute("restoreType", new Value("folder"));
 
-		Action act = new Action(Permission.READ, new AddPointHandler());
-		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
-		act.addParameter(new Parameter("offset", ValueType.NUMBER));
-		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("data type",
-				ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32",
-						"INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64",
-						"UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP",
-						"CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP")));
-		act.addParameter(new Parameter("bit", ValueType.NUMBER));
-		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, new Value(0)));
-		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
+		Action act = getAddPointAction();
 		node.createChild("add point").setAction(act).build().setSerializable(false);
 
-		if (!(this instanceof SlaveNode)) {
-			act = new Action(Permission.READ, new RenameHandler());
-			act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-			node.createChild("rename").setAction(act).build().setSerializable(false);
-		}
+		act = new Action(Permission.READ, new RenameHandler());
+		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
+		node.createChild("rename").setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -92,9 +77,30 @@ public class SlaveFolder {
 
 	}
 
+	Action getAddPointAction() {
+		Action act = new Action(Permission.READ, new AddPointHandler());
+
+		act.addParameter(new Parameter("name", ValueType.STRING));
+		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
+		act.addParameter(new Parameter("offset", ValueType.NUMBER));
+		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("data type",
+				ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32",
+						"INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64",
+						"UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP",
+						"CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP")));
+		act.addParameter(new Parameter("bit", ValueType.NUMBER));
+		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
+
+		return act;
+	}
+
 	void restoreLastSession() {
 		if (node.getChildren() == null)
 			return;
+
 		for (Node child : node.getChildren().values()) {
 			Value restoreType = child.getAttribute("restoreType");
 			if (restoreType != null) {
