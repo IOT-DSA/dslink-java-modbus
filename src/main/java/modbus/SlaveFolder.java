@@ -42,7 +42,7 @@ public class SlaveFolder {
 	}
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
-	// protected ModbusLink link;
+
 	ModbusConnection conn;
 	protected Node node;
 	protected SlaveFolder root;
@@ -101,7 +101,8 @@ public class SlaveFolder {
 		if (node.getChildren() == null)
 			return;
 
-		for (Node child : node.getChildren().values()) {
+		Map<String, Node> children = node.getChildren();
+		for (Node child : children.values()) {
 			Value restoreType = child.getAttribute("restoreType");
 			if (restoreType != null) {
 				if (restoreType.getString().equals("folder")) {
@@ -213,7 +214,8 @@ public class SlaveFolder {
 	protected class AddPointHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			PointType type;
+			PointType type = null;
+			ValueType valType = null;
 			try {
 				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
@@ -226,12 +228,18 @@ public class SlaveFolder {
 			boolean writable = (type == PointType.COIL || type == PointType.HOLDING)
 					&& event.getParameter("writable", ValueType.BOOL).getBool();
 			DataType dataType;
-			if (type == PointType.COIL || type == PointType.DISCRETE)
+			if (type == PointType.COIL || type == PointType.DISCRETE) {
 				dataType = DataType.BOOLEAN;
-			else
+				valType = ValueType.BOOL;
+			} else
 				try {
 					dataType = DataType
 							.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
+					if (dataType.isString()) {
+						valType = ValueType.STRING;
+					} else {
+						valType = ValueType.NUMBER;
+					}
 				} catch (Exception e1) {
 					LOGGER.error("invalid data type");
 					LOGGER.debug("error: ", e1);
@@ -240,7 +248,8 @@ public class SlaveFolder {
 			int bit = event.getParameter("bit", new Value(-1)).getNumber().intValue();
 			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
 			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
-			Node pnode = node.createChild(name).setValueType(ValueType.STRING).build();
+
+			Node pnode = node.createChild(name).setValueType(valType).build();
 			pnode.setAttribute("type", new Value(type.toString()));
 			pnode.setAttribute("offset", new Value(offset));
 			pnode.setAttribute("number of registers", new Value(numRegs));
@@ -504,11 +513,11 @@ public class SlaveFolder {
 			LOGGER.debug("error: ", e);
 			polledNodes.remove(requestString);
 		} finally {
-			// try {
-			// root.master.destroy();
-			// } catch (Exception e) {
-			// LOGGER.debug("error destroying last master");
-			// }
+			try {
+				root.getMaster().destroy();
+			} catch (Exception e) {
+				LOGGER.debug("error destroying last master");
+			}
 		}
 		String valString = val.toString();
 		Value v = new Value(valString);
@@ -632,9 +641,13 @@ public class SlaveFolder {
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
-			} // finally {
-				// root.master.destroy();
-				// }
+			} finally {
+				try {
+					root.getMaster().destroy();
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master");
+				}
+			}
 
 		}
 	}
@@ -656,7 +669,7 @@ public class SlaveFolder {
 	}
 
 	public ModbusMaster getMaster() {
-		return null;
+		return root.getMaster();
 	}
 
 	protected static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt,
