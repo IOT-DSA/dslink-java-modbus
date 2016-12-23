@@ -16,11 +16,10 @@ import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.ip.IpParameters;
 
-import modbus.SlaveNode.TransportType;
-
 public class IpConnection extends ModbusConnection {
 
 	private static final Logger LOGGER;
+
 	static {
 		LOGGER = LoggerFactory.getLogger(IpConnection.class);
 	}
@@ -60,7 +59,7 @@ public class IpConnection extends ModbusConnection {
 			statnode.setValue(new Value("invalid transport type"));
 			return null;
 		}
-		
+
 		IpParameters params;
 		switch (transtype) {
 		case TCP:
@@ -146,9 +145,9 @@ public class IpConnection extends ModbusConnection {
 	private class EditHandler implements Handler<ActionResult> {
 
 		public void handle(ActionResult event) {
-			TransportType transtype;
+			IpTransportType transtype;
 			try {
-				transtype = TransportType
+				transtype = IpTransportType
 						.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
 				LOGGER.error("invalid transport type");
@@ -156,7 +155,7 @@ public class IpConnection extends ModbusConnection {
 				return;
 			}
 			node.setAttribute("transport type", new Value(transtype.toString()));
-			
+
 			readMasterParameters(event);
 			setMasterAttributes();
 
@@ -171,7 +170,6 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	class AddDeviceHandler implements Handler<ActionResult> {
-
 		private ModbusConnection conn;
 
 		AddDeviceHandler(ModbusConnection conn) {

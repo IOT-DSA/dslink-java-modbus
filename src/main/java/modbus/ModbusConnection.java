@@ -1,6 +1,7 @@
 package modbus;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -125,7 +126,8 @@ abstract public class ModbusConnection {
 		if (node.getChildren() == null)
 			return;
 
-		for (Node child : node.getChildren().values()) {
+		Map<String, Node> children = node.getChildren();
+		for (Node child : children.values()) {
 			Value slaveId = child.getAttribute(ATTR_SLAVE_ID);
 			Value interval = child.getAttribute(ATTR_POLLING_INTERVAL);
 			Value zerofail = child.getAttribute(ATTR_ZERO_ON_FAILED_POLL);
@@ -174,8 +176,8 @@ abstract public class ModbusConnection {
 		} else {
 			anode.setAction(act);
 		}
-		master = getMaster();
 
+		master = getMaster();
 		if (master != null) {
 			statnode.setValue(new Value("Connected"));
 			act = new Action(Permission.READ, new StopHandler());
@@ -306,7 +308,6 @@ abstract public class ModbusConnection {
 						master = getMaster();
 					}
 				}
-
 			}, retryDelay, TimeUnit.SECONDS);
 			if (retryDelay < 60)
 				retryDelay += 2;
