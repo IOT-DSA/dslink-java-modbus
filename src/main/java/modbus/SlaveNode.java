@@ -41,6 +41,11 @@ public class SlaveNode extends SlaveFolder {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
 
+	final static String DEVICE_NODE_ENABLE = "enalbe";
+	final static String DEVICE_NODE_DISABLE = "disable";
+	final static String DEVICE_STATUS_ENABLED = "enabled";
+	final static String DEVICE_STATUS_DISABLED = "disabled";
+
 	ModbusMaster master;
 	long interval;
 
@@ -54,7 +59,7 @@ public class SlaveNode extends SlaveFolder {
 		this.conn = conn;
 		conn.slaves.add(this);
 		this.root = this;
-		this.statnode = node.createChild("STATUS").setValueType(ValueType.STRING)
+		this.statnode = node.createChild("Status").setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up device")).build();
 		this.master = conn.getMaster();
 		/*
@@ -64,7 +69,7 @@ public class SlaveNode extends SlaveFolder {
 		 * 
 		 * });
 		 */
-		this.interval = node.getAttribute("polling interval").getNumber().longValue();
+		this.interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
 
@@ -91,45 +96,41 @@ public class SlaveNode extends SlaveFolder {
 		return subscribed.isEmpty();
 	}
 
-	enum TransportType {
-		TCP, UDP, RTU, ASCII
-	}
-
 	private void makeEnableAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				// TBD
-				node.removeChild("enable");
-				statnode.setValue(new Value("enabled"));
+				node.removeChild(DEVICE_NODE_ENABLE);
+				statnode.setValue(new Value(DEVICE_STATUS_ENABLED));
 				makeDisableAction();
 			}
 		});
-		Node anode = node.getChild("enable");
+		Node anode = node.getChild(DEVICE_NODE_ENABLE);
 		if (anode == null)
-			node.createChild("enable").setAction(act).build().setSerializable(false);
+			node.createChild(DEVICE_NODE_ENABLE).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
-		this.statnode.setValue(new Value("Disabled"));
+		this.statnode.setValue(new Value(DEVICE_STATUS_DISABLED));
 	}
 
 	private void makeDisableAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				// TBD
-				node.removeChild("disalbe");
-				statnode.setValue(new Value("Disabled"));
+				node.removeChild(DEVICE_NODE_DISABLE);
+				statnode.setValue(new Value(DEVICE_STATUS_DISABLED));
 				makeEnableAction();
 			}
 		});
 
-		Node anode = node.getChild("diable");
+		Node anode = node.getChild(DEVICE_NODE_DISABLE);
 		if (anode == null)
-			node.createChild("disable").setAction(act).build().setSerializable(false);
+			node.createChild(DEVICE_NODE_DISABLE).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
-		this.statnode.setValue(new Value("Enabled"));
+		this.statnode.setValue(new Value(DEVICE_STATUS_ENABLED));
 	}
 
 	private void makeEditAction() {
@@ -157,10 +158,8 @@ public class SlaveNode extends SlaveFolder {
 	protected void remove() {
 		super.remove();
 
-		{
-			conn.slaves.remove(this);
-			return;
-		}
+		conn.slaves.remove(this);
+		return;
 
 	}
 
@@ -227,8 +226,8 @@ public class SlaveNode extends SlaveFolder {
 
 			try {
 				BatchResults<Node> response = master.send(batch);
-				if ("Device ping failed".equals(statnode.getValue().getString())) {
-					// checkConnection();
+				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
+					conn.checkConnection();
 				}
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
@@ -310,8 +309,8 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException e) {
 				LOGGER.debug("", e);
-				if ("Enabled".equals(statnode.getValue().getString())) {
-					// checkConnection();
+				if (DEVICE_STATUS_ENABLED.equals(statnode.getValue().getString())) {
+					conn.checkConnection();
 				}
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
@@ -322,12 +321,18 @@ public class SlaveNode extends SlaveFolder {
 				}
 			} catch (ErrorResponseException e) {
 				LOGGER.debug("", e);
-				if (node.getAttribute("zero on failed poll").getBool()) {
+				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
 							pnode.setValue(new Value(0));
 						}
 					}
+				}
+			} finally {
+				try {
+					root.getMaster().destroy();
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master");
 				}
 			}
 
