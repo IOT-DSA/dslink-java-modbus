@@ -3,9 +3,6 @@ package modbus;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-
-import modbus.SlaveNode.TransportType;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -14,11 +11,10 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.Objects;
-import org.dsa.iot.dslink.util.json.JsonObject;
+import org.dsa.iot.dslink.util.handler.Handler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.io.serial.CommPortConfigException;
 import com.serotonin.io.serial.CommPortProxy;
@@ -62,7 +58,7 @@ public class SerialConn extends ModbusConnection {
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter("transport type", ValueType.makeEnum(Util.enumNames(SerialTransportType.class)),
 				node.getAttribute("transport type")));
-		
+
 		Set<String> portids = new HashSet<String>();
 		try {
 			List<CommPortProxy> cports = SerialUtils.getCommPorts();
@@ -116,9 +112,9 @@ public class SerialConn extends ModbusConnection {
 
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			TransportType transtype;
+			SerialTransportType transtype;
 			try {
-				transtype = TransportType
+				transtype = SerialTransportType
 						.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
 				LOGGER.error("invalid transport type");
@@ -187,9 +183,9 @@ public class SerialConn extends ModbusConnection {
 			return this.master;
 		}
 
-		TransportType transtype = null;
+		SerialTransportType transtype = null;
 		try {
-			transtype = TransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
+			transtype = SerialTransportType.valueOf(node.getAttribute("transport type").getString().toUpperCase());
 		} catch (Exception e1) {
 			LOGGER.error("invalid transport type");
 			LOGGER.debug("error: ", e1);
@@ -216,9 +212,9 @@ public class SerialConn extends ModbusConnection {
 		long msgSpacing = node.getAttribute("message frame spacing").getNumber().longValue();
 		long charSpacing = node.getAttribute("character spacing").getNumber().longValue();
 
+		SerialParameters params;
 		switch (transtype) {
-		case RTU: {
-			SerialParameters params;
+		case RTU:
 			if (useMods) {
 				params = new ModSerialParameters();
 			} else {
@@ -237,9 +233,8 @@ public class SerialConn extends ModbusConnection {
 				master = new ModbusFactory().createRtuMaster(params);
 			}
 			break;
-		}
-		case ASCII: {
-			SerialParameters params;
+
+		case ASCII:
 			if (useMods) {
 				params = new ModSerialParameters();
 			} else {
@@ -253,7 +248,7 @@ public class SerialConn extends ModbusConnection {
 
 			master = new ModbusFactory().createAsciiMaster(params);
 			break;
-		}
+
 		default:
 			return null;
 		}
@@ -290,7 +285,7 @@ public class SerialConn extends ModbusConnection {
 		conn.restoreLastSession();
 	}
 
-	class AddDeviceHandler implements Handler<ActionResult> {
+	static class AddDeviceHandler implements Handler<ActionResult> {
 
 		private SerialConn conn;
 
@@ -321,7 +316,6 @@ public class SerialConn extends ModbusConnection {
 			boolean mwo = false;
 
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			
 
 			transtype = conn.node.getAttribute("transport type").getString();
 			commPortId = conn.node.getAttribute("comm port id").getString();
