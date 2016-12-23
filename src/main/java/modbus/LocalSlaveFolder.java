@@ -290,7 +290,7 @@ public class LocalSlaveFolder extends EditableFolder {
 				LOGGER.debug("error: ", e);
 				return;
 			}
-			
+
 			int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
 			int registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 

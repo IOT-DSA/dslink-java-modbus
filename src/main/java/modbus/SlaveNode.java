@@ -259,8 +259,10 @@ public class SlaveNode extends SlaveFolder {
 							v = new Value(num.doubleValue() / scaling + addscale);
 						} else if (obj instanceof ExceptionResult) {
 							ExceptionResult result = (ExceptionResult) obj;
-							vt = ValueType.STRING;
-							v = new Value((String) result.getExceptionMessage());
+							LOGGER.error(pnode.getName() + " : " + result.getExceptionMessage());
+							// vt = ValueType.STRING;
+							// v = new Value((String)
+							// result.getExceptionMessage());
 						}
 					} else {
 						switch (dataType) {
@@ -298,10 +300,11 @@ public class SlaveNode extends SlaveFolder {
 							break;
 						}
 					}
+
 					if (v != null) {
 						pnode.setValueType(vt);
 						pnode.setValue(v);
-					} else if (node.getAttribute("zero on failed poll").getBool()
+					} else if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()
 							&& pnode.getValueType().compare(ValueType.NUMBER)) {
 						pnode.setValue(new Value(0));
 					}
