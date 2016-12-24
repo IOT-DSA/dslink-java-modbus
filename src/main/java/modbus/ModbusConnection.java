@@ -22,8 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.modbus4j.ModbusMaster;
 
-import modbus.SerialConn.AddDeviceHandler;
-
 abstract public class ModbusConnection {
 	private static final Logger LOGGER;
 
@@ -48,6 +46,7 @@ abstract public class ModbusConnection {
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_EDITABLE_FOLDER = "editable folder";
+
 	static final String ATTR_STATUS_NODE = "Status";
 	static final String ATTR_STATUS_READY = "Ready";
 

@@ -456,12 +456,7 @@ public class SlaveFolder {
 		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
 		ModbusRequest request = null;
 		JsonArray val = new JsonArray();
-		// try {
-		// root.master.init();
-		// } catch (ModbusInitException e) {
-		// // TODO Auto-generated catch block
-		// LOGGER.debug("error: ", e);
-		// }
+
 		String requestString = "";
 		try {
 			switch (type) {
@@ -608,12 +603,7 @@ public class SlaveFolder {
 				LOGGER.error("Unexpected value type");
 				return;
 			}
-			// try {
-			// root.master.init();
-			// } catch (ModbusInitException e) {
-			// // TODO Auto-generated catch block
-			// LOGGER.debug("error: ", e);
-			// }
+
 			ModbusRequest request = null;
 			try {
 				switch (type) {
@@ -630,14 +620,11 @@ public class SlaveFolder {
 				if (request != null)
 					LOGGER.debug("set request: " + request.toString());
 				root.getMaster().send(request);
-				// System.out.println(response.getExceptionMessage());
 			} catch (ModbusTransportException e) {
-				// TODO Auto-generated catch block
 				LOGGER.error("Modbus transport exception");
 				LOGGER.debug("error: ", e);
 				return;
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
@@ -648,7 +635,6 @@ public class SlaveFolder {
 					LOGGER.debug("error destroying last master");
 				}
 			}
-
 		}
 	}
 

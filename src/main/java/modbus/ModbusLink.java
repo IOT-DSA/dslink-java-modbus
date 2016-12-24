@@ -93,12 +93,7 @@ public class ModbusLink {
 	private void init() {
 		restoreLastSession();
 
-		Action act = null;
-
-		act = getAddIpDeviceAction();
-		node.createChild("add ip device").setAction(act).build().setSerializable(false);
-
-		act = getAddIpConnectionAction();
+		Action act = getAddIpConnectionAction();
 		node.createChild("add ip connection").setAction(act).build().setSerializable(false);
 
 		act = getAddSerialConnectionAction();
@@ -109,6 +104,9 @@ public class ModbusLink {
 
 		act = getMakeSlaveAction();
 		node.createChild(ACTION_ADD_LOCAL_SLAVE).setAction(act).build().setSerializable(false);
+
+		act = getAddIpDeviceAction();
+		node.createChild("add ip device").setAction(act).build().setSerializable(false);
 	}
 
 	private class PortScanHandler implements Handler<ActionResult> {
@@ -343,6 +341,7 @@ public class ModbusLink {
 				// connection
 				Value host = child.getAttribute("host");
 				Value port = child.getAttribute("port");
+
 				Value slaveId = child.getAttribute("slave id");
 				Value interval = child.getAttribute("polling interval");
 				Value zerofail = child.getAttribute("zero on failed poll");
@@ -354,6 +353,7 @@ public class ModbusLink {
 				Value contig = child.getAttribute("contiguous batch requests only");
 				if (contig == null)
 					child.setAttribute("contiguous batch requests only", new Value(true));
+
 				if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
 						&& maxwrc != null && ddd != null && mwo != null && slaveId != null && interval != null
 						&& timeout != null && retries != null) {
@@ -368,10 +368,8 @@ public class ModbusLink {
 
 					SlaveNodeWithConnection sn = new SlaveNodeWithConnection(getLink(), conn, child);
 					sn.restoreLastSession();
-
 				}
 			} else if (restype.getString().equals(ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
-
 				Value port = child.getAttribute(ATTRIBUTE_PORT);
 				Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
 				if (transType != null && port != null && slaveId != null) {
@@ -443,29 +441,23 @@ public class ModbusLink {
 			String host = "na";
 			int port = 0;
 
-			long msgSpacing = 0;
-			long charSpacing = 0;
-			boolean useMods = false;
-			boolean useCustomSpacing = false;
-
 			int timeout, retries, maxrbc, maxrrc, maxwrc, ddd;
 			boolean mwo;
 			String transtype;
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			Node snode;
-			{
-				transtype = event.getParameter("transport type").getString();
-				host = event.getParameter("host", ValueType.STRING).getString();
-				port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
-				timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
-				retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
-				maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
-				maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
-				maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
-				ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
-				mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
-				snode = node.createChild(name).build();
-			}
+
+			transtype = event.getParameter("transport type").getString();
+			host = event.getParameter("host", ValueType.STRING).getString();
+			port = event.getParameter("port", ValueType.NUMBER).getNumber().intValue();
+			timeout = event.getParameter("Timeout", ValueType.NUMBER).getNumber().intValue();
+			retries = event.getParameter("retries", ValueType.NUMBER).getNumber().intValue();
+			maxrbc = event.getParameter("max read bit count", ValueType.NUMBER).getNumber().intValue();
+			maxrrc = event.getParameter("max read register count", ValueType.NUMBER).getNumber().intValue();
+			maxwrc = event.getParameter("max write register count", ValueType.NUMBER).getNumber().intValue();
+			ddd = event.getParameter("discard data delay", ValueType.NUMBER).getNumber().intValue();
+			mwo = event.getParameter("use multiple write commands only", ValueType.BOOL).getBool();
+			snode = node.createChild(name).build();
 
 			snode.setAttribute("transport type", new Value(transtype));
 			snode.setAttribute("host", new Value(host));
@@ -478,13 +470,7 @@ public class ModbusLink {
 			snode.setAttribute("max write register count", new Value(maxwrc));
 			snode.setAttribute("discard data delay", new Value(ddd));
 			snode.setAttribute("use multiple write commands only", new Value(mwo));
-			/*
-			 * snode.setAttribute("send requests all at once", new
-			 * Value(useMods)); snode.setAttribute("set custom spacing", new
-			 * Value(useCustomSpacing)); snode.setAttribute(
-			 * "message frame spacing", new Value(msgSpacing));
-			 * snode.setAttribute("character spacing", new Value(charSpacing));
-			 */
+
 			ModbusConnection conn = new IpConnection(getLink(), snode);
 			conn.init();
 		}
@@ -532,6 +518,7 @@ public class ModbusLink {
 			snode.setAttribute("zero on failed poll", new Value(zerofail));
 			snode.setAttribute("use batch polling", new Value(batchpoll));
 			snode.setAttribute("contiguous batch requests only", new Value(contig));
+
 			snode.setAttribute("Timeout", new Value(timeout));
 			snode.setAttribute("retries", new Value(retries));
 			snode.setAttribute("max read bit count", new Value(maxrbc));

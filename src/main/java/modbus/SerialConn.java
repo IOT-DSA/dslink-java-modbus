@@ -233,7 +233,6 @@ public class SerialConn extends ModbusConnection {
 				master = new ModbusFactory().createRtuMaster(params);
 			}
 			break;
-
 		case ASCII:
 			if (useMods) {
 				params = new ModSerialParameters();
@@ -248,7 +247,6 @@ public class SerialConn extends ModbusConnection {
 
 			master = new ModbusFactory().createAsciiMaster(params);
 			break;
-
 		default:
 			return null;
 		}
@@ -291,7 +289,6 @@ public class SerialConn extends ModbusConnection {
 
 		AddDeviceHandler(SerialConn conn) {
 			this.conn = conn;
-
 		}
 
 		public void handle(ActionResult event) {
@@ -316,7 +313,6 @@ public class SerialConn extends ModbusConnection {
 			boolean mwo = false;
 
 			String name = event.getParameter("name", ValueType.STRING).getString();
-
 			transtype = conn.node.getAttribute("transport type").getString();
 			commPortId = conn.node.getAttribute("comm port id").getString();
 			baudRate = conn.node.getAttribute("baud rate").getNumber().intValue();

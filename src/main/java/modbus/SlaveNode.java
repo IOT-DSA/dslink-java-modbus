@@ -63,12 +63,13 @@ public class SlaveNode extends SlaveFolder {
 				.setValue(new Value("Setting up device")).build();
 		this.master = conn.getMaster();
 		/*
-		 * reject exception stpe.execute(new Runnable() {
+		 * stpe.execute(new Runnable() {
 		 * 
 		 * @Override public void run() { checkConnection(); }
 		 * 
 		 * });
 		 */
+
 		this.interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
@@ -160,7 +161,6 @@ public class SlaveNode extends SlaveFolder {
 
 		conn.slaves.remove(this);
 		return;
-
 	}
 
 	private class EditHandler implements Handler<ActionResult> {
@@ -226,6 +226,7 @@ public class SlaveNode extends SlaveFolder {
 
 			try {
 				BatchResults<Node> response = master.send(batch);
+
 				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
 					conn.checkConnection();
 				}
