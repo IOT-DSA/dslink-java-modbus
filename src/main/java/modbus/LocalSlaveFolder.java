@@ -407,12 +407,14 @@ public class LocalSlaveFolder extends EditableFolder {
 					Value type = child.getAttribute(ATTRIBUTE_POINT_TYPE);
 					Value offset = child.getAttribute(ATTRIBUTE_OFFSET);
 					Value dataType = child.getAttribute(ATTRIBUTE_DATA_TYPE);
-
-					// now restore the point node
+					Value value = child.getValue();
 					if (type != null && offset != null && dataType != null) {
 						setEditPointActions(child);
+						// remote slave fetches value remotely, while local
+						// slave loads the value from the local data source
+						child.setValue(value, true);
 					} else {
-						System.out.println("delete : " + child.getName());
+						LOGGER.info("delete : " + child.getName());
 						node.removeChild(child);
 					}
 				}
