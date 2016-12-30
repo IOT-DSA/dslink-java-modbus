@@ -2,6 +2,8 @@ package modbus;
 
 import java.util.Arrays;
 
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonArray;
 
 import com.serotonin.modbus4j.locator.NumericLocator;
@@ -113,4 +115,27 @@ public class Util {
 		return ((long) x) & 0xffffffffL;
 	}
 
+	protected static Double getDoubleValue(Value val) {
+		double ret = 0.0;
+		{
+			if (val.getType() == ValueType.STRING) {
+				ret = Double.parseDouble(val.getString());
+			} else if (val.getType() == ValueType.NUMBER) {
+				ret = val.getNumber().doubleValue();
+			}
+		}
+		return ret;
+	}
+
+	protected static int getIntValue(Value val) {
+		int ret = 0;
+		{
+			if (val.getType() == ValueType.STRING) {
+				ret = Integer.parseInt(val.getString());
+			} else if (val.getType() == ValueType.NUMBER) {
+				ret = val.getNumber().intValue();
+			}
+		}
+		return ret;
+	}
 }

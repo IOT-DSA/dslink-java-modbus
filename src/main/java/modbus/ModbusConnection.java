@@ -20,6 +20,7 @@ import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 
 abstract public class ModbusConnection {
@@ -39,7 +40,7 @@ abstract public class ModbusConnection {
 	static final String ATTR_TIMEOUT = "Timeout";
 	static final String ATTR_RETRIES = "retries";
 	static final String ATTR_MAX_READ_BIT_COUNT = "max read bit count";
-	static final String ATTR_MAX_READ_READ_REGISYER_COUNT = "max read register count";
+	static final String ATTR_MAX_READ_REGISTER_COUNT = "max read register count";
 	static final String ATTR_MAX_WRITE_REGISTER_COUNT = "max write register count";
 	static final String ATTR_DISCARD_DATA_DELAY = "discard data delay";
 	static final String ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY = "use multiple write commands only";
@@ -49,6 +50,15 @@ abstract public class ModbusConnection {
 
 	static final String ATTR_STATUS_NODE = "Status";
 	static final String ATTR_STATUS_READY = "Ready";
+	static final String ATTR_STATUS_FAILED = "Device ping failed";
+
+	static final String ACTION_RESTART = "restart";
+	static final String ACTION_STOP = "stop";
+	static final String ACTION_REMOVE = "remove";
+	static final String ACTION_EDIT = "edit";
+
+	static final int RETRY_DELAY_MAX = 60;
+	static final int RETRY_DELAY_STEP = 2;
 
 	Node node;
 	Node statnode;
@@ -58,7 +68,9 @@ abstract public class ModbusConnection {
 	ScheduledFuture<?> reconnectFuture = null;
 	String name;
 	int retryDelay = 1;
+
 	int timeout;
+
 	int retries;
 	int maxrbc;
 	int maxrrc;
@@ -67,15 +79,17 @@ abstract public class ModbusConnection {
 	boolean mwo;
 
 	final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
+	ModbusFactory modbusFactory;
 
 	public ModbusConnection(ModbusLink link, Node node) {
 		this.link = link;
 		this.node = node;
 
+		modbusFactory = new ModbusFactory();
 		this.statnode = node.createChild(ATTR_STATUS_NODE).setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up connection")).build();
 		slaves = new HashSet<>();
-		node.setAttribute("restoreType", new Value("conn"));
+		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
 		link.connections.add(this);
 	}
 
@@ -153,25 +167,25 @@ abstract public class ModbusConnection {
 	void init() {
 		Action act = getRemoveAction();
 
-		Node anode = node.getChild("remove");
+		Node anode = node.getChild(ACTION_REMOVE);
 		if (anode == null) {
-			node.createChild("remove").setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
 		act = getEditAction();
-		anode = node.getChild("edit");
+		anode = node.getChild(ACTION_EDIT);
 		if (anode == null) {
-			anode = node.createChild("edit").setAction(act).build();
+			anode = node.createChild(ACTION_EDIT).setAction(act).build();
 			anode.setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
 
 		act = new Action(Permission.READ, new RestartHandler());
-		anode = node.getChild("restart");
+		anode = node.getChild(ACTION_RESTART);
 		if (anode == null) {
-			node.createChild("restart").setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_RESTART).setAction(act).build().setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
@@ -180,9 +194,9 @@ abstract public class ModbusConnection {
 		if (master != null) {
 			statnode.setValue(new Value("Connected"));
 			act = new Action(Permission.READ, new StopHandler());
-			anode = node.getChild("stop");
+			anode = node.getChild(ACTION_STOP);
 			if (anode == null) {
-				node.createChild("stop").setAction(act).build().setSerializable(false);
+				node.createChild(ACTION_STOP).setAction(act).build().setSerializable(false);
 			} else {
 				anode.setAction(act);
 			}
@@ -292,7 +306,7 @@ abstract public class ModbusConnection {
 			if (connected)
 				statnode.setValue(new Value(ATTR_STATUS_READY));
 			else
-				statnode.setValue(new Value("Device ping failed"));
+				statnode.setValue(new Value(ATTR_STATUS_FAILED));
 		}
 
 		if (!connected) {
@@ -308,8 +322,8 @@ abstract public class ModbusConnection {
 					}
 				}
 			}, retryDelay, TimeUnit.SECONDS);
-			if (retryDelay < 60)
-				retryDelay += 2;
+			if (retryDelay < RETRY_DELAY_MAX)
+				retryDelay += RETRY_DELAY_STEP;
 		}
 	}
 
@@ -318,7 +332,7 @@ abstract public class ModbusConnection {
 		timeout = event.getParameter(ATTR_TIMEOUT, ValueType.NUMBER).getNumber().intValue();
 		retries = event.getParameter(ATTR_RETRIES, ValueType.NUMBER).getNumber().intValue();
 		maxrbc = event.getParameter(ATTR_MAX_READ_BIT_COUNT, ValueType.NUMBER).getNumber().intValue();
-		maxrrc = event.getParameter(ATTR_MAX_READ_READ_REGISYER_COUNT, ValueType.NUMBER).getNumber().intValue();
+		maxrrc = event.getParameter(ATTR_MAX_READ_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 		maxwrc = event.getParameter(ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 		ddd = event.getParameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER).getNumber().intValue();
 		mwo = event.getParameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL).getBool();
@@ -334,24 +348,52 @@ abstract public class ModbusConnection {
 		master.setMultipleWritesOnly(mwo);
 	}
 
-	public void setMasterAttributes() {
+	public void writeMasterAttributes() {
 		node.setAttribute(ATTR_TIMEOUT, new Value(timeout));
 		node.setAttribute(ATTR_RETRIES, new Value(retries));
 		node.setAttribute(ATTR_MAX_READ_BIT_COUNT, new Value(maxrbc));
-		node.setAttribute(ATTR_MAX_READ_READ_REGISYER_COUNT, new Value(maxrrc));
+		node.setAttribute(ATTR_MAX_READ_REGISTER_COUNT, new Value(maxrrc));
 		node.setAttribute(ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
 		node.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
 		node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
 	}
 
-	public void getMasterAttributes() {
+	public void readMasterAttributes() {
 		timeout = node.getAttribute(ATTR_TIMEOUT).getNumber().intValue();
 		retries = node.getAttribute(ATTR_RETRIES).getNumber().intValue();
 		maxrbc = node.getAttribute(ATTR_MAX_READ_BIT_COUNT).getNumber().intValue();
-		maxrrc = node.getAttribute(ATTR_MAX_READ_READ_REGISYER_COUNT).getNumber().intValue();
+		maxrrc = node.getAttribute(ATTR_MAX_READ_REGISTER_COUNT).getNumber().intValue();
 		maxwrc = node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT).getNumber().intValue();
 		ddd = node.getAttribute(ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
 		mwo = node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY).getBool();
+	}
+
+	public int getTimeout() {
+		return timeout;
+	}
+
+	public int getDdd() {
+		return ddd;
+	}
+
+	public int getRetries() {
+		return retries;
+	}
+
+	public int getMaxrbc() {
+		return maxrbc;
+	}
+
+	public int getMaxrrc() {
+		return maxrrc;
+	}
+
+	public int getMaxwrc() {
+		return maxwrc;
+	}
+
+	public boolean isMwo() {
+		return mwo;
 	}
 
 	abstract void duplicate(ModbusLink link, Node node);

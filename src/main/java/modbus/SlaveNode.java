@@ -4,9 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -15,9 +13,8 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.json.JsonArray;
-import org.dsa.iot.dslink.util.json.JsonObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
@@ -25,12 +22,9 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import com.serotonin.modbus4j.BatchRead;
 import com.serotonin.modbus4j.BatchResults;
 import com.serotonin.modbus4j.ExceptionResult;
-import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ErrorResponseException;
-import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
-import com.serotonin.modbus4j.ip.IpParameters;
 import com.serotonin.modbus4j.locator.BaseLocator;
 import com.serotonin.modbus4j.locator.BinaryLocator;
 
@@ -40,11 +34,6 @@ public class SlaveNode extends SlaveFolder {
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
-
-	final static String DEVICE_NODE_ENABLE = "enalbe";
-	final static String DEVICE_NODE_DISABLE = "disable";
-	final static String DEVICE_STATUS_ENABLED = "enabled";
-	final static String DEVICE_STATUS_DISABLED = "disabled";
 
 	ModbusMaster master;
 	long interval;
@@ -56,29 +45,17 @@ public class SlaveNode extends SlaveFolder {
 	SlaveNode(ModbusConnection conn, Node node) {
 		super(conn, node);
 
-		this.conn = conn;
 		conn.slaves.add(this);
-		this.root = this;
-		this.statnode = node.createChild("Status").setValueType(ValueType.STRING)
+		root = this;
+		statnode = node.createChild("Status").setValueType(ValueType.STRING)
 				.setValue(new Value("Setting up device")).build();
-		this.master = conn.getMaster();
-		/*
-		 * stpe.execute(new Runnable() {
-		 * 
-		 * @Override public void run() { checkConnection(); }
-		 * 
-		 * });
-		 */
-
+		master = conn.getMaster();
+        if (null != master && master.isInitialized()){
+        	statnode.setValue(new Value("Ready"));
+        }
 		this.interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
-
-		if (master != null) {
-			makeDisableAction();
-		} else {
-			makeEnableAction();
-		}
 	}
 
 	void addToSub(Node event) {
@@ -97,43 +74,6 @@ public class SlaveNode extends SlaveFolder {
 		return subscribed.isEmpty();
 	}
 
-	private void makeEnableAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				// TBD
-				node.removeChild(DEVICE_NODE_ENABLE);
-				statnode.setValue(new Value(DEVICE_STATUS_ENABLED));
-				makeDisableAction();
-			}
-		});
-		Node anode = node.getChild(DEVICE_NODE_ENABLE);
-		if (anode == null)
-			node.createChild(DEVICE_NODE_ENABLE).setAction(act).build().setSerializable(false);
-		else
-			anode.setAction(act);
-
-		this.statnode.setValue(new Value(DEVICE_STATUS_DISABLED));
-	}
-
-	private void makeDisableAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				// TBD
-				node.removeChild(DEVICE_NODE_DISABLE);
-				statnode.setValue(new Value(DEVICE_STATUS_DISABLED));
-				makeEnableAction();
-			}
-		});
-
-		Node anode = node.getChild(DEVICE_NODE_DISABLE);
-		if (anode == null)
-			node.createChild(DEVICE_NODE_DISABLE).setAction(act).build().setSerializable(false);
-		else
-			anode.setAction(act);
-
-		this.statnode.setValue(new Value(DEVICE_STATUS_ENABLED));
-	}
-
 	private void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_NAME, ValueType.STRING, new Value(node.getName())));
@@ -148,9 +88,9 @@ public class SlaveNode extends SlaveFolder {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
 
-		Node anode = node.getChild("edit");
+		Node anode = node.getChild(ACTION_EDIT);
 		if (anode == null)
-			node.createChild("edit").setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}
@@ -165,26 +105,29 @@ public class SlaveNode extends SlaveFolder {
 
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			String name = event.getParameter("name", ValueType.STRING).getString();
-			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().doubleValue()
-					* 1000);
-			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
-			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
-			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
+			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
+			int slaveid = event.getParameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
+			interval = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
+			boolean zerofail = event.getParameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
+			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
+			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
+					.getBool();
 
 			if (!name.equals(node.getName())) {
 				rename(name);
 			}
-			node.setAttribute("slave id", new Value(slaveid));
-			node.setAttribute("polling interval", new Value(interval));
-			node.setAttribute("zero on failed poll", new Value(zerofail));
-			node.setAttribute("use batch polling", new Value(batchpoll));
-			node.setAttribute("contiguous batch requests only", new Value(contig));
+			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
+			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(interval));
+			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
+			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
+			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
 
 			conn.getLink().handleEdit(root);
+
 			master = conn.getMaster();
-			// checkConnection();
+			conn.checkConnection();
+
 			makeEditAction();
 		}
 	}
@@ -193,23 +136,24 @@ public class SlaveNode extends SlaveFolder {
 		if (master == null)
 			return;
 
-		if (node.getAttribute("use batch polling").getBool()) {
+		if (node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING).getBool()) {
 			LOGGER.debug("batch polling " + node.getName() + " :");
-			int id = getIntValue(node.getAttribute("slave id"));
+			int id = Util.getIntValue(node.getAttribute(ModbusConnection.ATTR_SLAVE_ID));
 			BatchRead<Node> batch = new BatchRead<Node>();
-			batch.setContiguousRequests(node.getAttribute("contiguous batch requests only").getBool());
+			batch.setContiguousRequests(
+					node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY).getBool());
 			batch.setErrorsInResults(true);
 			Set<Node> polled = new HashSet<Node>();
 			for (Node pnode : subscribed.keySet()) {
-				if (pnode.getAttribute("offset") == null)
+				if (pnode.getAttribute(ATTR_OFFSET) == null)
 					continue;
-				PointType type = PointType.valueOf(pnode.getAttribute("type").getString());
-				int offset = getIntValue(pnode.getAttribute("offset"));
-				int numRegs = getIntValue(pnode.getAttribute("number of registers"));
-				int bit = getIntValue(pnode.getAttribute("bit"));
-				DataType dataType = DataType.valueOf(pnode.getAttribute("data type").getString());
+				PointType type = PointType.valueOf(pnode.getAttribute(ATTR_POINT_TYPE).getString());
+				int offset = Util.getIntValue(pnode.getAttribute(ATTR_OFFSET));
+				int numRegs = Util.getIntValue(pnode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
+				int bit = Util.getIntValue(pnode.getAttribute(ATTR_BIT));
+				DataType dataType = DataType.valueOf(pnode.getAttribute(ATTR_DATA_TYPE).getString());
 
-				Integer dt = getDataTypeInt(dataType);
+				Integer dt = DataType.getDataTypeInt(dataType);
 				if (dt == null)
 					dt = com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
 				int range = getPointTypeInt(type);
@@ -227,20 +171,21 @@ public class SlaveNode extends SlaveFolder {
 			try {
 				BatchResults<Node> response = master.send(batch);
 
-				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
+				if (ModbusConnection.ATTR_STATUS_FAILED.equals(conn.statnode.getValue().getString())) {
 					conn.checkConnection();
 				}
+
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
 					LOGGER.debug(pnode.getName() + " : " + obj.toString());
 
-					DataType dataType = DataType.valueOf(pnode.getAttribute("data type").getString());
-					double scaling = getDoubleValue(pnode.getAttribute("scaling"));
-					double addscale = getDoubleValue(pnode.getAttribute("scaling offset"));
+					DataType dataType = DataType.valueOf(pnode.getAttribute(ATTR_DATA_TYPE).getString());
+					double scaling = Util.getDoubleValue(pnode.getAttribute(ATTR_SCALING));
+					double addscale = Util.getDoubleValue(pnode.getAttribute(ATTR_SCALING_OFFSET));
 
 					ValueType vt = null;
 					Value v = null;
-					if (getDataTypeInt(dataType) != null) {
+					if (DataType.getDataTypeInt(dataType) != null) {
 						if (dataType == DataType.BOOLEAN && obj instanceof Boolean) {
 							vt = ValueType.BOOL;
 							v = new Value((Boolean) obj);
@@ -313,7 +258,7 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException e) {
 				LOGGER.debug("", e);
-				if (DEVICE_STATUS_ENABLED.equals(statnode.getValue().getString())) {
+				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
 					conn.checkConnection();
 				}
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {

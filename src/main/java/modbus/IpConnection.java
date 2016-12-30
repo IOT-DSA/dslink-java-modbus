@@ -30,6 +30,9 @@ public class IpConnection extends ModbusConnection {
 	static final String ATTR_PORT = "port";
 	static final String ADD_IP_DEVICE_ACTION = "add ip device";
 
+	String host;
+	int port;
+
 	IpConnection(ModbusLink link, Node node) {
 		super(link, node);
 	}
@@ -45,10 +48,8 @@ public class IpConnection extends ModbusConnection {
 		}
 		statnode.setValue(new Value("connecting to device"));
 
-		String host = node.getAttribute(ATTR_HOST).getString();
-		int port = node.getAttribute(ATTR_PORT).getNumber().intValue();
-
-		getMasterAttributes();
+		readIpAttributes();
+		readMasterAttributes();
 
 		IpTransportType transtype = null;
 		try {
@@ -66,19 +67,19 @@ public class IpConnection extends ModbusConnection {
 			params = new IpParameters();
 			params.setHost(host);
 			params.setPort(port);
-			master = new ModbusFactory().createTcpMaster(params, true);
+			master = modbusFactory.createTcpMaster(params, true);
 			break;
 		case UDP:
 			params = new IpParameters();
 			params.setHost(host);
 			params.setPort(port);
-			master = new ModbusFactory().createUdpMaster(params);
+			master = modbusFactory.createUdpMaster(params);
 			break;
 		default:
 			return null;
 		}
 
-		setMasterAttributes();
+		writeMasterParameters();
 
 		try {
 			master.init();
@@ -126,18 +127,23 @@ public class IpConnection extends ModbusConnection {
 	@Override
 	Action getEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
-		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
+		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter(ATTR_TRANSPORT_TYPE, ValueType.makeEnum(Util.enumNames(IpTransportType.class))));
-		act.addParameter(new Parameter(ATTR_HOST, ValueType.STRING, new Value("")));
-		act.addParameter(new Parameter(ATTR_PORT, ValueType.NUMBER, new Value(502)));
+		act.addParameter(new Parameter(ATTR_HOST, ValueType.STRING, node.getAttribute(ATTR_HOST)));
+		act.addParameter(new Parameter(ATTR_PORT, ValueType.NUMBER, node.getAttribute(ATTR_PORT)));
 
-		act.addParameter(new Parameter(ATTR_TIMEOUT, ValueType.NUMBER, new Value(500)));
-		act.addParameter(new Parameter(ATTR_RETRIES, ValueType.NUMBER, new Value(2)));
-		act.addParameter(new Parameter(ATTR_MAX_READ_BIT_COUNT, ValueType.NUMBER, new Value(2000)));
-		act.addParameter(new Parameter(ATTR_MAX_READ_READ_REGISYER_COUNT, ValueType.NUMBER, new Value(125)));
-		act.addParameter(new Parameter(ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
-		act.addParameter(new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
-		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(ATTR_TIMEOUT, ValueType.NUMBER, node.getAttribute(ATTR_TIMEOUT)));
+		act.addParameter(new Parameter(ATTR_RETRIES, ValueType.NUMBER, node.getAttribute(ATTR_RETRIES)));
+		act.addParameter(
+				new Parameter(ATTR_MAX_READ_BIT_COUNT, ValueType.NUMBER, node.getAttribute(ATTR_MAX_READ_BIT_COUNT)));
+		act.addParameter(new Parameter(ATTR_MAX_READ_REGISTER_COUNT, ValueType.NUMBER,
+				node.getAttribute(ATTR_MAX_READ_REGISTER_COUNT)));
+		act.addParameter(new Parameter(ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER,
+				node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT)));
+		act.addParameter(
+				new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, node.getAttribute(ATTR_DISCARD_DATA_DELAY)));
+		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
+				node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
 
 		return act;
 	}
@@ -156,8 +162,10 @@ public class IpConnection extends ModbusConnection {
 			}
 			node.setAttribute("transport type", new Value(transtype.toString()));
 
+			readIpParameters(event);
+			writeIpAttributes();
 			readMasterParameters(event);
-			setMasterAttributes();
+			writeMasterAttributes();
 
 			stop();
 
@@ -177,24 +185,47 @@ public class IpConnection extends ModbusConnection {
 		}
 
 		public void handle(ActionResult event) {
-			String name = event.getParameter("name", ValueType.STRING).getString();
+			String name = event.getParameter(ATTR_SLAVE_NAME, ValueType.STRING).getString();
 			Node deviceNode = node.createChild(name).build();
 
-			int slaveid = event.getParameter("slave id", ValueType.NUMBER).getNumber().intValue();
-			long interval = (long) (event.getParameter("polling interval", ValueType.NUMBER).getNumber().intValue()
+			int slaveid = event.getParameter(ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
+			long intervalMs = (long) (event.getParameter(ATTR_POLLING_INTERVAL, ValueType.NUMBER).getNumber().intValue()
 					* 1000);
-			boolean zerofail = event.getParameter("zero on failed poll", ValueType.BOOL).getBool();
-			boolean batchpoll = event.getParameter("use batch polling", ValueType.BOOL).getBool();
-			boolean contig = event.getParameter("contiguous batch requests only", ValueType.BOOL).getBool();
+			boolean zerofail = event.getParameter(ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
+			boolean batchpoll = event.getParameter(ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
+			boolean contig = event.getParameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL).getBool();
 
-			deviceNode.setAttribute("slave id", new Value(slaveid));
-			deviceNode.setAttribute("polling interval", new Value(interval));
-			deviceNode.setAttribute("zero on failed poll", new Value(zerofail));
-			deviceNode.setAttribute("use batch polling", new Value(batchpoll));
-			deviceNode.setAttribute("contiguous batch requests only", new Value(contig));
+			deviceNode.setAttribute(ATTR_SLAVE_ID, new Value(slaveid));
+			deviceNode.setAttribute(ATTR_POLLING_INTERVAL, new Value(intervalMs));
+			deviceNode.setAttribute(ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
+			deviceNode.setAttribute(ATTR_USE_BATCH_POLLING, new Value(batchpoll));
+			deviceNode.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
 
 			new SlaveNode(conn, deviceNode);
 		}
+	}
+
+	void readIpAttributes() {
+		host = node.getAttribute(ATTR_HOST).getString();
+		port = node.getAttribute(ATTR_PORT).getNumber().intValue();
+	}
+
+	void writeIpAttributes() {
+		node.setAttribute(ATTR_HOST, new Value(host));
+		node.setAttribute(ATTR_PORT, new Value(port));
+	}
+
+	void readIpParameters(ActionResult event) {
+		host = event.getParameter(ATTR_HOST, ValueType.STRING).getString();
+		port = event.getParameter(ATTR_PORT, ValueType.NUMBER).getNumber().intValue();
+	}
+
+	public String getHost() {
+		return host;
+	}
+
+	public int getPort() {
+		return port;
 	}
 
 }

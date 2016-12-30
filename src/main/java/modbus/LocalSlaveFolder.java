@@ -418,7 +418,7 @@ public class LocalSlaveFolder extends EditableFolder {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(child.getName().equals("STATUS"))) {
+			} else if (child.getAction() == null && !(child.getName().equals("Status"))) {
 				node.removeChild(child);
 			}
 		}
