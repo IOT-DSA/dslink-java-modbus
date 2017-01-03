@@ -79,7 +79,7 @@ abstract public class ModbusConnection {
 	boolean mwo;
 
 	final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
-	ModbusFactory modbusFactory;
+	final ModbusFactory modbusFactory;
 
 	public ModbusConnection(ModbusLink link, Node node) {
 		this.link = link;

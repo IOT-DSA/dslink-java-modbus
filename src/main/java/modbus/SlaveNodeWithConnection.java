@@ -30,7 +30,6 @@ public class SlaveNodeWithConnection extends SlaveNode {
 	}
 
 	ModbusLink link;
-	long interval;
 
 	SlaveNodeWithConnection(ModbusLink link, final ModbusConnection conn, Node node) {
 		super(conn, node);
@@ -108,8 +107,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		// The device specific parameters
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER,
 				node.getAttribute(ModbusConnection.ATTR_SLAVE_ID)));
-		int defint = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().intValue() / 1000;
-		act.addParameter(new Parameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER, new Value(defint)));
+		int interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().intValue() / 1000;
+		act.addParameter(new Parameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER, new Value(interval)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL,
@@ -213,8 +212,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
 
 			int slaveid = event.getParameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
-			interval = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER).getNumber()
-					.doubleValue() * 1000);
+			intervalInMs = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER)
+					.getNumber().doubleValue() * 1000);
 			boolean zerofail = event.getParameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
@@ -223,7 +222,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			link.handleEdit(root);
 
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
-			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(interval));
+			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));

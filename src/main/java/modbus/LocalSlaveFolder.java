@@ -45,6 +45,8 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String ATTRIBUTE_RESTORE_FOLDER = "editable folder";
 	static final String ATTRIBUTE_RESTORE_GROUP = "register group";
 
+	static final String NODE_STATUS = "Status";
+
 	LocalSlaveFolder(ModbusLink link, EditableFolder root, Node node) {
 		this(link, node);
 
@@ -418,7 +420,7 @@ public class LocalSlaveFolder extends EditableFolder {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(child.getName().equals("Status"))) {
+			} else if (child.getAction() == null && !(NODE_STATUS.equals(child.getName()))) {
 				node.removeChild(child);
 			}
 		}

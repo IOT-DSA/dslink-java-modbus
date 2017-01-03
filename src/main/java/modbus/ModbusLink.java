@@ -560,7 +560,7 @@ public class ModbusLink {
 			public void run() {
 				slave.readPoints();
 			}
-		}, 0, slave.interval, TimeUnit.MILLISECONDS);
+		}, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
 		futures.put(slave, future);
 		LOGGER.debug("subscribed to " + slave.node.getName());
 	}

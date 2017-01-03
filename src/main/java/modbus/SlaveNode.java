@@ -36,7 +36,7 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	ModbusMaster master;
-	long interval;
+	long intervalInMs;
 
 	Node statnode;
 
@@ -47,13 +47,13 @@ public class SlaveNode extends SlaveFolder {
 
 		conn.slaves.add(this);
 		root = this;
-		statnode = node.createChild("Status").setValueType(ValueType.STRING)
-				.setValue(new Value("Setting up device")).build();
+		statnode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING).setValue(new Value("Setting up device"))
+				.build();
 		master = conn.getMaster();
-        if (null != master && master.isInitialized()){
-        	statnode.setValue(new Value("Ready"));
-        }
-		this.interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
+		if (null != master && master.isInitialized()) {
+			statnode.setValue(new Value("Ready"));
+		}
+		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
 	}
@@ -107,8 +107,8 @@ public class SlaveNode extends SlaveFolder {
 		public void handle(ActionResult event) {
 			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
 			int slaveid = event.getParameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
-			interval = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER).getNumber()
-					.doubleValue() * 1000);
+			intervalInMs = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER)
+					.getNumber().doubleValue() * 1000);
 			boolean zerofail = event.getParameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
@@ -118,7 +118,7 @@ public class SlaveNode extends SlaveFolder {
 				rename(name);
 			}
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
-			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(interval));
+			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
@@ -250,13 +250,16 @@ public class SlaveNode extends SlaveFolder {
 					if (v != null) {
 						pnode.setValueType(vt);
 						pnode.setValue(v);
-					} else if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()
-							&& pnode.getValueType().compare(ValueType.NUMBER)) {
-						pnode.setValue(new Value(0));
+					} else if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
+						if (pnode.getValueType().compare(ValueType.NUMBER)) {
+							pnode.setValue(new Value(0));
+						} else if (pnode.getValueType().compare(ValueType.BOOL)) {
+							pnode.setValue(new Value(false));
+						}
 					}
 				}
 
-			} catch (ModbusTransportException e) {
+			} catch (ModbusTransportException | ErrorResponseException e) {
 				LOGGER.debug("", e);
 				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
 					conn.checkConnection();
@@ -265,15 +268,8 @@ public class SlaveNode extends SlaveFolder {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
 							pnode.setValue(new Value(0));
-						}
-					}
-				}
-			} catch (ErrorResponseException e) {
-				LOGGER.debug("", e);
-				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
-					for (Node pnode : polled) {
-						if (pnode.getValueType().compare(ValueType.NUMBER)) {
-							pnode.setValue(new Value(0));
+						} else if (pnode.getValueType().compare(ValueType.BOOL)) {
+							pnode.setValue(new Value(false));
 						}
 					}
 				}

@@ -62,6 +62,7 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_FOLDER = "folder";
 	static final String ATTR_RESTORE_POINT = "point";
 
+	static final String NODE_STATUS = "Status";
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 
 	ModbusConnection conn;
@@ -123,10 +124,10 @@ public class SlaveFolder {
 		for (Node child : children.values()) {
 			Value restoreType = child.getAttribute(ATTR_RESTORE_TYPE);
 			if (restoreType != null) {
-				if (restoreType.getString().equals(ATTR_RESTORE_FOLDER)) {
+				if (ATTR_RESTORE_FOLDER.equals(restoreType.getString())) {
 					SlaveFolder sf = new SlaveFolder(conn, child, root);
 					sf.restoreLastSession();
-				} else if (restoreType.getString().equals(ATTR_RESTORE_POINT)) {
+				} else if (ATTR_RESTORE_POINT.equals(restoreType.getString())) {
 					Value type = child.getAttribute(ATTR_POINT_TYPE);
 					Value offset = child.getAttribute(ATTR_OFFSET);
 					Value numRegs = child.getAttribute(ATTR_NUMBER_OF_REGISTERS);
@@ -145,7 +146,7 @@ public class SlaveFolder {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(root == this && child.getName().equals("Status"))) {
+			} else if (child.getAction() == null && !(root == this && NODE_STATUS.equals(child.getName()))) {
 				node.removeChild(child);
 			}
 		}
