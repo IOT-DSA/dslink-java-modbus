@@ -45,6 +45,8 @@ public class LocalSlaveFolder extends EditableFolder {
 	static final String ATTRIBUTE_RESTORE_FOLDER = "editable folder";
 	static final String ATTRIBUTE_RESTORE_GROUP = "register group";
 
+	static final String NODE_STATUS = "Status";
+
 	LocalSlaveFolder(ModbusLink link, EditableFolder root, Node node) {
 		this(link, node);
 
@@ -88,10 +90,10 @@ public class LocalSlaveFolder extends EditableFolder {
 		return port;
 	}
 
-	public TransportType getTransportType(ActionResult event) {
-		TransportType transtype;
+	public IpTransportType getTransportType(ActionResult event) {
+		IpTransportType transtype;
 		try {
-			transtype = TransportType
+			transtype = IpTransportType
 					.valueOf(event.getParameter(ATTRIBUTE_TRANSPORT_TYPE, ValueType.STRING).getString().toUpperCase());
 			return transtype;
 		} catch (Exception e) {
@@ -290,7 +292,7 @@ public class LocalSlaveFolder extends EditableFolder {
 				LOGGER.debug("error: ", e);
 				return;
 			}
-			
+
 			int offset = event.getParameter(ATTRIBUTE_OFFSET, ValueType.NUMBER).getNumber().intValue();
 			int registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 
@@ -407,16 +409,18 @@ public class LocalSlaveFolder extends EditableFolder {
 					Value type = child.getAttribute(ATTRIBUTE_POINT_TYPE);
 					Value offset = child.getAttribute(ATTRIBUTE_OFFSET);
 					Value dataType = child.getAttribute(ATTRIBUTE_DATA_TYPE);
-
-					// now restore the point node
+					Value value = child.getValue();
 					if (type != null && offset != null && dataType != null) {
 						setEditPointActions(child);
+						// remote slave fetches value remotely, while local
+						// slave loads the value from the local data source
+						child.setValue(value, true);
 					} else {
-						System.out.println("delete : " + child.getName());
+						LOGGER.info("delete : " + child.getName());
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(child.getName().equals("STATUS"))) {
+			} else if (child.getAction() == null && !(NODE_STATUS.equals(child.getName()))) {
 				node.removeChild(child);
 			}
 		}

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
+import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.code.RegisterRange;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BinaryLocator;
@@ -39,86 +40,113 @@ public class SlaveFolder {
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveFolder.class);
 	}
-    
+
+	static final String ACTION_ADD_POINT = "add point";
+	static final String ACTION_EDIT = "edit";
+	static final String ACTION_MAKE_COPY = "make copy";
+	static final String ACTION_REMOVE = "remove";
+	static final String ACTION_RENAME = "rename";
+	static final String ACTION_ADD_FOLDER = "add folder";
+
+	static final String ATTR_NAME = "name";
+	static final String ATTR_POINT_TYPE = "type";
+	static final String ATTR_OFFSET = "offset";
+	static final String ATTR_NUMBER_OF_REGISTERS = "number of registers";
+	static final String ATTR_DATA_TYPE = "data type";
+	static final String ATTR_BIT = "bit";
+	static final String ATTR_SCALING = "scaling";
+	static final String ATTR_SCALING_OFFSET = "scaling offset";
+	static final String ATTR_WRITBLE = "writable";
+
+	static final String ATTR_RESTORE_TYPE = "restoreType";
+	static final String ATTR_RESTORE_FOLDER = "folder";
+	static final String ATTR_RESTORE_POINT = "point";
+
+	static final String NODE_STATUS = "Status";
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
-	protected ModbusLink link;
+
+	ModbusConnection conn;
 	protected Node node;
-	protected SlaveNode root;
+	protected SlaveFolder root;
 
-	SlaveFolder(ModbusLink link, Node node) {
-		this.link = link;
+	SlaveFolder(ModbusConnection conn, Node node) {
+		this.conn = conn;
 		this.node = node;
-		node.setAttribute("restoreType", new Value("folder"));
 
-		Action act = new Action(Permission.READ, new AddPointHandler());
-		act.addParameter(new Parameter("name", ValueType.STRING));
-		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT")));
-		act.addParameter(new Parameter("offset", ValueType.NUMBER));
-		act.addParameter(new Parameter("number of registers", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("data type",
-				ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32",
-						"INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64",
-						"UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP",
-						"CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP")));
-		act.addParameter(new Parameter("bit", ValueType.NUMBER));
-		act.addParameter(new Parameter("scaling", ValueType.NUMBER, new Value(1)));
-		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, new Value(0)));
-		act.addParameter(new Parameter("writable", ValueType.BOOL, new Value(false)));
-		node.createChild("add point").setAction(act).build().setSerializable(false);
+		node.setAttribute(ATTR_RESTORE_TYPE, new Value("folder"));
 
-		if (!(this instanceof SlaveNode)) {
-			act = new Action(Permission.READ, new RenameHandler());
-			act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-			node.createChild("rename").setAction(act).build().setSerializable(false);
-		}
+		Action act = getAddPointAction();
+		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
+
+		act = new Action(Permission.READ, new RenameHandler());
+		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
+		node.createChild(ACTION_RENAME).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild("make copy").setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new RemoveHandler());
-		node.createChild("remove").setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild("add folder").setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_FOLDER).setAction(act).build().setSerializable(false);
 	}
 
-	SlaveFolder(ModbusLink link, Node node, SlaveNode root) {
-		this(link, node);
+	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
+		this(conn, node);
 		this.root = root;
 
+	}
+
+	Action getAddPointAction() {
+		Action act = new Action(Permission.READ, new AddPointHandler());
+
+		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
+		act.addParameter(new Parameter(ATTR_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class))));
+		act.addParameter(new Parameter(ATTR_OFFSET, ValueType.NUMBER));
+		act.addParameter(new Parameter(ATTR_NUMBER_OF_REGISTERS, ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter(ATTR_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class))));
+		act.addParameter(new Parameter(ATTR_BIT, ValueType.NUMBER));
+		act.addParameter(new Parameter(ATTR_SCALING, ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter(ATTR_SCALING_OFFSET, ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter(ATTR_WRITBLE, ValueType.BOOL, new Value(false)));
+
+		return act;
 	}
 
 	void restoreLastSession() {
 		if (node.getChildren() == null)
 			return;
-		for (Node child : node.getChildren().values()) {
-			Value restoreType = child.getAttribute("restoreType");
+
+		Map<String, Node> children = node.getChildren();
+		for (Node child : children.values()) {
+			Value restoreType = child.getAttribute(ATTR_RESTORE_TYPE);
 			if (restoreType != null) {
-				if (restoreType.getString().equals("folder")) {
-					SlaveFolder sf = new SlaveFolder(link, child, root);
+				if (ATTR_RESTORE_FOLDER.equals(restoreType.getString())) {
+					SlaveFolder sf = new SlaveFolder(conn, child, root);
 					sf.restoreLastSession();
-				} else if (restoreType.getString().equals("point")) {
-					Value type = child.getAttribute("type");
-					Value offset = child.getAttribute("offset");
-					Value numRegs = child.getAttribute("number of registers");
-					Value dataType = child.getAttribute("data type");
-					Value bit = child.getAttribute("bit");
+				} else if (ATTR_RESTORE_POINT.equals(restoreType.getString())) {
+					Value type = child.getAttribute(ATTR_POINT_TYPE);
+					Value offset = child.getAttribute(ATTR_OFFSET);
+					Value numRegs = child.getAttribute(ATTR_NUMBER_OF_REGISTERS);
+					Value dataType = child.getAttribute(ATTR_DATA_TYPE);
+					Value bit = child.getAttribute(ATTR_BIT);
 					if (bit == null)
-						child.setAttribute("bit", new Value(-1));
-					Value scaling = child.getAttribute("scaling");
-					Value addScale = child.getAttribute("scaling offset");
-					Value writable = child.getAttribute("writable");
+						child.setAttribute(ATTR_BIT, new Value(-1));
+					Value scaling = child.getAttribute(ATTR_SCALING);
+					Value addScale = child.getAttribute(ATTR_SCALING_OFFSET);
+					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
 						setupPointActions(child);
-						link.setupPoint(child, root);
+						conn.getLink().setupPoint(child, root);
 					} else {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(root == this && child.getName().equals("STATUS"))) {
+			} else if (child.getAction() == null && !(root == this && NODE_STATUS.equals(child.getName()))) {
 				node.removeChild(child);
 			}
 		}
@@ -134,7 +162,7 @@ public class SlaveFolder {
 
 	protected class RenameHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			String newname = event.getParameter("name", ValueType.STRING).getString();
+			String newname = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
 			if (newname.length() > 0 && !newname.equals(node.getName()))
 				rename(newname);
 		}
@@ -157,13 +185,14 @@ public class SlaveFolder {
 	}
 
 	protected void duplicate(String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(name, nodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name);
-		SlaveFolder sf = new SlaveFolder(link, newnode, root);
+
+		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
 		sf.restoreLastSession();
 	}
 
@@ -171,79 +200,72 @@ public class SlaveFolder {
 		return getParentJson(jobj, node);
 	}
 
-	private JsonObject getParentJson(JsonObject jobj, Node n) {
-		if ((!root.isSerial && n == root.node) || (root.isSerial && n == root.conn.node))
+	private JsonObject getParentJson(JsonObject jobj, Node node) {
+		if ((node == root.getConnection().node))
 			return jobj;
 		else
-			return getParentJson(jobj, n.getParent()).get(n.getParent().getName());
+			return getParentJson(jobj, node.getParent()).get(node.getParent().getName());
 	}
 
 	protected class AddFolderHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			String name = event.getParameter("name", ValueType.STRING).getString();
+			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
 			Node child = node.createChild(name).build();
-			new SlaveFolder(link, child, root);
-		}
-	}
-
-	protected enum PointType {
-		COIL, DISCRETE, HOLDING, INPUT
-	}
-
-	protected enum DataType {
-		BOOLEAN, INT16, UINT16, INT16SWAP, UINT16SWAP, INT32, UINT32, INT32SWAP, UINT32SWAP, INT32SWAPSWAP, UINT32SWAPSWAP, FLOAT32, FLOAT32SWAP, INT64, UINT64, INT64SWAP, UINT64SWAP, FLOAT64, FLOAT64SWAP, BCD16, BCD32, BCD32SWAP, CHARSTRING, VARCHARSTRING, INT32M10K, UINT32M10K, INT32M10KSWAP, UINT32M10KSWAP;
-
-		public boolean isFloat() {
-			return (this == FLOAT32 || this == FLOAT32SWAP || this == FLOAT64 || this == FLOAT64SWAP);
-		}
-
-		public boolean isString() {
-			return (this == CHARSTRING || this == VARCHARSTRING);
+			new SlaveFolder(conn, child, root);
 		}
 	}
 
 	protected class AddPointHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			PointType type;
+			PointType type = null;
+			ValueType valType = null;
 			try {
-				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
+				type = PointType
+						.valueOf(event.getParameter(ATTR_POINT_TYPE, ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
 				LOGGER.error("invalid type");
 				LOGGER.debug("error: ", e);
 				return;
 			}
-			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
-			int numRegs = event.getParameter("number of registers", ValueType.NUMBER).getNumber().intValue();
+			int offset = event.getParameter(ATTR_OFFSET, ValueType.NUMBER).getNumber().intValue();
+			int numRegs = event.getParameter(ATTR_NUMBER_OF_REGISTERS, ValueType.NUMBER).getNumber().intValue();
 			boolean writable = (type == PointType.COIL || type == PointType.HOLDING)
-					&& event.getParameter("writable", ValueType.BOOL).getBool();
+					&& event.getParameter(ATTR_WRITBLE, ValueType.BOOL).getBool();
 			DataType dataType;
-			if (type == PointType.COIL || type == PointType.DISCRETE)
+			if (type == PointType.COIL || type == PointType.DISCRETE) {
 				dataType = DataType.BOOLEAN;
-			else
+				valType = ValueType.BOOL;
+			} else
 				try {
 					dataType = DataType
-							.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
+							.valueOf(event.getParameter(ATTR_DATA_TYPE, ValueType.STRING).getString().toUpperCase());
+					if (dataType.isString()) {
+						valType = ValueType.STRING;
+					} else {
+						valType = ValueType.NUMBER;
+					}
 				} catch (Exception e1) {
 					LOGGER.error("invalid data type");
 					LOGGER.debug("error: ", e1);
 					return;
 				}
-			int bit = event.getParameter("bit", new Value(-1)).getNumber().intValue();
-			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
-			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
-			Node pnode = node.createChild(name).setValueType(ValueType.STRING).build();
-			pnode.setAttribute("type", new Value(type.toString()));
-			pnode.setAttribute("offset", new Value(offset));
-			pnode.setAttribute("number of registers", new Value(numRegs));
-			pnode.setAttribute("data type", new Value(dataType.toString()));
-			pnode.setAttribute("bit", new Value(bit));
-			pnode.setAttribute("scaling", new Value(scaling));
-			pnode.setAttribute("scaling offset", new Value(addscale));
-			pnode.setAttribute("writable", new Value(writable));
+			int bit = event.getParameter(ATTR_BIT, new Value(-1)).getNumber().intValue();
+			double scaling = event.getParameter(ATTR_SCALING, ValueType.NUMBER).getNumber().doubleValue();
+			double addscale = event.getParameter(ATTR_SCALING_OFFSET, ValueType.NUMBER).getNumber().doubleValue();
+
+			Node pnode = node.createChild(name).setValueType(valType).build();
+			pnode.setAttribute(ATTR_POINT_TYPE, new Value(type.toString()));
+			pnode.setAttribute(ATTR_OFFSET, new Value(offset));
+			pnode.setAttribute(ATTR_NUMBER_OF_REGISTERS, new Value(numRegs));
+			pnode.setAttribute(ATTR_DATA_TYPE, new Value(dataType.toString()));
+			pnode.setAttribute(ATTR_BIT, new Value(bit));
+			pnode.setAttribute(ATTR_SCALING, new Value(scaling));
+			pnode.setAttribute(ATTR_SCALING_OFFSET, new Value(addscale));
+			pnode.setAttribute(ATTR_WRITBLE, new Value(writable));
 			setupPointActions(pnode);
-			link.setupPoint(pnode, root);
-			pnode.setAttribute("restoreType", new Value("point"));
+			conn.getLink().setupPoint(pnode, root);
+			pnode.setAttribute(ATTR_RESTORE_TYPE, new Value("point"));
 		}
 	}
 
@@ -256,45 +278,38 @@ public class SlaveFolder {
 			anode.setAction(act);
 
 		act = new Action(Permission.READ, new EditPointHandler(pointNode));
-		act.addParameter(new Parameter("name", ValueType.STRING, new Value(pointNode.getName())));
-		act.addParameter(new Parameter("type", ValueType.makeEnum("COIL", "DISCRETE", "HOLDING", "INPUT"),
-				pointNode.getAttribute("type")));
-		act.addParameter(new Parameter("offset", ValueType.NUMBER, pointNode.getAttribute("offset")));
+		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING, new Value(pointNode.getName())));
+		act.addParameter(new Parameter(ATTR_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class)),
+				pointNode.getAttribute(ATTR_POINT_TYPE)));
+		act.addParameter(new Parameter(ATTR_OFFSET, ValueType.NUMBER, pointNode.getAttribute(ATTR_OFFSET)));
+		act.addParameter(new Parameter(ATTR_NUMBER_OF_REGISTERS, ValueType.NUMBER,
+				pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS)));
+		act.addParameter(new Parameter(ATTR_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class)),
+				pointNode.getAttribute(ATTR_DATA_TYPE)));
+		act.addParameter(new Parameter(ATTR_BIT, ValueType.NUMBER, pointNode.getAttribute(ATTR_BIT)));
+		act.addParameter(new Parameter(ATTR_SCALING, ValueType.NUMBER, pointNode.getAttribute(ATTR_SCALING)));
 		act.addParameter(
-				new Parameter("number of registers", ValueType.NUMBER, pointNode.getAttribute("number of registers")));
-		act.addParameter(new Parameter("data type",
-				ValueType.makeEnum("BOOLEAN", "INT16", "UINT16", "INT16SWAP", "UINT16SWAP", "INT32", "UINT32",
-						"INT32SWAP", "UINT32SWAP", "INT32SWAPSWAP", "UINT32SWAPSWAP", "FLOAT32", "FLOAT32SWAP", "INT64",
-						"UINT64", "INT64SWAP", "UINT64SWAP", "FLOAT64", "FLOAT64SWAP", "BCD16", "BCD32", "BCD32SWAP",
-						"CHARSTRING", "VARCHARSTRING", "INT32M10K", "UINT32M10K", "INT32M10KSWAP", "UINT32M10KSWAP"),
-				pointNode.getAttribute("data type")));
-		act.addParameter(new Parameter("bit", ValueType.NUMBER, pointNode.getAttribute("bit")));
-		act.addParameter(new Parameter("scaling", ValueType.NUMBER, pointNode.getAttribute("scaling")));
-		act.addParameter(new Parameter("scaling offset", ValueType.NUMBER, pointNode.getAttribute("scaling offset")));
-		act.addParameter(new Parameter("writable", ValueType.BOOL, pointNode.getAttribute("writable")));
-		anode = pointNode.getChild("edit");
+				new Parameter(ATTR_SCALING_OFFSET, ValueType.NUMBER, pointNode.getAttribute(ATTR_SCALING_OFFSET)));
+		act.addParameter(new Parameter(ATTR_WRITBLE, ValueType.BOOL, pointNode.getAttribute(ATTR_WRITBLE)));
+		anode = pointNode.getChild(ACTION_EDIT);
 		if (anode == null)
-			pointNode.createChild("edit").setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
 		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
-		act.addParameter(new Parameter("name", ValueType.STRING));
-		anode = pointNode.getChild("make copy");
+		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
+		anode = pointNode.getChild(ACTION_MAKE_COPY);
 		if (anode == null)
-			pointNode.createChild("make copy").setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
-		boolean writable = pointNode.getAttribute("writable").getBool();
+		boolean writable = pointNode.getAttribute(ATTR_WRITBLE).getBool();
 		if (writable) {
 
 			pointNode.setWritable(Writable.WRITE);
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
-
-			// act = new Action(Permission.READ, new SetHandler(pointNode));
-			// act.addParameter(new Parameter("value", ValueType.STRING));
-			// pointNode.createChild("set").setAction(act).build().setSerializable(false);
 		}
 	}
 
@@ -314,14 +329,14 @@ public class SlaveFolder {
 	}
 
 	private Node copyPoint(Node pointNode, String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
 		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
 		parentobj.put(name, pointnodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
 		Node newnode = node.getChild(name);
 		setupPointActions(newnode);
-		link.setupPoint(newnode, root);
+		conn.getLink().setupPoint(newnode, root);
 		return newnode;
 	}
 
@@ -336,48 +351,49 @@ public class SlaveFolder {
 			String name = event.getParameter("name", ValueType.STRING).getString();
 			PointType type;
 			try {
-				type = PointType.valueOf(event.getParameter("type", ValueType.STRING).getString().toUpperCase());
+				type = PointType
+						.valueOf(event.getParameter(ATTR_POINT_TYPE, ValueType.STRING).getString().toUpperCase());
 			} catch (Exception e) {
 				LOGGER.error("invalid type");
 				LOGGER.debug("error: ", e);
 				return;
 			}
-			int offset = event.getParameter("offset", ValueType.NUMBER).getNumber().intValue();
-			int numRegs = event.getParameter("number of registers", ValueType.NUMBER).getNumber().intValue();
+			int offset = event.getParameter(ATTR_OFFSET, ValueType.NUMBER).getNumber().intValue();
+			int numRegs = event.getParameter(ATTR_NUMBER_OF_REGISTERS, ValueType.NUMBER).getNumber().intValue();
 			boolean writable = (type == PointType.COIL || type == PointType.HOLDING)
-					&& event.getParameter("writable", ValueType.BOOL).getBool();
+					&& event.getParameter(ATTR_WRITBLE, ValueType.BOOL).getBool();
 			DataType dataType;
 			if (type == PointType.COIL || type == PointType.DISCRETE)
 				dataType = DataType.BOOLEAN;
 			else
 				try {
 					dataType = DataType
-							.valueOf(event.getParameter("data type", ValueType.STRING).getString().toUpperCase());
+							.valueOf(event.getParameter(ATTR_DATA_TYPE, ValueType.STRING).getString().toUpperCase());
 				} catch (Exception e1) {
 					LOGGER.error("invalid data type");
 					LOGGER.debug("error: ", e1);
 					return;
 				}
-			int bit = event.getParameter("bit", new Value(-1)).getNumber().intValue();
-			double scaling = event.getParameter("scaling", ValueType.NUMBER).getNumber().doubleValue();
-			double addscale = event.getParameter("scaling offset", ValueType.NUMBER).getNumber().doubleValue();
+			int bit = event.getParameter(ATTR_BIT, new Value(-1)).getNumber().intValue();
+			double scaling = event.getParameter(ATTR_SCALING, ValueType.NUMBER).getNumber().doubleValue();
+			double addscale = event.getParameter(ATTR_SCALING_OFFSET, ValueType.NUMBER).getNumber().doubleValue();
 
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
 				node.removeChild(pointNode);
 				pointNode = newnode;
 			}
-			pointNode.setAttribute("type", new Value(type.toString()));
-			pointNode.setAttribute("offset", new Value(offset));
-			pointNode.setAttribute("number of registers", new Value(numRegs));
-			pointNode.setAttribute("data type", new Value(dataType.toString()));
-			pointNode.setAttribute("bit", new Value(bit));
-			pointNode.setAttribute("scaling", new Value(scaling));
-			pointNode.setAttribute("scaling offset", new Value(addscale));
-			pointNode.setAttribute("writable", new Value(writable));
+			pointNode.setAttribute(ATTR_POINT_TYPE, new Value(type.toString()));
+			pointNode.setAttribute(ATTR_OFFSET, new Value(offset));
+			pointNode.setAttribute(ATTR_NUMBER_OF_REGISTERS, new Value(numRegs));
+			pointNode.setAttribute(ATTR_DATA_TYPE, new Value(dataType.toString()));
+			pointNode.setAttribute(ATTR_BIT, new Value(bit));
+			pointNode.setAttribute(ATTR_SCALING, new Value(scaling));
+			pointNode.setAttribute(ATTR_SCALING_OFFSET, new Value(addscale));
+			pointNode.setAttribute(ATTR_WRITBLE, new Value(writable));
 			setupPointActions(pointNode);
-			link.setupPoint(pointNode, root);
-			pointNode.setAttribute("restoreType", new Value("point"));
+			conn.getLink().setupPoint(pointNode, root);
+			pointNode.setAttribute(ATTR_RESTORE_TYPE, new Value("point"));
 		}
 	}
 
@@ -393,57 +409,29 @@ public class SlaveFolder {
 		}
 	}
 
-	protected Double getDoubleValue(Value val) {
-		double ret = 0.0;
-		{
-			if (val.getType() == ValueType.STRING) {
-				ret = Double.parseDouble(val.getString());
-			} else if (val.getType() == ValueType.NUMBER) {
-				ret = val.getNumber().doubleValue();
-			}
-		}
-		return ret;
-	}
-
-	protected int getIntValue(Value val) {
-		int ret = 0;
-		{
-			if (val.getType() == ValueType.STRING) {
-				ret = Integer.parseInt(val.getString());
-			} else if (val.getType() == ValueType.NUMBER) {
-				ret = val.getNumber().intValue();
-			}
-		}
-		return ret;
-	}
-
 	private final Map<String, Boolean> polledNodes = new ConcurrentHashMap<>();
 
 	protected void readPoint(Node pointNode) {
-		if (pointNode.getAttribute("offset") == null)
+		if (pointNode.getAttribute(ATTR_OFFSET) == null)
 			return;
-		if (root.master == null) {
-			if (root.isSerial)
-				root.conn.stop();
+
+		if (root.getMaster() == null) {
+			root.getConnection().stop();
 			return;
 		}
-		PointType type = PointType.valueOf(pointNode.getAttribute("type").getString());
-		int offset = getIntValue(pointNode.getAttribute("offset"));
-		int numRegs = getIntValue(pointNode.getAttribute("number of registers"));
-		int id = getIntValue(root.node.getAttribute("slave id"));
 
-		int bit = getIntValue(pointNode.getAttribute("bit"));
-		double scaling = getDoubleValue(pointNode.getAttribute("scaling"));
-		double addscale = getDoubleValue(pointNode.getAttribute("scaling offset"));
-		DataType dataType = DataType.valueOf(pointNode.getAttribute("data type").getString());
+		PointType type = PointType.valueOf(pointNode.getAttribute(ATTR_POINT_TYPE).getString());
+		int offset = Util.getIntValue(pointNode.getAttribute(ATTR_OFFSET));
+		int numRegs = Util.getIntValue(pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
+		int id = Util.getIntValue(root.node.getAttribute(ModbusConnection.ATTR_SLAVE_ID));
+
+		int bit = Util.getIntValue(pointNode.getAttribute(ATTR_BIT));
+		double scaling = Util.getDoubleValue(pointNode.getAttribute(ATTR_SCALING));
+		double addscale = Util.getDoubleValue(pointNode.getAttribute(ATTR_SCALING_OFFSET));
+		DataType dataType = DataType.valueOf(pointNode.getAttribute(ATTR_DATA_TYPE).getString());
 		ModbusRequest request = null;
 		JsonArray val = new JsonArray();
-		// try {
-		// root.master.init();
-		// } catch (ModbusInitException e) {
-		// // TODO Auto-generated catch block
-		// LOGGER.debug("error: ", e);
-		// }
+
 		String requestString = "";
 		try {
 			switch (type) {
@@ -469,10 +457,10 @@ public class SlaveFolder {
 				return;
 			}
 			polledNodes.put(requestString, true);
-			ReadResponse response = (ReadResponse) root.master.send(request);
+			ReadResponse response = (ReadResponse) root.getMaster().send(request);
 			polledNodes.remove(requestString);
 			LOGGER.debug("Got response: " + response.toString());
-			root.statnode.setValue(new Value("Ready"));
+			root.getStatusNode().setValue(new Value("Ready"));
 			if (response.getExceptionCode() != -1) {
 				LOGGER.debug("error response: " + response.getExceptionMessage());
 				return;
@@ -495,11 +483,11 @@ public class SlaveFolder {
 			LOGGER.debug("error: ", e);
 			polledNodes.remove(requestString);
 		} finally {
-			// try {
-			// root.master.destroy();
-			// } catch (Exception e) {
-			// LOGGER.debug("error destroying last master");
-			// }
+			try {
+				root.getMaster().destroy();
+			} catch (Exception e) {
+				LOGGER.debug("error destroying last master");
+			}
 		}
 		String valString = val.toString();
 		Value v = new Value(valString);
@@ -531,6 +519,10 @@ public class SlaveFolder {
 		LOGGER.debug("read and updated " + pointNode.getName());
 	}
 
+	private Node getStatusNode() {
+		return null;
+	}
+
 	protected class SetHandler implements Handler<ValuePair> {
 		private Node vnode;
 
@@ -539,28 +531,27 @@ public class SlaveFolder {
 		}
 
 		public void handle(ValuePair event) {
-			if (root.master == null) {
-				if (root.isSerial)
-					root.conn.stop();
+			if (root.getMaster() == null) {
+				root.getConnection().stop();
 				return;
 			}
-			
+
 			if (!event.isFromExternalSource())
 				return;
-			
-			PointType type = PointType.valueOf(vnode.getAttribute("type").getString());
-			int offset = vnode.getAttribute("offset").getNumber().intValue();
-			int id = root.node.getAttribute("slave id").getNumber().intValue();
-			int numRegs = vnode.getAttribute("number of registers").getNumber().intValue();
-			DataType dataType = DataType.valueOf(vnode.getAttribute("data type").getString());
-			int bit = vnode.getAttribute("bit").getNumber().intValue();
-			double scaling = vnode.getAttribute("scaling").getNumber().doubleValue();
-			double addscale = vnode.getAttribute("scaling offset").getNumber().doubleValue();
+
+			PointType type = PointType.valueOf(vnode.getAttribute(ATTR_POINT_TYPE).getString());
+			int offset = vnode.getAttribute(ATTR_OFFSET).getNumber().intValue();
+			int id = root.node.getAttribute(ModbusConnection.ATTR_SLAVE_ID).getNumber().intValue();
+			int numRegs = vnode.getAttribute(ATTR_NUMBER_OF_REGISTERS).getNumber().intValue();
+			DataType dataType = DataType.valueOf(vnode.getAttribute(ATTR_DATA_TYPE).getString());
+			int bit = vnode.getAttribute(ATTR_BIT).getNumber().intValue();
+			double scaling = vnode.getAttribute(ATTR_SCALING).getNumber().doubleValue();
+			double addscale = vnode.getAttribute(ATTR_SCALING_OFFSET).getNumber().doubleValue();
 			Value oldval = event.getPrevious();
 			Value newval = event.getCurrent();
 			JsonArray newValArr = new JsonArray();
 			JsonArray oldValArr = new JsonArray();
-			
+
 			if (newval.getType() == ValueType.STRING && oldval.getType() == ValueType.STRING) {
 				String valstr = newval.getString();
 				String oldstr = oldval.getString();
@@ -587,12 +578,7 @@ public class SlaveFolder {
 				LOGGER.error("Unexpected value type");
 				return;
 			}
-			// try {
-			// root.master.init();
-			// } catch (ModbusInitException e) {
-			// // TODO Auto-generated catch block
-			// LOGGER.debug("error: ", e);
-			// }
+
 			ModbusRequest request = null;
 			try {
 				switch (type) {
@@ -608,22 +594,22 @@ public class SlaveFolder {
 				}
 				if (request != null)
 					LOGGER.debug("set request: " + request.toString());
-				root.master.send(request);
-				// System.out.println(response.getExceptionMessage());
+				root.getMaster().send(request);
 			} catch (ModbusTransportException e) {
-				// TODO Auto-generated catch block
 				LOGGER.error("Modbus transport exception");
 				LOGGER.debug("error: ", e);
 				return;
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
-			} // finally {
-				// root.master.destroy();
-				// }
-
+			} finally {
+				try {
+					root.getMaster().destroy();
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master");
+				}
+			}
 		}
 	}
 
@@ -639,10 +625,18 @@ public class SlaveFolder {
 		return retval;
 	}
 
+	public ModbusConnection getConnection() {
+		return null;
+	}
+
+	public ModbusMaster getMaster() {
+		return root.getMaster();
+	}
+
 	protected static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt,
 			int slaveid, int offset, int numRegisters, int bitnum) throws Exception {
 		short[] retval = {};
-		Integer dtint = getDataTypeInt(dt);
+		Integer dtint = DataType.getDataTypeInt(dt);
 		if (dtint != null) {
 			if (!dt.isString()) {
 				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pt), offset, dtint);
@@ -717,67 +711,12 @@ public class SlaveFolder {
 		return retval;
 	}
 
-	protected static Integer getDataTypeInt(DataType dt) {
-		switch (dt) {
-		case BOOLEAN:
-			return com.serotonin.modbus4j.code.DataType.BINARY;
-		case INT16:
-			return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
-		case UINT16:
-			return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED;
-		case INT16SWAP:
-			return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED_SWAPPED;
-		case UINT16SWAP:
-			return com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_UNSIGNED_SWAPPED;
-		case BCD16:
-			return com.serotonin.modbus4j.code.DataType.TWO_BYTE_BCD;
-		case BCD32:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD;
-		case BCD32SWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_BCD_SWAPPED;
-		case INT32:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
-		case UINT32:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED;
-		case INT32SWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED;
-		case UINT32SWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED;
-		case INT32SWAPSWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED_SWAPPED_SWAPPED;
-		case UINT32SWAPSWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_UNSIGNED_SWAPPED_SWAPPED;
-		case FLOAT32:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT;
-		case FLOAT32SWAP:
-			return com.serotonin.modbus4j.code.DataType.FOUR_BYTE_FLOAT_SWAPPED;
-		case INT64:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED;
-		case UINT64:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED;
-		case INT64SWAP:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_SIGNED_SWAPPED;
-		case UINT64SWAP:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_INT_UNSIGNED_SWAPPED;
-		case FLOAT64:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT;
-		case FLOAT64SWAP:
-			return com.serotonin.modbus4j.code.DataType.EIGHT_BYTE_FLOAT_SWAPPED;
-		case CHARSTRING:
-			return com.serotonin.modbus4j.code.DataType.CHAR;
-		case VARCHARSTRING:
-			return com.serotonin.modbus4j.code.DataType.VARCHAR;
-		default:
-			return null;
-		}
-	}
-
 	protected JsonArray parseResponse(ReadResponse response, DataType dataType, double scaling, double addscaling,
 			PointType pointType, int slaveid, int offset, int bit) {
 		short[] responseData = response.getShortData();
 		byte[] byteData = response.getData();
 		JsonArray retval = new JsonArray();
-		Integer dt = getDataTypeInt(dataType);
+		Integer dt = DataType.getDataTypeInt(dataType);
 		if (dt != null && dataType != DataType.BOOLEAN) {
 			if (!dataType.isString()) {
 				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pointType), offset, dt);
