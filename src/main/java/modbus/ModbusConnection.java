@@ -37,6 +37,8 @@ abstract public class ModbusConnection {
 	static final String ATTR_USE_BATCH_POLLING = "use batch polling";
 	static final String ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY = "contiguous batch requests only";
 
+	static final String ATTR_CONNECTION_NAME = "name";
+	static final String ATTR_TRANSPORT_TYPE = "transport type";
 	static final String ATTR_TIMEOUT = "Timeout";
 	static final String ATTR_RETRIES = "retries";
 	static final String ATTR_MAX_READ_BIT_COUNT = "max read bit count";
@@ -46,7 +48,7 @@ abstract public class ModbusConnection {
 	static final String ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY = "use multiple write commands only";
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
-	static final String ATTR_RESTORE_EDITABLE_FOLDER = "editable folder";
+	static final String ATTR_RESTORE_CONNECITON = "conn";
 
 	static final String ATTR_STATUS_NODE = "Status";
 	static final String ATTR_STATUS_READY = "Ready";

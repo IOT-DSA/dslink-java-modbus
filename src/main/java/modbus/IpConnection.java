@@ -30,6 +30,7 @@ public class IpConnection extends ModbusConnection {
 	static final String ATTR_PORT = "port";
 	static final String ADD_IP_DEVICE_ACTION = "add ip device";
 
+	IpTransportType transtype;
 	String host;
 	int port;
 
@@ -50,16 +51,6 @@ public class IpConnection extends ModbusConnection {
 
 		readIpAttributes();
 		readMasterAttributes();
-
-		IpTransportType transtype = null;
-		try {
-			transtype = IpTransportType.valueOf(node.getAttribute(ATTR_TRANSPORT_TYPE).getString().toUpperCase());
-		} catch (Exception e1) {
-			LOGGER.error("invalid transport type");
-			LOGGER.debug("error: ", e1);
-			statnode.setValue(new Value("invalid transport type"));
-			return null;
-		}
 
 		IpParameters params;
 		switch (transtype) {
@@ -151,19 +142,9 @@ public class IpConnection extends ModbusConnection {
 	private class EditHandler implements Handler<ActionResult> {
 
 		public void handle(ActionResult event) {
-			IpTransportType transtype;
-			try {
-				transtype = IpTransportType
-						.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
-			} catch (Exception e) {
-				LOGGER.error("invalid transport type");
-				LOGGER.debug("error: ", e);
-				return;
-			}
-			node.setAttribute("transport type", new Value(transtype.toString()));
-
 			readIpParameters(event);
 			writeIpAttributes();
+
 			readMasterParameters(event);
 			writeMasterAttributes();
 
@@ -206,16 +187,20 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	void readIpAttributes() {
+		transtype = IpTransportType.valueOf(node.getAttribute(ATTR_TRANSPORT_TYPE).getString().toUpperCase());
 		host = node.getAttribute(ATTR_HOST).getString();
 		port = node.getAttribute(ATTR_PORT).getNumber().intValue();
 	}
 
 	void writeIpAttributes() {
+		node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transtype.toString()));
 		node.setAttribute(ATTR_HOST, new Value(host));
 		node.setAttribute(ATTR_PORT, new Value(port));
 	}
 
 	void readIpParameters(ActionResult event) {
+		transtype = IpTransportType
+				.valueOf(event.getParameter(ATTR_TRANSPORT_TYPE, ValueType.STRING).getString().toUpperCase());
 		host = event.getParameter(ATTR_HOST, ValueType.STRING).getString();
 		port = event.getParameter(ATTR_PORT, ValueType.NUMBER).getNumber().intValue();
 	}
