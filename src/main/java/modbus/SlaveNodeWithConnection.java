@@ -186,11 +186,11 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 				conn.writeMasterAttributes();
 
-				if (master != null) {
+				if (conn.master != null) {
 					try {
-						master.destroy();
-						link.masters.remove(master);
-						master = null;
+						conn.master.destroy();
+						link.masters.remove(conn.master);
+						conn.master = null;
 					} catch (Exception e) {
 						LOGGER.debug("error destroying last master");
 					}
