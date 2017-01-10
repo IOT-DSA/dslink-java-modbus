@@ -31,7 +31,7 @@ public abstract class EditableFolder {
 	static final String ATTRIBUTE_OFFSET = "offset";
 	static final String ATTRIBUTE_POINT_TYPE = "type";
 	static final String ATTRIBUTE_RESTORE_TYPE = "restoreType";
-	static final String ATTRIBUTE_EDITABLE_FOLDER = "editable folder";
+	static final String ATTRIBUTE_RESTORE_EDITABLE_FOLDER = "editable folder";
 
 	protected static final String ACTION_REMOVE = "remove";
 
@@ -48,7 +48,7 @@ public abstract class EditableFolder {
 		this.link = link;
 		this.node = node;
 
-		node.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_EDITABLE_FOLDER));
+		node.setAttribute(ATTRIBUTE_RESTORE_TYPE, new Value(ATTRIBUTE_RESTORE_EDITABLE_FOLDER));
 
 		// create the minimum action list
 		setEditAction();

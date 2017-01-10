@@ -32,7 +32,6 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		LOGGER = LoggerFactory.getLogger(LocalSlaveNode.class);
 	}
 
-	static final String NODE_STATUS = "STATUS";
 	static final String STATUS_SETUP_DEVICE = "Setting up device";
 	static final String STATUS_START_LISTENING = "Listening started";
 	static final String STATUS_STOP_LISTENING = "Listening stoppd";
@@ -98,8 +97,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
 
-		act.addParameter(new Parameter(ATTRIBUTE_TRANSPORT_TYPE,
-				ValueType.makeEnum(Util.enumNames(IpTransportType.class)), node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE)));
+		act.addParameter(
+				new Parameter(ATTRIBUTE_TRANSPORT_TYPE, ValueType.makeEnum(Util.enumNames(IpTransportType.class)),
+						node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE)));
 		act.addParameter(new Parameter(ATTRIBUTE_PORT, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_PORT)));
 		act.addParameter(new Parameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_SLAVE_ID)));
 
