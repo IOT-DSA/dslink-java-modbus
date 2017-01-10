@@ -160,16 +160,6 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 	private class EditHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			IpTransportType transtype;
-			try {
-				transtype = IpTransportType
-						.valueOf(event.getParameter("transport type", ValueType.STRING).getString().toUpperCase());
-			} catch (Exception e) {
-				LOGGER.error("invalid transport type");
-				LOGGER.debug("error: ", e);
-				return;
-			}
-
 			((IpConnection) conn).readIpParameters(event);
 			conn.readMasterParameters(event);
 
