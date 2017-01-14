@@ -28,6 +28,19 @@ import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BaseLocator;
 import com.serotonin.modbus4j.locator.BinaryLocator;
 
+/*
+ * A regular class for the multiple tier design.
+ * 
+ * Link
+ *     |
+ *     ->Connection
+ *                 |
+ *                 ->Device Node
+ * 
+ * The Device Node and its connection  share the same node.
+ * 
+ * */
+
 public class SlaveNode extends SlaveFolder {
 	private static final Logger LOGGER;
 
@@ -35,7 +48,9 @@ public class SlaveNode extends SlaveFolder {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
 
-	ModbusMaster master;
+	final static String ATTR_STATUS_READY = "Ready";
+
+	// ModbusMaster master;
 	long intervalInMs;
 
 	Node statnode;
@@ -49,13 +64,19 @@ public class SlaveNode extends SlaveFolder {
 		root = this;
 		statnode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING).setValue(new Value("Setting up device"))
 				.build();
-		master = conn.getMaster();
-		if (null != master && master.isInitialized()) {
-			statnode.setValue(new Value("Ready"));
+
+		if (null != getMaster() && getMaster().isInitialized()) {
+			statnode.setValue(new Value(ATTR_STATUS_READY));
 		}
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
+
+		if (getMaster() != null && getMaster().isInitialized()) {
+			conn.makeStopAction();
+		} else {
+			conn.makeStartAction();
+		}
 	}
 
 	void addToSub(Node event) {
@@ -74,7 +95,7 @@ public class SlaveNode extends SlaveFolder {
 		return subscribed.isEmpty();
 	}
 
-	private void makeEditAction() {
+	void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_NAME, ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER,
@@ -125,7 +146,6 @@ public class SlaveNode extends SlaveFolder {
 
 			conn.getLink().handleEdit(root);
 
-			master = conn.getMaster();
 			conn.checkConnection();
 
 			makeEditAction();
@@ -133,8 +153,13 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	public void readPoints() {
-		if (master == null)
+		if (getMaster() == null) {
 			return;
+		}
+		if (!ModbusConnection.ATTR_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+			conn.checkConnection();
+			return;
+		}
 
 		if (node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING).getBool()) {
 			LOGGER.debug("batch polling " + node.getName() + " :");
@@ -169,11 +194,7 @@ public class SlaveNode extends SlaveFolder {
 			}
 
 			try {
-				BatchResults<Node> response = master.send(batch);
-
-				if (ModbusConnection.ATTR_STATUS_FAILED.equals(conn.statnode.getValue().getString())) {
-					conn.checkConnection();
-				}
+				BatchResults<Node> response = getMaster().send(batch);
 
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
@@ -260,10 +281,9 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
-				LOGGER.debug("", e);
-				if ("Device ping failed".equals(conn.statnode.getValue().getString())) {
-					conn.checkConnection();
-				}
+				LOGGER.debug("error in initializing master: ", e);
+				conn.checkConnection();
+
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
@@ -294,6 +314,6 @@ public class SlaveNode extends SlaveFolder {
 
 	@Override
 	public ModbusMaster getMaster() {
-		return this.master;
+		return conn.getMaster();
 	}
 }

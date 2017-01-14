@@ -214,14 +214,11 @@ public class SerialConn extends ModbusConnection {
 		try {
 			master.init();
 		} catch (ModbusInitException e) {
-			LOGGER.error("error initializing master");
+			LOGGER.error("error in initializing master : " + e.getMessage());
 			LOGGER.debug("error: ", e);
-			statnode.setValue(new Value("Could not establish connection - ModbusInitException"));
+			statnode.setValue(new Value(ATTR_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			stop();
 			return null;
-		}
-		for (SlaveNode sn : slaves) {
-			sn.master = master;
 		}
 
 		link.masters.add(master);

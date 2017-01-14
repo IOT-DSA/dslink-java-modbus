@@ -78,9 +78,7 @@ public class SlaveFolder {
 		Action act = getAddPointAction();
 		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
 
-		act = new Action(Permission.READ, new RenameHandler());
-		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-		node.createChild(ACTION_RENAME).setAction(act).build().setSerializable(false);
+		makeEditAction();
 
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -194,6 +192,12 @@ public class SlaveFolder {
 
 		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
 		sf.restoreLastSession();
+	}
+
+	void makeEditAction() {
+		Action act = new Action(Permission.READ, new RenameHandler());
+		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
+		node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
 	}
 
 	protected JsonObject getParentJson(JsonObject jobj) {
@@ -420,6 +424,11 @@ public class SlaveFolder {
 			return;
 		}
 
+		if (!ModbusConnection.ATTR_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+			conn.checkConnection();
+			return;
+		}
+
 		PointType type = PointType.valueOf(pointNode.getAttribute(ATTR_POINT_TYPE).getString());
 		int offset = Util.getIntValue(pointNode.getAttribute(ATTR_OFFSET));
 		int numRegs = Util.getIntValue(pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
@@ -478,10 +487,9 @@ public class SlaveFolder {
 			}
 		} catch (ModbusTransportException e) {
 			LOGGER.debug("ModbusTransportException: ", e);
+
 			polledNodes.remove(requestString);
-		} catch (Exception e) {
-			LOGGER.debug("error: ", e);
-			polledNodes.remove(requestString);
+			conn.checkConnection();
 		} finally {
 			try {
 				root.getMaster().destroy();

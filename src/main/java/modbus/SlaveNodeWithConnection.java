@@ -14,10 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
-import com.serotonin.modbus4j.ModbusMaster;
-
 /*
  * A special class to handle the legal project based on the two-tier design.
+ * 
+ * Link
+ *     |
+ *     ->Device Node
  * 
  * The Device Node and its connection  share the same node.
  * 
@@ -35,19 +37,10 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		super(conn, node);
 
 		this.link = link;
+
 		statnode.setValue(conn.statnode.getValue());
 
-		ScheduledThreadPoolExecutor stpe = conn.getDaemonThreadPool();
-		stpe.execute(new Runnable() {
-			@Override
-			public void run() {
-				conn.checkConnection();
-			}
-		});
-
-		makeEditAction();
-
-		if (master != null && master.isInitialized()) {
+		if (getMaster() != null && getMaster().isInitialized()) {
 			makeStopAction();
 		} else {
 			makeStartAction();
@@ -57,8 +50,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 	private void makeStartAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				master = getMaster();
-				if (null != master) {
+				if (null != getMaster()) {
 					conn.checkConnection();
 					node.removeChild("start");
 					makeStopAction();
@@ -77,10 +69,10 @@ public class SlaveNodeWithConnection extends SlaveNode {
 	private void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				if (master != null) {
-					master.destroy();
-					link.masters.remove(master);
-					master = null;
+				if (getMaster() != null) {
+					conn.master.destroy();
+					link.masters.remove(conn.master);
+					conn.master = null;
 				}
 				node.removeChild("stop");
 				statnode.setValue(new Value("Stopped"));
@@ -95,7 +87,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			anode.setAction(act);
 	}
 
-	private void makeEditAction() {
+	@Override
+	void makeEditAction() {
 		Action act = new Action(Permission.READ, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 
@@ -145,9 +138,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 		if (conn.slaves.isEmpty()) {
 			try {
-				master.destroy();
-				link.masters.remove(master);
-				master = null;
+				getMaster().destroy();
+				link.masters.remove(getMaster());
 			} catch (Exception e) {
 				LOGGER.debug("error destroying last master");
 			}
@@ -195,7 +187,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 						LOGGER.debug("error destroying last master");
 					}
 				}
-				master = getMaster();
+
 				conn.checkConnection();
 			}
 
@@ -236,10 +228,5 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 		SlaveNode sn = new SlaveNodeWithConnection(link, conn, newnode);
 		sn.restoreLastSession();
-	}
-
-	@Override
-	public ModbusMaster getMaster() {
-		return conn.getMaster();
 	}
 }
