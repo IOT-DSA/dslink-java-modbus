@@ -527,7 +527,7 @@ public class SlaveFolder {
 		LOGGER.debug("read and updated " + pointNode.getName());
 	}
 
-	private Node getStatusNode() {
+	public Node getStatusNode() {
 		return null;
 	}
 

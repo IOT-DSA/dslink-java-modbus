@@ -316,4 +316,9 @@ public class SlaveNode extends SlaveFolder {
 	public ModbusMaster getMaster() {
 		return conn.getMaster();
 	}
+
+	@Override
+	public Node getStatusNode() {
+		return this.statnode;
+	}
 }
