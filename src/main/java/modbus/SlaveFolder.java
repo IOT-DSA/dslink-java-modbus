@@ -63,6 +63,8 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_POINT = "point";
 
 	static final String NODE_STATUS = "Status";
+	static final String ATTR_STATUS_READY = "Ready";
+	static final String ATTR_STATUS_NOT_READY = "Not Ready";
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 
 	ModbusConnection conn;
@@ -78,9 +80,7 @@ public class SlaveFolder {
 		Action act = getAddPointAction();
 		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
 
-		act = new Action(Permission.READ, new RenameHandler());
-		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-		node.createChild(ACTION_RENAME).setAction(act).build().setSerializable(false);
+		makeEditAction();
 
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
@@ -194,6 +194,12 @@ public class SlaveFolder {
 
 		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
 		sf.restoreLastSession();
+	}
+
+	void makeEditAction() {
+		Action act = new Action(Permission.READ, new RenameHandler());
+		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
+		node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
 	}
 
 	protected JsonObject getParentJson(JsonObject jobj) {
@@ -420,6 +426,11 @@ public class SlaveFolder {
 			return;
 		}
 
+		if (!ModbusConnection.ATTR_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+			conn.checkConnection();
+			return;
+		}
+
 		PointType type = PointType.valueOf(pointNode.getAttribute(ATTR_POINT_TYPE).getString());
 		int offset = Util.getIntValue(pointNode.getAttribute(ATTR_OFFSET));
 		int numRegs = Util.getIntValue(pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
@@ -478,10 +489,16 @@ public class SlaveFolder {
 			}
 		} catch (ModbusTransportException e) {
 			LOGGER.debug("ModbusTransportException: ", e);
+
 			polledNodes.remove(requestString);
-		} catch (Exception e) {
-			LOGGER.debug("error: ", e);
-			polledNodes.remove(requestString);
+			conn.checkConnection();
+			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
+				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
+					pointNode.setValue(new Value(0));
+				} else if (pointNode.getValueType().compare(ValueType.BOOL)) {
+					pointNode.setValue(new Value(false));
+				}
+			}
 		} finally {
 			try {
 				root.getMaster().destroy();
@@ -514,12 +531,15 @@ public class SlaveFolder {
 				}
 			}
 		}
-		pointNode.setValueType(vt);
-		pointNode.setValue(v);
-		LOGGER.debug("read and updated " + pointNode.getName());
+
+		if (v != null) {
+			pointNode.setValueType(vt);
+			pointNode.setValue(v);
+			LOGGER.debug("read and updated " + pointNode.getName());
+		} 
 	}
 
-	private Node getStatusNode() {
+	public Node getStatusNode() {
 		return null;
 	}
 

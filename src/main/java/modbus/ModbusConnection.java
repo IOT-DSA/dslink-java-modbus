@@ -51,8 +51,12 @@ abstract public class ModbusConnection {
 	static final String ATTR_RESTORE_CONNECITON = "conn";
 
 	static final String ATTR_STATUS_NODE = "Status";
-	static final String ATTR_STATUS_READY = "Ready";
-	static final String ATTR_STATUS_FAILED = "Device ping failed";
+	static final String ATTR_STATUS_SETTINGUP = "Setting up connection";
+	static final String ATTR_STATUS_CONNECTED = "Connected";
+	static final String ATTR_STATUS_CONNECTING = "connecting to device";
+	static final String ATTR_STATUS_PING_FAILED = "Device ping failed";
+	static final String ATTR_STATUS_CONNECTION_ESTABLISHMENT_FAILED = "Could not establish connection";
+	static final String ATTR_STATUS_CONNECTION_STOPPED = "Stopped";
 
 	static final String ACTION_RESTART = "restart";
 	static final String ACTION_STOP = "stop";
@@ -89,10 +93,18 @@ abstract public class ModbusConnection {
 
 		modbusFactory = new ModbusFactory();
 		this.statnode = node.createChild(ATTR_STATUS_NODE).setValueType(ValueType.STRING)
-				.setValue(new Value("Setting up connection")).build();
+				.setValue(new Value(ATTR_STATUS_SETTINGUP)).build();
 		slaves = new HashSet<>();
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
 		link.connections.add(this);
+
+		ScheduledThreadPoolExecutor stpe = getDaemonThreadPool();
+		stpe.execute(new Runnable() {
+			@Override
+			public void run() {
+				checkConnection();
+			}
+		});
 	}
 
 	void duplicate(String name) {
@@ -128,7 +140,7 @@ abstract public class ModbusConnection {
 			} catch (Exception e) {
 				LOGGER.debug("error destroying last master" + e.getMessage());
 			}
-			statnode.setValue(new Value("Stopped"));
+			statnode.setValue(new Value(ATTR_STATUS_CONNECTION_STOPPED));
 			master = null;
 			node.removeChild("stop");
 			removeChild();
@@ -194,7 +206,7 @@ abstract public class ModbusConnection {
 
 		master = getMaster();
 		if (master != null) {
-			statnode.setValue(new Value("Connected"));
+			statnode.setValue(new Value(ATTR_STATUS_CONNECTED));
 			act = new Action(Permission.READ, new StopHandler());
 			anode = node.getChild(ACTION_STOP);
 			if (anode == null) {
@@ -284,7 +296,7 @@ abstract public class ModbusConnection {
 					master = null;
 				}
 				node.removeChild("stop");
-				statnode.setValue(new Value("Stopped"));
+				statnode.setValue(new Value(ATTR_STATUS_CONNECTION_STOPPED));
 				makeStartAction();
 			}
 		});
@@ -297,18 +309,31 @@ abstract public class ModbusConnection {
 	}
 
 	void checkConnection() {
+		SlaveNode testNode;
+		if (slaves.isEmpty()) {
+			return;
+		} else {
+			testNode = (SlaveNode) slaves.toArray()[0];
+		}
+		int slaveId = testNode.node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 		boolean connected = false;
 		if (master != null) {
 			try {
 				LOGGER.debug("pinging device to test connectivity");
-				connected = master.testSlaveNode(node.getAttribute("slave id").getNumber().intValue());
+				connected = master.testSlaveNode(slaveId);
 			} catch (Exception e) {
 				LOGGER.debug("error during device ping: ", e);
 			}
-			if (connected)
-				statnode.setValue(new Value(ATTR_STATUS_READY));
-			else
-				statnode.setValue(new Value(ATTR_STATUS_FAILED));
+			if (connected) {
+				statnode.setValue(new Value(ATTR_STATUS_CONNECTED));
+			} else {
+				statnode.setValue(new Value(ATTR_STATUS_PING_FAILED));
+			}
+			master.setConnected(connected);
+			for (SlaveNode slave : slaves) {
+				slave.statnode.setValue(connected ? new Value(SlaveNode.ATTR_STATUS_READY)
+						: new Value(SlaveNode.ATTR_STATUS_NOT_READY));
+			}
 		}
 
 		if (!connected) {
@@ -318,8 +343,8 @@ abstract public class ModbusConnection {
 				@Override
 				public void run() {
 					Value stat = statnode.getValue();
-					if (stat == null || !("Ready".equals(stat.getString())
-							|| "Setting up connection".equals(stat.getString()))) {
+					if (stat == null || !(ATTR_STATUS_CONNECTED.equals(stat.getString())
+							|| ATTR_STATUS_SETTINGUP.equals(stat.getString()))) {
 						master = getMaster();
 					}
 				}

@@ -11,7 +11,6 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.ip.IpParameters;
@@ -39,15 +38,15 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	ModbusMaster getMaster() {
-		if (this.master != null) {
-			return this.master;
+		if (master != null) {
+			return master;
 		}
 
 		if (reconnectFuture != null) {
 			reconnectFuture.cancel(false);
 			reconnectFuture = null;
 		}
-		statnode.setValue(new Value("connecting to device"));
+		statnode.setValue(new Value(ATTR_STATUS_CONNECTING));
 
 		readIpAttributes();
 		readMasterAttributes();
@@ -76,8 +75,8 @@ public class IpConnection extends ModbusConnection {
 			master.init();
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
-			LOGGER.error("error in initializing master:" + e.getMessage() + " on " + host + ":" + port);
-			statnode.setValue(new Value("Could not establish connection"));
+			LOGGER.error("error in initializing master: " + e.getMessage() + " on " + host + ":" + port);
+			statnode.setValue(new Value(ATTR_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			node.removeChild("stop");
 			makeStartAction();
 			try {
