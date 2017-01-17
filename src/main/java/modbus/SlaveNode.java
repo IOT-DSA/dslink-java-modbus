@@ -48,8 +48,6 @@ public class SlaveNode extends SlaveFolder {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
 
-	final static String ATTR_STATUS_READY = "Ready";
-
 	// ModbusMaster master;
 	long intervalInMs;
 
@@ -67,7 +65,10 @@ public class SlaveNode extends SlaveFolder {
 
 		if (null != getMaster() && getMaster().isInitialized()) {
 			statnode.setValue(new Value(ATTR_STATUS_READY));
+		} else {
+			statnode.setValue(new Value(ATTR_STATUS_NOT_READY));
 		}
+
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
@@ -227,9 +228,6 @@ public class SlaveNode extends SlaveFolder {
 						} else if (obj instanceof ExceptionResult) {
 							ExceptionResult result = (ExceptionResult) obj;
 							LOGGER.error(pnode.getName() + " : " + result.getExceptionMessage());
-							// vt = ValueType.STRING;
-							// v = new Value((String)
-							// result.getExceptionMessage());
 						}
 					} else {
 						switch (dataType) {

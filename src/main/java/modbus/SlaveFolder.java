@@ -63,6 +63,8 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_POINT = "point";
 
 	static final String NODE_STATUS = "Status";
+	static final String ATTR_STATUS_READY = "Ready";
+	static final String ATTR_STATUS_NOT_READY = "Not Ready";
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 
 	ModbusConnection conn;
@@ -490,6 +492,13 @@ public class SlaveFolder {
 
 			polledNodes.remove(requestString);
 			conn.checkConnection();
+			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
+				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
+					pointNode.setValue(new Value(0));
+				} else if (pointNode.getValueType().compare(ValueType.BOOL)) {
+					pointNode.setValue(new Value(false));
+				}
+			}
 		} finally {
 			try {
 				root.getMaster().destroy();
@@ -522,9 +531,12 @@ public class SlaveFolder {
 				}
 			}
 		}
-		pointNode.setValueType(vt);
-		pointNode.setValue(v);
-		LOGGER.debug("read and updated " + pointNode.getName());
+
+		if (v != null) {
+			pointNode.setValueType(vt);
+			pointNode.setValue(v);
+			LOGGER.debug("read and updated " + pointNode.getName());
+		} 
 	}
 
 	public Node getStatusNode() {

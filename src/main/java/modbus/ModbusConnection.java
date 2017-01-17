@@ -326,10 +326,13 @@ abstract public class ModbusConnection {
 			}
 			if (connected) {
 				statnode.setValue(new Value(ATTR_STATUS_CONNECTED));
-				master.setConnected(true);
 			} else {
 				statnode.setValue(new Value(ATTR_STATUS_PING_FAILED));
-				master.setConnected(false);
+			}
+			master.setConnected(connected);
+			for (SlaveNode slave : slaves) {
+				slave.statnode.setValue(connected ? new Value(SlaveNode.ATTR_STATUS_READY)
+						: new Value(SlaveNode.ATTR_STATUS_NOT_READY));
 			}
 		}
 
