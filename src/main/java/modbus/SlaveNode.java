@@ -64,9 +64,9 @@ public class SlaveNode extends SlaveFolder {
 				.build();
 
 		if (null != getMaster() && getMaster().isInitialized()) {
-			statnode.setValue(new Value(ATTR_STATUS_READY));
+			statnode.setValue(new Value(NODE_STATUS_READY));
 		} else {
-			statnode.setValue(new Value(ATTR_STATUS_NOT_READY));
+			statnode.setValue(new Value(NODE_STATUS_NOT_READY));
 		}
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
@@ -157,7 +157,7 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
-		if (!ModbusConnection.ATTR_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+		if (!ModbusConnection.NODE_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
 			conn.checkConnection();
 			return;
 		}

@@ -46,7 +46,7 @@ public class IpConnection extends ModbusConnection {
 			reconnectFuture.cancel(false);
 			reconnectFuture = null;
 		}
-		statnode.setValue(new Value(ATTR_STATUS_CONNECTING));
+		statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 
 		readIpAttributes();
 		readMasterAttributes();
@@ -76,7 +76,7 @@ public class IpConnection extends ModbusConnection {
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master: " + e.getMessage() + " on " + host + ":" + port);
-			statnode.setValue(new Value(ATTR_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
+			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			node.removeChild("stop");
 			makeStartAction();
 			try {

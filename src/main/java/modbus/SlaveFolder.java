@@ -63,8 +63,9 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_POINT = "point";
 
 	static final String NODE_STATUS = "Status";
-	static final String ATTR_STATUS_READY = "Ready";
-	static final String ATTR_STATUS_NOT_READY = "Not Ready";
+	static final String NODE_STATUS_READY = "Ready";
+	static final String NODE_STATUS_NOT_READY = "Not Ready";
+
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 
 	ModbusConnection conn;
@@ -426,7 +427,7 @@ public class SlaveFolder {
 			return;
 		}
 
-		if (!ModbusConnection.ATTR_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+		if (!ModbusConnection.NODE_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
 			conn.checkConnection();
 			return;
 		}
@@ -536,7 +537,7 @@ public class SlaveFolder {
 			pointNode.setValueType(vt);
 			pointNode.setValue(v);
 			LOGGER.debug("read and updated " + pointNode.getName());
-		} 
+		}
 	}
 
 	public Node getStatusNode() {
