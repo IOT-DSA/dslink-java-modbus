@@ -45,7 +45,7 @@ public class SerialConn extends ModbusConnection {
 	static final String ATTR_MESSAGE_FRAME_SPACING = "message frame spacing";
 	static final String ATTR_CHARACTER_SPACING = "character spacing";
 
-	SerialTransportType transtype;
+	SerialTransportType transType;
 	String commPortId;
 	int baudRate;
 	int dataBits;
@@ -165,7 +165,7 @@ public class SerialConn extends ModbusConnection {
 		readMasterAttributes();
 
 		SerialParameters params;
-		switch (transtype) {
+		switch (transType) {
 		case RTU:
 			if (useMods) {
 				params = new ModSerialParameters();
@@ -322,7 +322,7 @@ public class SerialConn extends ModbusConnection {
 	}
 
 	void readSerialParameters(ActionResult event) {
-		transtype = SerialTransportType
+		transType = SerialTransportType
 				.valueOf(event.getParameter(ATTR_TRANSPORT_TYPE, ValueType.STRING).getString().toUpperCase());
 
 		Value customPort = event.getParameter(ATTR_COMM_PORT_ID_MANUAL);
@@ -343,6 +343,7 @@ public class SerialConn extends ModbusConnection {
 	}
 
 	void readSerialAttributes() {
+		transType = SerialTransportType.valueOf(node.getAttribute(ATTR_TRANSPORT_TYPE).getString().toUpperCase());
 		commPortId = node.getAttribute(ATTR_COMM_PORT_ID).getString();
 		baudRate = node.getAttribute(ATTR_BAUD_RATE).getNumber().intValue();
 		dataBits = node.getAttribute(ATTR_DATA_BITS).getNumber().intValue();
@@ -356,6 +357,7 @@ public class SerialConn extends ModbusConnection {
 	}
 
 	void writeSerialAttributes() {
+		node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transType.toString()));
 		node.setAttribute(ATTR_COMM_PORT_ID, new Value(commPortId));
 		node.setAttribute(ATTR_BAUD_RATE, new Value(baudRate));
 		node.setAttribute(ATTR_DATA_BITS, new Value(dataBits));
