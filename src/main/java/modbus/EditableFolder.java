@@ -35,10 +35,15 @@ public abstract class EditableFolder {
 
 	protected static final String ACTION_REMOVE = "remove";
 
-	// link represents the unique modbus link which maintains the slave set
-	// root represents the unique device folder on the top of the folder tree
-	// node represents the current node which holds register points
-	// Any action on folder node needs to be delegated to root - the device node
+	/*
+	 * link represents the unique modbus link which maintains the slave set.
+	 * 
+	 * root represents the unique device folder on the top of the folder tree.
+	 * 
+	 * node represents the current node which holds register points.
+	 * 
+	 * Any action on folder node needs to be delegated to root - the device node
+	 */
 
 	protected ModbusLink link;
 	protected EditableFolder root;

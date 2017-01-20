@@ -29,7 +29,7 @@ public class IpConnection extends ModbusConnection {
 	static final String ATTR_PORT = "port";
 	static final String ADD_IP_DEVICE_ACTION = "add ip device";
 
-	IpTransportType transtype;
+	IpTransportType transType;
 	String host;
 	int port;
 
@@ -46,13 +46,13 @@ public class IpConnection extends ModbusConnection {
 			reconnectFuture.cancel(false);
 			reconnectFuture = null;
 		}
-		statnode.setValue(new Value(ATTR_STATUS_CONNECTING));
+		statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 
 		readIpAttributes();
 		readMasterAttributes();
 
 		IpParameters params;
-		switch (transtype) {
+		switch (transType) {
 		case TCP:
 			params = new IpParameters();
 			params.setHost(host);
@@ -76,7 +76,7 @@ public class IpConnection extends ModbusConnection {
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master: " + e.getMessage() + " on " + host + ":" + port);
-			statnode.setValue(new Value(ATTR_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
+			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			node.removeChild("stop");
 			makeStartAction();
 			try {
@@ -186,19 +186,19 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	void readIpAttributes() {
-		transtype = IpTransportType.valueOf(node.getAttribute(ATTR_TRANSPORT_TYPE).getString().toUpperCase());
+		transType = IpTransportType.valueOf(node.getAttribute(ATTR_TRANSPORT_TYPE).getString().toUpperCase());
 		host = node.getAttribute(ATTR_HOST).getString();
 		port = node.getAttribute(ATTR_PORT).getNumber().intValue();
 	}
 
 	void writeIpAttributes() {
-		node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transtype.toString()));
+		node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transType.toString()));
 		node.setAttribute(ATTR_HOST, new Value(host));
 		node.setAttribute(ATTR_PORT, new Value(port));
 	}
 
 	void readIpParameters(ActionResult event) {
-		transtype = IpTransportType
+		transType = IpTransportType
 				.valueOf(event.getParameter(ATTR_TRANSPORT_TYPE, ValueType.STRING).getString().toUpperCase());
 		host = event.getParameter(ATTR_HOST, ValueType.STRING).getString();
 		port = event.getParameter(ATTR_PORT, ValueType.NUMBER).getNumber().intValue();
