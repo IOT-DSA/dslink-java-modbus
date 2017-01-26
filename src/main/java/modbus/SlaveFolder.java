@@ -63,8 +63,8 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_POINT = "point";
 
 	static final String NODE_STATUS = "Status";
+	static final String NODE_STATUS_SETTING_UP = "Setting up device";
 	static final String NODE_STATUS_READY = "Ready";
-	static final String NODE_STATUS_NOT_READY = "Not Ready";
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
 
