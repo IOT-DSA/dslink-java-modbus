@@ -331,8 +331,8 @@ abstract public class ModbusConnection {
 			}
 			master.setConnected(connected);
 			for (SlaveNode slave : slaves) {
-				slave.statnode.setValue(connected ? new Value(SlaveNode.NODE_STATUS_READY)
-						: new Value(SlaveNode.NODE_STATUS_NOT_READY));
+				if (connected)
+					slave.statnode.setValue(new Value(SlaveNode.NODE_STATUS_READY));
 			}
 		}
 
