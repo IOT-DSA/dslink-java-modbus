@@ -314,9 +314,14 @@ abstract public class ModbusConnection {
 		if (master != null) {
 			// if all slave are down, it is safe to re-connect
 			for (SlaveNode slave : slaves) {
-				connected = connected || slave.statnode.getValue().getString().equals(SlaveNode.NODE_STATUS_READY);
+				connected = connected || SlaveNode.NODE_STATUS_READY.equals(slave.statnode.getValue().getString());
 			}
-			master.setConnected(connected);
+			if (!connected) {
+				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
+				master.destroy();
+			} else {
+				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
+			}
 		}
 
 		if (!slaves.isEmpty() && !connected) {

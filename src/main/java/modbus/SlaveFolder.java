@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.code.RegisterRange;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BinaryLocator;
 import com.serotonin.modbus4j.locator.NumericLocator;
@@ -430,7 +429,8 @@ public class SlaveFolder {
 			return;
 		}
 
-		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString()) && !checkConnectionByDevice()) {
+		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString()) && !isDeviceConnected()) {
+			conn.checkConnection();
 			return;
 		}
 
@@ -494,8 +494,9 @@ public class SlaveFolder {
 			LOGGER.debug("ModbusTransportException: ", e);
 
 			polledNodes.remove(requestString);
-			checkConnectionByDevice();
-			conn.checkConnection();
+			if (!isDeviceConnected()) {
+				conn.checkConnection();
+			}
 			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
 					pointNode.setValue(new Value(0));
@@ -818,7 +819,7 @@ public class SlaveFolder {
 		return retval;
 	}
 
-	boolean checkConnectionByDevice() {
-		return true;
+	boolean isDeviceConnected() {
+		return root.isDeviceConnected();
 	}
 }

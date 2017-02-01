@@ -69,7 +69,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 
 		if (null != getMaster() && getMaster().isInitialized()) {
-			checkConnectionByDevice();
+			isDeviceConnected();
 		}
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
@@ -160,7 +160,8 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
-		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && !checkConnectionByDevice()) {
+		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && isDeviceConnected()) {
+			conn.checkConnection();
 			return;
 		}
 
@@ -282,9 +283,9 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
 				LOGGER.debug("error in initializing master: ", e);
-				checkConnectionByDevice();
-				conn.checkConnection();
-
+				if (!isDeviceConnected()) {
+					conn.checkConnection();
+				}
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
@@ -324,7 +325,7 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	@Override
-	boolean checkConnectionByDevice() {
+	boolean isDeviceConnected() {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 
 		boolean connected = false;
