@@ -17,6 +17,7 @@ import org.dsa.iot.dslink.util.json.JsonArray;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.BatchRead;
@@ -184,7 +185,7 @@ public class SlaveNode extends SlaveFolder {
 				Integer dt = DataType.getDataTypeInt(dataType);
 				if (dt == null)
 					dt = com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
-				int range = getPointTypeInt(type);
+				int range = PointType.getPointTypeInt(type);
 
 				if (dataType == DataType.BOOLEAN && !BinaryLocator.isBinaryRange(range) && bit < 0) {
 					dt = com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
@@ -254,9 +255,9 @@ public class SlaveNode extends SlaveFolder {
 							boolean swap = (dataType == DataType.INT32M10KSWAP);
 							long num;
 							if (swap)
-								num = toUnsignedLong(toUnsignedInt(slo) * 10000 + toUnsignedInt(shi));
+								num = Util.toUnsignedLong(Util.toUnsignedInt(slo) * 10000 + Util.toUnsignedInt(shi));
 							else
-								num = toUnsignedLong(toUnsignedInt(shi) * 10000 + toUnsignedInt(slo));
+								num = Util.toUnsignedLong(Util.toUnsignedInt(shi) * 10000 + Util.toUnsignedInt(slo));
 							vt = ValueType.NUMBER;
 							v = new Value(num / scaling + addscale);
 							break;

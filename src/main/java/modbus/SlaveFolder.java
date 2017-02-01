@@ -660,7 +660,7 @@ public class SlaveFolder {
 		Integer dtint = DataType.getDataTypeInt(dt);
 		if (dtint != null) {
 			if (!dt.isString()) {
-				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pt), offset, dtint);
+				NumericLocator nloc = new NumericLocator(slaveid, PointType.getPointTypeInt(pt), offset, dtint);
 				for (int i = 0; i < jarr.size(); i++) {
 					Object o = jarr.get(i);
 					if (!(o instanceof Number))
@@ -673,7 +673,8 @@ public class SlaveFolder {
 				if (!(o instanceof String))
 					throw new Exception("not a string");
 				String str = (String) o;
-				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pt), offset, dtint, numRegisters);
+				StringLocator sloc = new StringLocator(slaveid, PointType.getPointTypeInt(pt), offset, dtint,
+						numRegisters);
 				retval = sloc.valueToShorts(str);
 			}
 		} else if (dt == DataType.BOOLEAN) {
@@ -740,7 +741,7 @@ public class SlaveFolder {
 		Integer dt = DataType.getDataTypeInt(dataType);
 		if (dt != null && dataType != DataType.BOOLEAN) {
 			if (!dataType.isString()) {
-				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pointType), offset, dt);
+				NumericLocator nloc = new NumericLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt);
 				int regsPerVal = nloc.getRegisterCount();
 				for (int i = 0; i < responseData.length; i += regsPerVal) {
 					try {
@@ -751,7 +752,7 @@ public class SlaveFolder {
 					}
 				}
 			} else {
-				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt,
+				StringLocator sloc = new StringLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt,
 						responseData.length);
 				retval.add(sloc.bytesToValueRealOffset(byteData, 0));
 			}
@@ -761,7 +762,7 @@ public class SlaveFolder {
 			switch (dataType) {
 			case BOOLEAN:
 				if (bit != -1 && responseData.length > 0) {
-					BinaryLocator bloc = new BinaryLocator(slaveid, getPointTypeInt(pointType), offset, bit);
+					BinaryLocator bloc = new BinaryLocator(slaveid, PointType.getPointTypeInt(pointType), offset, bit);
 					retval.add(bloc.bytesToValueRealOffset(byteData, 0));
 				} else {
 					for (short s : responseData) {
@@ -794,15 +795,15 @@ public class SlaveFolder {
 				for (short s : responseData) {
 					if (regnum == 0) {
 						regnum += 1;
-						last = toUnsignedInt(s);
+						last = Util.toUnsignedInt(s);
 					} else {
 						regnum = 0;
 						long num;
 						boolean swap = (dataType == DataType.UINT32M10KSWAP);
 						if (swap)
-							num = toUnsignedLong(toUnsignedInt(s) * 10000 + last);
+							num = Util.toUnsignedLong(Util.toUnsignedInt(s) * 10000 + last);
 						else
-							num = toUnsignedLong(last * 10000 + toUnsignedInt(s));
+							num = Util.toUnsignedLong(last * 10000 + Util.toUnsignedInt(s));
 						retval.add(num / scaling + addscaling);
 					}
 				}
@@ -813,32 +814,4 @@ public class SlaveFolder {
 		}
 		return retval;
 	}
-
-	static int toUnsignedInt(short x) {
-		return ((int) x) & 0xffff;
-	}
-
-	static long toUnsignedLong(int x) {
-		return ((long) x) & 0xffffffffL;
-	}
-
-	protected static int getPointTypeInt(PointType pt) {
-		switch (pt) {
-		case COIL:
-			return RegisterRange.COIL_STATUS;
-		case DISCRETE:
-			return RegisterRange.INPUT_STATUS;
-		case HOLDING:
-			return RegisterRange.HOLDING_REGISTER;
-		case INPUT:
-			return RegisterRange.INPUT_REGISTER;
-		default:
-			return 0;
-		}
-	}
-
-	// private int getDigitFromBcd(int bcd, int position) {
-	// return (bcd >>> (position*4)) & 15;
-	// }
-
 }
