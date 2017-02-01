@@ -54,7 +54,7 @@ abstract public class ModbusConnection {
 	static final String NODE_STATUS_SETTINGUP = "Setting up connection";
 	static final String NODE_STATUS_CONNECTED = "Connected";
 	static final String NODE_STATUS_CONNECTING = "connecting to device";
-	static final String NODE_STATUS_PING_FAILED = "Device ping failed";
+
 	static final String NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED = "Could not establish connection";
 	static final String NODE_STATUS_CONNECTION_STOPPED = "Stopped";
 
@@ -309,34 +309,17 @@ abstract public class ModbusConnection {
 	}
 
 	void checkConnection() {
-		SlaveNode testNode;
-		if (slaves.isEmpty()) {
-			return;
-		} else {
-			testNode = (SlaveNode) slaves.toArray()[0];
-		}
-		int slaveId = testNode.node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
+
 		boolean connected = false;
 		if (master != null) {
-			try {
-				LOGGER.debug("pinging device to test connectivity");
-				connected = master.testSlaveNode(slaveId);
-			} catch (Exception e) {
-				LOGGER.debug("error during device ping: ", e);
-			}
-			if (connected) {
-				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
-			} else {
-				statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
+			// if all slave are down, it is safe to re-connect
+			for (SlaveNode slave : slaves) {
+				connected = connected || slave.statnode.getValue().getString().equals(SlaveNode.NODE_STATUS_READY);
 			}
 			master.setConnected(connected);
-			for (SlaveNode slave : slaves) {
-				if (connected)
-					slave.statnode.setValue(new Value(SlaveNode.NODE_STATUS_READY));
-			}
 		}
 
-		if (!connected) {
+		if (!slaves.isEmpty() && !connected) {
 			ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 			reconnectFuture = reconnectStpe.schedule(new Runnable() {
 
