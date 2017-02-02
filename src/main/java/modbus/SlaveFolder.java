@@ -504,13 +504,14 @@ public class SlaveFolder {
 					pointNode.setValue(new Value(false));
 				}
 			}
-		} finally {
-			try {
-				root.getMaster().destroy();
-			} catch (Exception e) {
-				LOGGER.debug("error destroying last master");
-			}
-		}
+		} 
+//		finally {
+//			try {
+//				root.getMaster().destroy();
+//			} catch (Exception e) {
+//				LOGGER.debug("error destroying last master");
+//			}
+//		}
 		String valString = val.toString();
 		Value v = new Value(valString);
 		ValueType vt = ValueType.STRING;
@@ -628,13 +629,14 @@ public class SlaveFolder {
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
-			} finally {
-				try {
-					root.getMaster().destroy();
-				} catch (Exception e) {
-					LOGGER.debug("error destroying last master");
-				}
-			}
+			} 
+//			finally {
+//				try {
+//					root.getMaster().destroy();
+//				} catch (Exception e) {
+//					LOGGER.debug("error destroying last master");
+//				}
+//			}
 		}
 	}
 
