@@ -17,6 +17,7 @@ import org.dsa.iot.dslink.util.json.JsonArray;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.BatchRead;
@@ -68,7 +69,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 
 		if (null != getMaster() && getMaster().isInitialized()) {
-			statnode.setValue(new Value(NODE_STATUS_READY));
+			isDeviceConnected();
 		}
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
@@ -159,7 +160,7 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
-		if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
+		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && isDeviceConnected()) {
 			conn.checkConnection();
 			return;
 		}
@@ -184,7 +185,7 @@ public class SlaveNode extends SlaveFolder {
 				Integer dt = DataType.getDataTypeInt(dataType);
 				if (dt == null)
 					dt = com.serotonin.modbus4j.code.DataType.FOUR_BYTE_INT_SIGNED;
-				int range = getPointTypeInt(type);
+				int range = PointType.getPointTypeInt(type);
 
 				if (dataType == DataType.BOOLEAN && !BinaryLocator.isBinaryRange(range) && bit < 0) {
 					dt = com.serotonin.modbus4j.code.DataType.TWO_BYTE_INT_SIGNED;
@@ -254,9 +255,9 @@ public class SlaveNode extends SlaveFolder {
 							boolean swap = (dataType == DataType.INT32M10KSWAP);
 							long num;
 							if (swap)
-								num = toUnsignedLong(toUnsignedInt(slo) * 10000 + toUnsignedInt(shi));
+								num = Util.toUnsignedLong(Util.toUnsignedInt(slo) * 10000 + Util.toUnsignedInt(shi));
 							else
-								num = toUnsignedLong(toUnsignedInt(shi) * 10000 + toUnsignedInt(slo));
+								num = Util.toUnsignedLong(Util.toUnsignedInt(shi) * 10000 + Util.toUnsignedInt(slo));
 							vt = ValueType.NUMBER;
 							v = new Value(num / scaling + addscale);
 							break;
@@ -282,8 +283,9 @@ public class SlaveNode extends SlaveFolder {
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
 				LOGGER.debug("error in initializing master: ", e);
-				conn.checkConnection();
-
+				if (!isDeviceConnected()) {
+					conn.checkConnection();
+				}
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
@@ -320,5 +322,26 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	public Node getStatusNode() {
 		return this.statnode;
+	}
+
+	@Override
+	boolean isDeviceConnected() {
+		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
+
+		boolean connected = false;
+		if (conn.getMaster() != null) {
+			try {
+				LOGGER.debug("pinging device to test connectivity");
+				connected = conn.getMaster().testSlaveNode(slaveId);
+			} catch (Exception e) {
+				LOGGER.debug("error during device ping: ", e);
+			}
+			if (connected) {
+				statnode.setValue(new Value(NODE_STATUS_READY));
+			} else {
+				statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
+			}
+		}
+		return connected;
 	}
 }

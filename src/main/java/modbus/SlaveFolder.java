@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.code.RegisterRange;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BinaryLocator;
 import com.serotonin.modbus4j.locator.NumericLocator;
@@ -48,6 +47,8 @@ public class SlaveFolder {
 	static final String ACTION_RENAME = "rename";
 	static final String ACTION_ADD_FOLDER = "add folder";
 
+	static final String ATTR_SLAVE_ID = "slave id";
+
 	static final String ATTR_NAME = "name";
 	static final String ATTR_POINT_TYPE = "type";
 	static final String ATTR_OFFSET = "offset";
@@ -64,6 +65,7 @@ public class SlaveFolder {
 
 	static final String NODE_STATUS = "Status";
 	static final String NODE_STATUS_SETTING_UP = "Setting up device";
+	static final String NODE_STATUS_PING_FAILED = "Device ping failed";
 	static final String NODE_STATUS_READY = "Ready";
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
@@ -427,7 +429,7 @@ public class SlaveFolder {
 			return;
 		}
 
-		if (!ModbusConnection.NODE_STATUS_CONNECTED.equals(conn.statnode.getValue().getString())) {
+		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString()) && !isDeviceConnected()) {
 			conn.checkConnection();
 			return;
 		}
@@ -492,7 +494,9 @@ public class SlaveFolder {
 			LOGGER.debug("ModbusTransportException: ", e);
 
 			polledNodes.remove(requestString);
-			conn.checkConnection();
+			if (!isDeviceConnected()) {
+				conn.checkConnection();
+			}
 			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
 					pointNode.setValue(new Value(0));
@@ -660,7 +664,7 @@ public class SlaveFolder {
 		Integer dtint = DataType.getDataTypeInt(dt);
 		if (dtint != null) {
 			if (!dt.isString()) {
-				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pt), offset, dtint);
+				NumericLocator nloc = new NumericLocator(slaveid, PointType.getPointTypeInt(pt), offset, dtint);
 				for (int i = 0; i < jarr.size(); i++) {
 					Object o = jarr.get(i);
 					if (!(o instanceof Number))
@@ -673,7 +677,8 @@ public class SlaveFolder {
 				if (!(o instanceof String))
 					throw new Exception("not a string");
 				String str = (String) o;
-				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pt), offset, dtint, numRegisters);
+				StringLocator sloc = new StringLocator(slaveid, PointType.getPointTypeInt(pt), offset, dtint,
+						numRegisters);
 				retval = sloc.valueToShorts(str);
 			}
 		} else if (dt == DataType.BOOLEAN) {
@@ -740,7 +745,7 @@ public class SlaveFolder {
 		Integer dt = DataType.getDataTypeInt(dataType);
 		if (dt != null && dataType != DataType.BOOLEAN) {
 			if (!dataType.isString()) {
-				NumericLocator nloc = new NumericLocator(slaveid, getPointTypeInt(pointType), offset, dt);
+				NumericLocator nloc = new NumericLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt);
 				int regsPerVal = nloc.getRegisterCount();
 				for (int i = 0; i < responseData.length; i += regsPerVal) {
 					try {
@@ -751,7 +756,7 @@ public class SlaveFolder {
 					}
 				}
 			} else {
-				StringLocator sloc = new StringLocator(slaveid, getPointTypeInt(pointType), offset, dt,
+				StringLocator sloc = new StringLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt,
 						responseData.length);
 				retval.add(sloc.bytesToValueRealOffset(byteData, 0));
 			}
@@ -761,7 +766,7 @@ public class SlaveFolder {
 			switch (dataType) {
 			case BOOLEAN:
 				if (bit != -1 && responseData.length > 0) {
-					BinaryLocator bloc = new BinaryLocator(slaveid, getPointTypeInt(pointType), offset, bit);
+					BinaryLocator bloc = new BinaryLocator(slaveid, PointType.getPointTypeInt(pointType), offset, bit);
 					retval.add(bloc.bytesToValueRealOffset(byteData, 0));
 				} else {
 					for (short s : responseData) {
@@ -794,15 +799,15 @@ public class SlaveFolder {
 				for (short s : responseData) {
 					if (regnum == 0) {
 						regnum += 1;
-						last = toUnsignedInt(s);
+						last = Util.toUnsignedInt(s);
 					} else {
 						regnum = 0;
 						long num;
 						boolean swap = (dataType == DataType.UINT32M10KSWAP);
 						if (swap)
-							num = toUnsignedLong(toUnsignedInt(s) * 10000 + last);
+							num = Util.toUnsignedLong(Util.toUnsignedInt(s) * 10000 + last);
 						else
-							num = toUnsignedLong(last * 10000 + toUnsignedInt(s));
+							num = Util.toUnsignedLong(last * 10000 + Util.toUnsignedInt(s));
 						retval.add(num / scaling + addscaling);
 					}
 				}
@@ -814,31 +819,7 @@ public class SlaveFolder {
 		return retval;
 	}
 
-	static int toUnsignedInt(short x) {
-		return ((int) x) & 0xffff;
+	boolean isDeviceConnected() {
+		return root.isDeviceConnected();
 	}
-
-	static long toUnsignedLong(int x) {
-		return ((long) x) & 0xffffffffL;
-	}
-
-	protected static int getPointTypeInt(PointType pt) {
-		switch (pt) {
-		case COIL:
-			return RegisterRange.COIL_STATUS;
-		case DISCRETE:
-			return RegisterRange.INPUT_STATUS;
-		case HOLDING:
-			return RegisterRange.HOLDING_REGISTER;
-		case INPUT:
-			return RegisterRange.INPUT_REGISTER;
-		default:
-			return 0;
-		}
-	}
-
-	// private int getDigitFromBcd(int bcd, int position) {
-	// return (bcd >>> (position*4)) & 15;
-	// }
-
 }
