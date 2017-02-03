@@ -210,7 +210,7 @@ public class SlaveFolder {
 	}
 
 	private JsonObject getParentJson(JsonObject jobj, Node node) {
-		if ((node == root.getConnection().node))
+		if (node.getParent() == conn.link.node)
 			return jobj;
 		else
 			return getParentJson(jobj, node.getParent()).get(node.getParent().getName());
@@ -653,7 +653,7 @@ public class SlaveFolder {
 	}
 
 	public ModbusConnection getConnection() {
-		return null;
+		return conn;
 	}
 
 	public ModbusMaster getMaster() {
