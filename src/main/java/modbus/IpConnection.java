@@ -87,7 +87,7 @@ public class IpConnection extends ModbusConnection {
 			}
 		}
 
-		if (master.isInitialized()) {
+		if (master != null && master.isInitialized()) {
 			link.masters.add(master);
 			return master;
 		} else {

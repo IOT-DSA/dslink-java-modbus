@@ -160,7 +160,7 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
-		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && isDeviceConnected()) {
+		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && !isDeviceConnected()) {
 			conn.checkConnection();
 			return;
 		}
@@ -295,13 +295,14 @@ public class SlaveNode extends SlaveFolder {
 						}
 					}
 				}
-			} finally {
-				try {
-					root.getMaster().destroy();
-				} catch (Exception e) {
-					LOGGER.debug("error destroying last master");
-				}
 			}
+//			finally {
+//				try {
+//					//root.getMaster().destroy();
+//				} catch (Exception e) {
+//					LOGGER.debug("error destroying last master");
+//				}
+//			}
 
 		} else {
 			for (Node pnode : subscribed.keySet()) {
