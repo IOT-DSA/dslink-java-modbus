@@ -68,19 +68,17 @@ public class SlaveNode extends SlaveFolder {
 					.setValue(new Value(NODE_STATUS_SETTING_UP)).build();
 		}
 
-		if (null != getMaster() && getMaster().isInitialized()) {
-			isDeviceConnected();
-		}
+		checkDeviceConnected();
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
 
-		if (getMaster() != null && getMaster().isInitialized()) {
-			conn.makeStopAction();
-		} else {
-			conn.makeStartAction();
-		}
+//		if (getMaster() != null && getMaster().isInitialized()) {
+//			conn.makeStopAction();
+//		} else {
+//			conn.makeStartAction();
+//		}
 	}
 
 	void addToSub(Node event) {
@@ -150,7 +148,7 @@ public class SlaveNode extends SlaveFolder {
 
 			conn.getLink().handleEdit(root);
 
-			conn.checkConnection();
+			checkDeviceConnected();
 
 			makeEditAction();
 		}
@@ -160,9 +158,11 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
-		if (!NODE_STATUS_READY.equals(statnode.getValue().getString()) && !isDeviceConnected()) {
-			conn.checkConnection();
-			return;
+		if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
+			checkDeviceConnected();
+			if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
+				return;
+			}
 		}
 
 		if (node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING).getBool()) {
@@ -282,10 +282,8 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
-				LOGGER.debug("error in initializing master: ", e);
-				if (!isDeviceConnected()) {
-					conn.checkConnection();
-				}
+				LOGGER.debug("error during batch poll: ", e);
+				checkDeviceConnected();
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
 						if (pnode.getValueType().compare(ValueType.NUMBER)) {
@@ -317,7 +315,7 @@ public class SlaveNode extends SlaveFolder {
 
 	@Override
 	public ModbusMaster getMaster() {
-		return conn.getMaster();
+		return conn.master;
 	}
 
 	@Override
@@ -326,14 +324,14 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	@Override
-	boolean isDeviceConnected() {
+	void checkDeviceConnected() {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 
 		boolean connected = false;
-		if (conn.getMaster() != null) {
+		if (conn.master != null) {
 			try {
 				LOGGER.debug("pinging device to test connectivity");
-				connected = conn.getMaster().testSlaveNode(slaveId);
+				connected = conn.master.testSlaveNode(slaveId);
 			} catch (Exception e) {
 				LOGGER.debug("error during device ping: ", e);
 			}
@@ -341,8 +339,11 @@ public class SlaveNode extends SlaveFolder {
 				statnode.setValue(new Value(NODE_STATUS_READY));
 			} else {
 				statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
+				conn.checkConnection();
 			}
+		} else {
+			statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 		}
-		return connected;
+		return;
 	}
 }

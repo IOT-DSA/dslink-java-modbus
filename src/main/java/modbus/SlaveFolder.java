@@ -66,6 +66,7 @@ public class SlaveFolder {
 	static final String NODE_STATUS = "Status";
 	static final String NODE_STATUS_SETTING_UP = "Setting up device";
 	static final String NODE_STATUS_PING_FAILED = "Device ping failed";
+	static final String NODE_STATUS_CONN_DOWN = "Connection Down";
 	static final String NODE_STATUS_READY = "Ready";
 
 	static final String MSG_STRING_SIZE_NOT_MATCHING = "new string size is not the same as the old one";
@@ -429,9 +430,11 @@ public class SlaveFolder {
 			return;
 		}
 
-		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString()) && !isDeviceConnected()) {
-			conn.checkConnection();
-			return;
+		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString())) {
+			checkDeviceConnected();
+			if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString())) {
+				return;
+			}
 		}
 
 		PointType type = PointType.valueOf(pointNode.getAttribute(ATTR_POINT_TYPE).getString());
@@ -494,9 +497,7 @@ public class SlaveFolder {
 			LOGGER.debug("ModbusTransportException: ", e);
 
 			polledNodes.remove(requestString);
-			if (!isDeviceConnected()) {
-				conn.checkConnection();
-			}
+			checkDeviceConnected();
 			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
 					pointNode.setValue(new Value(0));
@@ -821,7 +822,7 @@ public class SlaveFolder {
 		return retval;
 	}
 
-	boolean isDeviceConnected() {
-		return root.isDeviceConnected();
+	void checkDeviceConnected() {
+		root.checkDeviceConnected();
 	}
 }
