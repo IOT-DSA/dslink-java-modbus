@@ -216,8 +216,6 @@ public class SerialConn extends ModbusConnection {
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master : " + e.getMessage());
 			LOGGER.debug("error: ", e);
-			//statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
-			//stop();
 			master = null;
 			return null;
 		}

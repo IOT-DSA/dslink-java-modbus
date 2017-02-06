@@ -97,14 +97,6 @@ abstract public class ModbusConnection {
 		slaves = new HashSet<>();
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
 		link.connections.add(this);
-
-//		ScheduledThreadPoolExecutor stpe = getDaemonThreadPool();
-//		stpe.execute(new Runnable() {
-//			@Override
-//			public void run() {
-//				checkConnection();
-//			}
-//		});
 	}
 
 	void duplicate(String name) {
@@ -131,8 +123,6 @@ abstract public class ModbusConnection {
 	}
 
 	void stop() {
-//		stpe.shutdown();
-
 		if (master != null) {
 			try {
 				master.destroy();
@@ -141,7 +131,6 @@ abstract public class ModbusConnection {
 				LOGGER.debug("error destroying last master" + e.getMessage());
 			}
 			master = null;
-			//node.removeChild("stop");
 			removeChild();
 		}
 		statnode.setValue(new Value(NODE_STATUS_CONNECTION_STOPPED));
@@ -220,7 +209,6 @@ abstract public class ModbusConnection {
 			}
 		} else {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
-			//node.removeChild("stop");
 			removeChild();
 			scheduleReconnect();
 		}
@@ -264,26 +252,6 @@ abstract public class ModbusConnection {
 
 		return act;
 	}
-
-//	void makeStartAction() {
-//		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-//			public void handle(ActionResult event) {
-//				master = getMaster();
-//				if (null != master) {
-//					checkConnection();
-//					node.removeChild("start");
-//					makeStopAction();
-//				}
-//
-//			}
-//		});
-//
-//		Node anode = node.getChild("start");
-//		if (anode == null)
-//			node.createChild("start").setAction(act).build().setSerializable(false);
-//		else
-//			anode.setAction(act);
-//	}
 
 	void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {

@@ -506,13 +506,6 @@ public class SlaveFolder {
 				}
 			}
 		} 
-//		finally {
-//			try {
-//				root.getMaster().destroy();
-//			} catch (Exception e) {
-//				LOGGER.debug("error destroying last master");
-//			}
-//		}
 		String valString = val.toString();
 		Value v = new Value(valString);
 		ValueType vt = ValueType.STRING;
@@ -631,13 +624,6 @@ public class SlaveFolder {
 				LOGGER.debug("error: ", e);
 				return;
 			} 
-//			finally {
-//				try {
-//					root.getMaster().destroy();
-//				} catch (Exception e) {
-//					LOGGER.debug("error destroying last master");
-//				}
-//			}
 		}
 	}
 

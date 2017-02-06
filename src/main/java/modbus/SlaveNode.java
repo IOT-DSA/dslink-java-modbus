@@ -74,11 +74,6 @@ public class SlaveNode extends SlaveFolder {
 
 		makeEditAction();
 
-//		if (getMaster() != null && getMaster().isInitialized()) {
-//			conn.makeStopAction();
-//		} else {
-//			conn.makeStartAction();
-//		}
 	}
 
 	void addToSub(Node event) {
@@ -294,14 +289,6 @@ public class SlaveNode extends SlaveFolder {
 					}
 				}
 			}
-//			finally {
-//				try {
-//					//root.getMaster().destroy();
-//				} catch (Exception e) {
-//					LOGGER.debug("error destroying last master");
-//				}
-//			}
-
 		} else {
 			for (Node pnode : subscribed.keySet()) {
 				readPoint(pnode);
