@@ -76,21 +76,20 @@ public class IpConnection extends ModbusConnection {
 			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master: " + e.getMessage() + " on " + host + ":" + port);
-			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
-			node.removeChild("stop");
-			makeStartAction();
 			try {
 				master.destroy();
 				LOGGER.debug("Close connection");
 			} catch (Exception e1) {
 				LOGGER.debug(e1.getMessage());
 			}
+			master = null;
 		}
 
 		if (master != null && master.isInitialized()) {
 			link.masters.add(master);
 			return master;
 		} else {
+			master = null;
 			return null;
 		}
 	}

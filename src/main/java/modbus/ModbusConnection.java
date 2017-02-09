@@ -97,14 +97,6 @@ abstract public class ModbusConnection {
 		slaves = new HashSet<>();
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
 		link.connections.add(this);
-
-		ScheduledThreadPoolExecutor stpe = getDaemonThreadPool();
-		stpe.execute(new Runnable() {
-			@Override
-			public void run() {
-				checkConnection();
-			}
-		});
 	}
 
 	void duplicate(String name) {
@@ -131,8 +123,6 @@ abstract public class ModbusConnection {
 	}
 
 	void stop() {
-		stpe.shutdown();
-
 		if (master != null) {
 			try {
 				master.destroy();
@@ -140,19 +130,20 @@ abstract public class ModbusConnection {
 			} catch (Exception e) {
 				LOGGER.debug("error destroying last master" + e.getMessage());
 			}
-			statnode.setValue(new Value(NODE_STATUS_CONNECTION_STOPPED));
 			master = null;
-			node.removeChild("stop");
 			removeChild();
 		}
+		statnode.setValue(new Value(NODE_STATUS_CONNECTION_STOPPED));
 	}
 
 	void restoreLastSession() {
 		init();
 
+		slaves.clear();
+		
 		if (node.getChildren() == null)
 			return;
-
+		
 		Map<String, Node> children = node.getChildren();
 		for (Node child : children.values()) {
 			Value slaveId = child.getAttribute(ATTR_SLAVE_ID);
@@ -204,16 +195,11 @@ abstract public class ModbusConnection {
 			anode.setAction(act);
 		}
 
+		makeStopAction();
+		
 		master = getMaster();
 		if (master != null) {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
-			act = new Action(Permission.READ, new StopHandler());
-			anode = node.getChild(ACTION_STOP);
-			if (anode == null) {
-				node.createChild(ACTION_STOP).setAction(act).build().setSerializable(false);
-			} else {
-				anode.setAction(act);
-			}
 			act = getAddDeviceAction();
 			anode = node.getChild(getAddDeviceActionName());
 			if (anode == null) {
@@ -221,17 +207,17 @@ abstract public class ModbusConnection {
 			} else {
 				anode.setAction(act);
 			}
+		} else {
+			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
+			removeChild();
+			scheduleReconnect();
 		}
 	}
 
-	class StopHandler implements Handler<ActionResult> {
-		public void handle(ActionResult event) {
-			stop();
-		}
-	}
 
 	class RestartHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
+			reconnectFuture.cancel(false);
 			stop();
 			restoreLastSession();
 		}
@@ -267,37 +253,11 @@ abstract public class ModbusConnection {
 		return act;
 	}
 
-	void makeStartAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				master = getMaster();
-				if (null != master) {
-					checkConnection();
-					node.removeChild("start");
-					makeStopAction();
-				}
-
-			}
-		});
-
-		Node anode = node.getChild("start");
-		if (anode == null)
-			node.createChild("start").setAction(act).build().setSerializable(false);
-		else
-			anode.setAction(act);
-	}
-
 	void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				if (master != null) {
-					master.destroy();
-					link.masters.remove(master);
-					master = null;
-				}
-				node.removeChild("stop");
-				statnode.setValue(new Value(NODE_STATUS_CONNECTION_STOPPED));
-				makeStartAction();
+				reconnectFuture.cancel(false);
+				stop();
 			}
 		});
 
@@ -326,21 +286,26 @@ abstract public class ModbusConnection {
 		}
 
 		if (!slaves.isEmpty() && !connected) {
-			ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
-			reconnectFuture = reconnectStpe.schedule(new Runnable() {
-
-				@Override
-				public void run() {
-					Value stat = statnode.getValue();
-					if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
-							|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
-						master = getMaster();
-					}
-				}
-			}, retryDelay, TimeUnit.SECONDS);
-			if (retryDelay < RETRY_DELAY_MAX)
-				retryDelay += RETRY_DELAY_STEP;
+			scheduleReconnect();
 		}
+	}
+	
+	void scheduleReconnect() {
+		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
+		reconnectFuture = reconnectStpe.schedule(new Runnable() {
+
+			@Override
+			public void run() {
+				Value stat = statnode.getValue();
+				if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
+						|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
+					stop();
+					restoreLastSession();
+				}
+			}
+		}, retryDelay, TimeUnit.SECONDS);
+		if (retryDelay < RETRY_DELAY_MAX)
+			retryDelay += RETRY_DELAY_STEP;
 	}
 
 	public void readMasterParameters(ActionResult event) {
