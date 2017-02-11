@@ -576,7 +576,9 @@ public class ModbusLink {
 	}
 
 	void handleEdit(SlaveFolder slave) {
-		for (Node event : ((SlaveNode) slave).getSubscribed()) {
+		Set<Node> set = new HashSet<>(((SlaveNode) slave).getSubscribed());
+
+		for (Node event : set) {
 			if (event.getMetaData() == slave) {
 				handleUnsub((SlaveNode) slave, event);
 				handleSub((SlaveNode) slave, event);
@@ -590,13 +592,13 @@ public class ModbusLink {
 			return;
 		}
 		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-		ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
-			@Override
-			public void run() {
-				slave.readPoints();
-			}
-		}, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
-		futures.put(slave, future);
+        ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
+            @Override
+            public void run() {
+                slave.readPoints();
+            }
+        }, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
+        futures.put(slave, future);
 		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
 
