@@ -288,7 +288,7 @@ public class SerialConn extends ModbusConnection {
 			ddd = conn.node.getAttribute(ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
 			mwo = conn.node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY).getBool();
 
-			Node snode = conn.node.createChild(name).build();
+			Node snode = conn.node.createChild(name, true).build();
 
 			snode.setAttribute(ATTR_SLAVE_ID, new Value(slaveid));
 			snode.setAttribute(ATTR_POLLING_INTERVAL, new Value(interval));

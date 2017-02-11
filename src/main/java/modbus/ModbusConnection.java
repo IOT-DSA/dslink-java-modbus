@@ -15,6 +15,7 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
+import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
@@ -92,7 +93,7 @@ abstract public class ModbusConnection {
 		this.node = node;
 
 		modbusFactory = new ModbusFactory();
-		this.statnode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING)
+		this.statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
 				.setValue(new Value(NODE_STATUS_SETTINGUP)).build();
 		slaves = new HashSet<>();
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
@@ -102,9 +103,9 @@ abstract public class ModbusConnection {
 	void duplicate(String name) {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject nodeobj = jobj.get(node.getName());
-		jobj.put(name, nodeobj);
+		jobj.put(StringUtils.encodeName(name), nodeobj);
 		link.copyDeserializer.deserialize(jobj);
-		Node newnode = node.getParent().getChild(name);
+		Node newnode = node.getParent().getChild(name, true);
 
 		duplicate(link, newnode);
 	}
@@ -172,25 +173,25 @@ abstract public class ModbusConnection {
 	void init() {
 		Action act = getRemoveAction();
 
-		Node anode = node.getChild(ACTION_REMOVE);
+		Node anode = node.getChild(ACTION_REMOVE, true);
 		if (anode == null) {
-			node.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
 		act = getEditAction();
-		anode = node.getChild(ACTION_EDIT);
+		anode = node.getChild(ACTION_EDIT, true);
 		if (anode == null) {
-			anode = node.createChild(ACTION_EDIT).setAction(act).build();
+			anode = node.createChild(ACTION_EDIT, true).setAction(act).build();
 			anode.setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
 
 		act = new Action(Permission.READ, new RestartHandler());
-		anode = node.getChild(ACTION_RESTART);
+		anode = node.getChild(ACTION_RESTART, true);
 		if (anode == null) {
-			node.createChild(ACTION_RESTART).setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
 		} else {
 			anode.setAction(act);
 		}
@@ -201,9 +202,9 @@ abstract public class ModbusConnection {
 		if (master != null) {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			act = getAddDeviceAction();
-			anode = node.getChild(getAddDeviceActionName());
+			anode = node.getChild(getAddDeviceActionName(), true);
 			if (anode == null) {
-				node.createChild(getAddDeviceActionName()).setAction(act).build().setSerializable(false);
+				node.createChild(getAddDeviceActionName(), true).setAction(act).build().setSerializable(false);
 			} else {
 				anode.setAction(act);
 			}
@@ -261,9 +262,9 @@ abstract public class ModbusConnection {
 			}
 		});
 
-		Node anode = node.getChild("stop");
+		Node anode = node.getChild("stop", true);
 		if (anode == null)
-			node.createChild("stop").setAction(act).build().setSerializable(false);
+			node.createChild("stop", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}

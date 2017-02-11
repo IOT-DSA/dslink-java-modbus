@@ -148,13 +148,13 @@ public abstract class EditableFolder {
 	public void setRemoveAction() {
 		Action act;
 		act = new Action(Permission.READ, new RemoveHandler());
-		node.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 	}
 
 	public void setMakeCopyAction() {
 		Action act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild("make copy").setAction(act).build().setSerializable(false);
+		node.createChild("make copy", true).setAction(act).build().setSerializable(false);
 
 	}
 
@@ -162,7 +162,7 @@ public abstract class EditableFolder {
 		Action act;
 		act = new Action(Permission.READ, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild("add folder").setAction(act).build().setSerializable(false);
+		node.createChild("add folder", true).setAction(act).build().setSerializable(false);
 	}
 
 	void restoreLastSession() {

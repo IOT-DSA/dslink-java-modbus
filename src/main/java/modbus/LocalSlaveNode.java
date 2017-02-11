@@ -64,7 +64,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	private Node getStatusNode() {
-		Node child = node.createChild(NODE_STATUS).setValueType(ValueType.STRING)
+		Node child = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
 				.setValue(new Value(STATUS_SETUP_DEVICE)).build();
 
 		return child;
@@ -103,9 +103,9 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 		act.addParameter(new Parameter(ATTRIBUTE_PORT, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_PORT)));
 		act.addParameter(new Parameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER, node.getAttribute(ATTRIBUTE_SLAVE_ID)));
 
-		Node editNode = node.getChild(ACTION_EDIT);
+		Node editNode = node.getChild(ACTION_EDIT, true);
 		if (editNode == null)
-			node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 		else
 			editNode.setAction(act);
 	}

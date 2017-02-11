@@ -96,34 +96,34 @@ public class ModbusLink {
 		restoreLastSession();
 
 		Action act = getAddIpConnectionAction();
-		node.createChild(ACTION_ADD_IP_CONNECTION).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_IP_CONNECTION, true).setAction(act).build().setSerializable(false);
 
 		act = getAddSerialConnectionAction();
-		node.createChild(ACTION_ADD_SERIAL_CONNECTION).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new PortScanHandler());
-		node.createChild(ACTION_SCAN_SERIAL_PORT).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_SCAN_SERIAL_PORT, true).setAction(act).build().setSerializable(false);
 
 		act = getMakeSlaveAction();
-		node.createChild(ACTION_ADD_LOCAL_SLAVE).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_LOCAL_SLAVE, true).setAction(act).build().setSerializable(false);
 
 		act = getAddIpDeviceAction();
-		node.createChild(ACTION_ADD_IP_DEVICE).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_IP_DEVICE, true).setAction(act).build().setSerializable(false);
 	}
 
 	private class PortScanHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			Action act = getAddSerialConnectionAction();
-			Node anode = node.getChild(ACTION_ADD_SERIAL_CONNECTION);
+			Node anode = node.getChild(ACTION_ADD_SERIAL_CONNECTION, true);
 			if (anode == null) {
-				anode = node.createChild(ACTION_ADD_SERIAL_CONNECTION).setAction(act).build();
+				anode = node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build();
 				anode.setSerializable(false);
 			} else {
 				anode.setAction(act);
 			}
 
 			for (ModbusConnection conn : connections) {
-				anode = conn.node.getChild(ACTION_EDIT);
+				anode = conn.node.getChild(ACTION_EDIT, true);
 				if (anode != null) {
 					act = conn.getEditAction();
 					anode.setAction(act);
@@ -140,7 +140,7 @@ public class ModbusLink {
 			Node slaveNode;
 
 			transtype = event.getParameter(ATTRIBUTE_TRANSPORT_TYPE).getString();
-			slaveNode = node.createChild(name).build();
+			slaveNode = node.createChild(name, true).build();
 
 			int port = event.getParameter(ATTRIBUTE_PORT, ValueType.NUMBER).getNumber().intValue();
 			int slaveid = event.getParameter(ATTRIBUTE_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
@@ -435,7 +435,7 @@ public class ModbusLink {
 			boolean mwo = event.getParameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL)
 					.getBool();
 
-			Node snode = node.createChild(name).build();
+			Node snode = node.createChild(name, true).build();
 			snode.setAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE, new Value(transtype));
 			snode.setAttribute(SerialConn.ATTR_COMM_PORT_ID, new Value(commPortId));
 			snode.setAttribute(SerialConn.ATTR_BAUD_RATE, new Value(baudRate));
@@ -488,7 +488,7 @@ public class ModbusLink {
 					.intValue();
 			ddd = event.getParameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER).getNumber().intValue();
 			mwo = event.getParameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL).getBool();
-			snode = node.createChild(name).build();
+			snode = node.createChild(name, true).build();
 
 			snode.setAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE, new Value(transtype));
 			snode.setAttribute(IpConnection.ATTR_HOST, new Value(host));
@@ -534,7 +534,7 @@ public class ModbusLink {
 					.intValue();
 			ddd = event.getParameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER).getNumber().intValue();
 			mwo = event.getParameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL).getBool();
-			snode = node.createChild(name).build();
+			snode = node.createChild(name, true).build();
 
 			int slaveid = event.getParameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
 			long interval = (long) (event.getParameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER)

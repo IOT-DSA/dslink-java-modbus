@@ -165,7 +165,7 @@ public class IpConnection extends ModbusConnection {
 
 		public void handle(ActionResult event) {
 			String name = event.getParameter(ATTR_SLAVE_NAME, ValueType.STRING).getString();
-			Node deviceNode = node.createChild(name).build();
+			Node deviceNode = node.createChild(name, true).build();
 
 			int slaveid = event.getParameter(ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
 			long intervalMs = (long) (event.getParameter(ATTR_POLLING_INTERVAL, ValueType.NUMBER).getNumber().intValue()

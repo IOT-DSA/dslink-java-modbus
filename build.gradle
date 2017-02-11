@@ -19,7 +19,7 @@ repositories {
 
 
 dependencies {
-    compile 'org.iot-dsa:dslink:0.16.0'
+    compile 'org.iot-dsa:dslink:0.17.1-SNAPSHOT'
     compile 'com.infiniteautomation:modbus4j:2.1.1'
 }
 
