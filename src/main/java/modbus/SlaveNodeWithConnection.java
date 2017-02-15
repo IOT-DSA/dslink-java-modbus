@@ -12,6 +12,7 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 /*
@@ -59,9 +60,9 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			}
 		});
 
-		Node anode = node.getChild("start");
+		Node anode = node.getChild("start", true);
 		if (anode == null)
-			node.createChild("start").setAction(act).build().setSerializable(false);
+			node.createChild("start", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}
@@ -80,9 +81,9 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			}
 		});
 
-		Node anode = node.getChild("stop");
+		Node anode = node.getChild("stop", true);
 		if (anode == null)
-			node.createChild("stop").setAction(act).build().setSerializable(false);
+			node.createChild("stop", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}
@@ -125,9 +126,9 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
 
-		Node anode = node.getChild("edit");
+		Node anode = node.getChild("edit", true);
 		if (anode == null)
-			node.createChild("edit").setAction(act).build().setSerializable(false);
+			node.createChild("edit", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}
@@ -222,9 +223,9 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject parentobj = jobj;
 		JsonObject nodeobj = parentobj.get(node.getName());
-		parentobj.put(name, nodeobj);
+		parentobj.put(StringUtils.encodeName(name), nodeobj);
 		link.copyDeserializer.deserialize(jobj);
-		Node newnode = node.getParent().getChild(name);
+		Node newnode = node.getParent().getChild(name, true);
 
 		SlaveNode sn = new SlaveNodeWithConnection(link, conn, newnode);
 		sn.restoreLastSession();

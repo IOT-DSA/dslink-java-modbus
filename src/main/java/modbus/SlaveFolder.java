@@ -17,6 +17,7 @@ import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.ModbusMaster;
@@ -82,20 +83,20 @@ public class SlaveFolder {
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value("folder"));
 
 		Action act = getAddPointAction();
-		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_POINT, true).setAction(act).build().setSerializable(false);
 
 		makeEditAction();
 
 		act = new Action(Permission.READ, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_MAKE_COPY, true).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new RemoveHandler());
-		node.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
-		node.createChild(ACTION_ADD_FOLDER).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_FOLDER, true).setAction(act).build().setSerializable(false);
 	}
 
 	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
@@ -192,9 +193,9 @@ public class SlaveFolder {
 		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
-		parentobj.put(name, nodeobj);
+		parentobj.put(StringUtils.encodeName(name), nodeobj);
 		conn.getLink().copyDeserializer.deserialize(jobj);
-		Node newnode = node.getParent().getChild(name);
+		Node newnode = node.getParent().getChild(name, true);
 
 		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
 		sf.restoreLastSession();
@@ -203,7 +204,7 @@ public class SlaveFolder {
 	void makeEditAction() {
 		Action act = new Action(Permission.READ, new RenameHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
-		node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 	}
 
 	protected JsonObject getParentJson(JsonObject jobj) {
@@ -220,7 +221,7 @@ public class SlaveFolder {
 	protected class AddFolderHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
-			Node child = node.createChild(name).build();
+			Node child = node.createChild(name, true).build();
 			new SlaveFolder(conn, child, root);
 		}
 	}
@@ -264,7 +265,7 @@ public class SlaveFolder {
 			double scaling = event.getParameter(ATTR_SCALING, ValueType.NUMBER).getNumber().doubleValue();
 			double addscale = event.getParameter(ATTR_SCALING_OFFSET, ValueType.NUMBER).getNumber().doubleValue();
 
-			Node pnode = node.createChild(name).setValueType(valType).build();
+			Node pnode = node.createChild(name, true).setValueType(valType).build();
 			pnode.setAttribute(ATTR_POINT_TYPE, new Value(type.toString()));
 			pnode.setAttribute(ATTR_OFFSET, new Value(offset));
 			pnode.setAttribute(ATTR_NUMBER_OF_REGISTERS, new Value(numRegs));
@@ -281,9 +282,9 @@ public class SlaveFolder {
 
 	protected void setupPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
-		Node anode = pointNode.getChild("remove");
+		Node anode = pointNode.getChild("remove", true);
 		if (anode == null)
-			pointNode.createChild("remove").setAction(act).build().setSerializable(false);
+			pointNode.createChild("remove", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
@@ -301,17 +302,17 @@ public class SlaveFolder {
 		act.addParameter(
 				new Parameter(ATTR_SCALING_OFFSET, ValueType.NUMBER, pointNode.getAttribute(ATTR_SCALING_OFFSET)));
 		act.addParameter(new Parameter(ATTR_WRITBLE, ValueType.BOOL, pointNode.getAttribute(ATTR_WRITBLE)));
-		anode = pointNode.getChild(ACTION_EDIT);
+		anode = pointNode.getChild(ACTION_EDIT, true);
 		if (anode == null)
-			pointNode.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
 		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
-		anode = pointNode.getChild(ACTION_MAKE_COPY);
+		anode = pointNode.getChild(ACTION_MAKE_COPY, true);
 		if (anode == null)
-			pointNode.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_MAKE_COPY, true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
@@ -342,9 +343,9 @@ public class SlaveFolder {
 		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
 		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
-		parentobj.put(name, pointnodeobj);
+		parentobj.put(StringUtils.encodeName(name), pointnodeobj);
 		conn.getLink().copyDeserializer.deserialize(jobj);
-		Node newnode = node.getChild(name);
+		Node newnode = node.getChild(name, true);
 		setupPointActions(newnode);
 		conn.getLink().setupPoint(newnode, root);
 		return newnode;

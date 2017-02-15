@@ -62,9 +62,9 @@ public class SlaveNode extends SlaveFolder {
 		conn.slaves.add(this);
 		root = this;
 
-		statnode = node.getChild(NODE_STATUS);
+		statnode = node.getChild(NODE_STATUS, true);
 		if (statnode == null) {
-			statnode = node.createChild(NODE_STATUS).setValueType(ValueType.STRING)
+			statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
 					.setValue(new Value(NODE_STATUS_SETTING_UP)).build();
 		}
 
@@ -106,9 +106,9 @@ public class SlaveNode extends SlaveFolder {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
 
-		Node anode = node.getChild(ACTION_EDIT);
+		Node anode = node.getChild(ACTION_EDIT, true);
 		if (anode == null)
-			node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 	}

@@ -11,6 +11,7 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
@@ -69,7 +70,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		act.addParameter(new Parameter(ATTRIBUTE_DATA_TYPE, ValueType.makeEnum(Util.enumNames(DataType.class))));
 		act.addParameter(new Parameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER));
 
-		node.createChild(ACTION_ADD_POINT).setAction(act).build().setSerializable(false);
+		node.createChild(ACTION_ADD_POINT, true).setAction(act).build().setSerializable(false);
 
 	}
 
@@ -78,9 +79,9 @@ public class LocalSlaveFolder extends EditableFolder {
 
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
 
-		Node editNode = node.getChild(ACTION_EDIT);
+		Node editNode = node.getChild(ACTION_EDIT, true);
 		if (editNode == null)
-			node.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+			node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 		else
 			editNode.setAction(act);
 	}
@@ -119,7 +120,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	public void duplicate(String name) {
 		super.duplicate(name);
 
-		Node newnode = node.getParent().getChild(name);
+		Node newnode = node.getParent().getChild(name, true);
 		LocalSlaveFolder folder = new LocalSlaveFolder(link, root, newnode);
 		folder.restoreLastSession();
 	}
@@ -155,21 +156,21 @@ public class LocalSlaveFolder extends EditableFolder {
 		switch (type) {
 		case COIL:
 			processImage.setCoil(offset, defaultStatus);
-			pointNode = node.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
+			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
 			break;
 		case DISCRETE:
 			processImage.setInput(offset, defaultStatus);
-			pointNode = node.createChild(name).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
+			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
 			break;
 		case HOLDING:
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, defaultString);
-				pointNode = node.createChild(name).setValueType(ValueType.STRING).setValue(new Value(defaultString))
+				pointNode = node.createChild(name, true).setValueType(ValueType.STRING).setValue(new Value(defaultString))
 						.build();
 			} else {
 				processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), defaultNumber);
-				pointNode = node.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
 						.build();
 			}
 			break;
@@ -177,11 +178,11 @@ public class LocalSlaveFolder extends EditableFolder {
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, dataType.ordinal(), registerCount, defaultString);
-				pointNode = node.createChild(name).setValueType(ValueType.STRING).setValue(new Value(defaultString))
+				pointNode = node.createChild(name, true).setValueType(ValueType.STRING).setValue(new Value(defaultString))
 						.build();
 			} else {
 				processImage.setNumeric(range, offset, dataType.ordinal(), defaultNumber);
-				pointNode = node.createChild(name).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
+				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
 						.build();
 			}
 			break;
@@ -211,9 +212,9 @@ public class LocalSlaveFolder extends EditableFolder {
 	protected void setEditPointActions(Node pointNode) {
 		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
 
-		Node child = pointNode.getChild(ACTION_REMOVE);
+		Node child = pointNode.getChild(ACTION_REMOVE, true);
 		if (child == null)
-			pointNode.createChild(ACTION_REMOVE).setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 		else
 			child.setAction(act);
 
@@ -228,17 +229,17 @@ public class LocalSlaveFolder extends EditableFolder {
 
 		act.addParameter(new Parameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER,
 				pointNode.getAttribute(ATTRIBUTE_REGISTER_COUNT)));
-		child = pointNode.getChild(ACTION_EDIT);
+		child = pointNode.getChild(ACTION_EDIT, true);
 		if (child == null)
-			pointNode.createChild(ACTION_EDIT).setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 		else
 			child.setAction(act);
 
 		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
-		child = pointNode.getChild(ACTION_MAKE_COPY);
+		child = pointNode.getChild(ACTION_MAKE_COPY, true);
 		if (child == null)
-			pointNode.createChild(ACTION_MAKE_COPY).setAction(act).build().setSerializable(false);
+			pointNode.createChild(ACTION_MAKE_COPY, true).setAction(act).build().setSerializable(false);
 		else
 			child.setAction(act);
 
@@ -266,9 +267,9 @@ public class LocalSlaveFolder extends EditableFolder {
 		JsonObject jobj = link.copySerializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
 		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
-		parentobj.put(name, pointnodeobj);
+		parentobj.put(StringUtils.encodeName(name), pointnodeobj);
 		link.copyDeserializer.deserialize(jobj);
-		Node newnode = node.getChild(name);
+		Node newnode = node.getChild(name, true);
 		setEditPointActions(newnode);
 
 		return newnode;
@@ -428,7 +429,7 @@ public class LocalSlaveFolder extends EditableFolder {
 
 	@Override
 	protected void addFolder(String name) {
-		Node child = node.createChild(name).build();
+		Node child = node.createChild(name, true).build();
 		new LocalSlaveFolder(link, root, child);
 
 	}
