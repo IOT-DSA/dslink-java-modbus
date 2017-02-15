@@ -51,7 +51,7 @@ abstract public class ModbusConnection {
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_CONNECITON = "conn";
 
-	static final String NODE_STATUS = "Status";
+	static final String NODE_STATUS = "Connection Status";
 	static final String NODE_STATUS_SETTINGUP = "Setting up connection";
 	static final String NODE_STATUS_CONNECTED = "Connected";
 	static final String NODE_STATUS_CONNECTING = "connecting to device";
@@ -141,10 +141,10 @@ abstract public class ModbusConnection {
 		init();
 
 		slaves.clear();
-		
+
 		if (node.getChildren() == null)
 			return;
-		
+
 		Map<String, Node> children = node.getChildren();
 		for (Node child : children.values()) {
 			Value slaveId = child.getAttribute(ATTR_SLAVE_ID);
@@ -164,7 +164,7 @@ abstract public class ModbusConnection {
 			if (slaveId != null && interval != null) {
 				SlaveNode sn = new SlaveNode(this, child);
 				sn.restoreLastSession();
-			} else if (child.getAction() == null && !child.getName().equals("Status")) {
+			} else if (child.getAction() == null && !NODE_STATUS.equals(child.getName())) {
 				node.removeChild(child);
 			}
 		}
@@ -197,7 +197,7 @@ abstract public class ModbusConnection {
 		}
 
 		makeStopAction();
-		
+
 		master = getMaster();
 		if (master != null) {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
@@ -214,7 +214,6 @@ abstract public class ModbusConnection {
 			scheduleReconnect();
 		}
 	}
-
 
 	class RestartHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
@@ -290,7 +289,7 @@ abstract public class ModbusConnection {
 			scheduleReconnect();
 		}
 	}
-	
+
 	void scheduleReconnect() {
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {

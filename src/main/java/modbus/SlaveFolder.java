@@ -64,7 +64,7 @@ public class SlaveFolder {
 	static final String ATTR_RESTORE_FOLDER = "folder";
 	static final String ATTR_RESTORE_POINT = "point";
 
-	static final String NODE_STATUS = "Status";
+	static final String NODE_STATUS = "Device Status";
 	static final String NODE_STATUS_SETTING_UP = "Setting up device";
 	static final String NODE_STATUS_PING_FAILED = "Device ping failed";
 	static final String NODE_STATUS_CONN_DOWN = "Connection Down";
@@ -151,7 +151,8 @@ public class SlaveFolder {
 						node.removeChild(child);
 					}
 				}
-			} else if (child.getAction() == null && !(root == this && NODE_STATUS.equals(child.getName()))) {
+			} else if (child.getAction() == null && !(root == this
+					&& (NODE_STATUS.equals(child.getName()) || ModbusConnection.NODE_STATUS.equals(child.getName())))) {
 				node.removeChild(child);
 			}
 		}
@@ -506,7 +507,7 @@ public class SlaveFolder {
 					pointNode.setValue(new Value(false));
 				}
 			}
-		} 
+		}
 		String valString = val.toString();
 		Value v = new Value(valString);
 		ValueType vt = ValueType.STRING;
@@ -624,7 +625,7 @@ public class SlaveFolder {
 				LOGGER.error("make arr exception");
 				LOGGER.debug("error: ", e);
 				return;
-			} 
+			}
 		}
 	}
 
