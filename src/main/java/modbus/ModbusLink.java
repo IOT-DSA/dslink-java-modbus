@@ -65,8 +65,6 @@ public class ModbusLink {
 	private final Map<Integer, ModbusSlaveSet> tcpListeners;
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
 
-	private final Map<String, IpConnection> hostToConnection;
-
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
 		this.copySerializer = ser;
@@ -77,8 +75,6 @@ public class ModbusLink {
 
 		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
 		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
-
-		this.hostToConnection = new HashMap<String, IpConnection>();
 	}
 
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
@@ -374,17 +370,9 @@ public class ModbusLink {
 				if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
 						&& maxwrc != null && ddd != null && mwo != null && slaveId != null && interval != null
 						&& timeout != null && retries != null) {
-					String hostName = host + ":" + port;
-					IpConnection conn = null;
-					if (hostToConnection.containsKey(hostName)) {
-						conn = hostToConnection.get(hostName);
-					} else {
-						conn = new IpConnection(getLink(), child);
-						hostToConnection.put(hostName, conn);
-					}
 
-					SlaveNodeWithConnection sn = new SlaveNodeWithConnection(getLink(), conn, child);
-					sn.restoreLastSession();
+					ModbusConnection conn = new IpConnectionWithDevice(getLink(), child);
+					conn.restoreLastSession();
 				}
 			} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
 				Value port = child.getAttribute(ATTRIBUTE_PORT);
@@ -562,16 +550,8 @@ public class ModbusLink {
 			snode.setAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY, new Value(ddd));
 			snode.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
 
-			String hostName = host + ":" + port;
-			IpConnection conn = null;
-			if (hostToConnection.containsKey(hostName)) {
-				conn = hostToConnection.get(hostName);
-			} else {
-				conn = new IpConnection(getLink(), snode);
-				hostToConnection.put(hostName, conn);
-			}
-
-			new SlaveNodeWithConnection(getLink(), conn, snode);
+			ModbusConnection conn = new IpConnectionWithDevice(getLink(), snode);
+			conn.init();
 		}
 	}
 
@@ -592,13 +572,13 @@ public class ModbusLink {
 			return;
 		}
 		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-        ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
-            @Override
-            public void run() {
-                slave.readPoints();
-            }
-        }, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
-        futures.put(slave, future);
+		ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
+			@Override
+			public void run() {
+				slave.readPoints();
+			}
+		}, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
+		futures.put(slave, future);
 		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
 

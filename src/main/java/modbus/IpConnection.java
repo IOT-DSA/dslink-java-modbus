@@ -104,8 +104,9 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	@Override
-	void duplicate(ModbusLink link, Node node) {
-		// TBD
+	void duplicate(ModbusLink link, Node newnode) {
+		ModbusConnection conn = new IpConnection(link, newnode);
+		conn.restoreLastSession();
 	}
 
 	@Override
@@ -150,9 +151,9 @@ public class IpConnection extends ModbusConnection {
 
 			if (!name.equals(node.getName())) {
 				rename(name);
-			}
-
-			restoreLastSession();
+			} else {
+				restoreLastSession();
+			}	
 		}
 	}
 
