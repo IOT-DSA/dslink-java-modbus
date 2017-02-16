@@ -64,6 +64,9 @@ public class ModbusLink {
 	// modbus listener map: port <-> SlaveSet
 	private final Map<Integer, ModbusSlaveSet> tcpListeners;
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
+	
+	private final Map<String, IpConnectionWithDevice> hostToConnection;
+	boolean restoring = true;
 
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
@@ -75,6 +78,8 @@ public class ModbusLink {
 
 		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
 		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
+		
+		this.hostToConnection = new HashMap<String, IpConnectionWithDevice>();
 	}
 
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
@@ -90,6 +95,7 @@ public class ModbusLink {
 
 	private void init() {
 		restoreLastSession();
+		restoring = false;
 
 		Action act = getAddIpConnectionAction();
 		node.createChild(ACTION_ADD_IP_CONNECTION, true).setAction(act).build().setSerializable(false);
@@ -371,8 +377,16 @@ public class ModbusLink {
 						&& maxwrc != null && ddd != null && mwo != null && slaveId != null && interval != null
 						&& timeout != null && retries != null) {
 
-					ModbusConnection conn = new IpConnectionWithDevice(getLink(), child);
-					conn.restoreLastSession();
+					String hostName = host + ":" + port;
+					IpConnectionWithDevice conn = null;
+					if (hostToConnection.containsKey(hostName)) {
+						conn = hostToConnection.get(hostName);
+						conn.addSlave(child);
+					} else {
+						conn = new IpConnectionWithDevice(getLink(), child);
+						hostToConnection.put(hostName, conn);
+						conn.restoreLastSession();
+					}
 				}
 			} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
 				Value port = child.getAttribute(ATTRIBUTE_PORT);
@@ -550,8 +564,16 @@ public class ModbusLink {
 			snode.setAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY, new Value(ddd));
 			snode.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
 
-			ModbusConnection conn = new IpConnectionWithDevice(getLink(), snode);
-			conn.init();
+			String hostName = host + ":" + port;
+			IpConnectionWithDevice conn = null;
+			if (hostToConnection.containsKey(hostName)) {
+				conn = hostToConnection.get(hostName);
+				conn.addSlave(snode);
+			} else {
+				conn = new IpConnectionWithDevice(getLink(), snode);
+				hostToConnection.put(hostName, conn);
+				conn.init();
+			}
 		}
 	}
 

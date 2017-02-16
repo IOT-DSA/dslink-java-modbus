@@ -291,6 +291,9 @@ abstract public class ModbusConnection {
 	}
 
 	void scheduleReconnect() {
+		if (link.restoring) {
+			return;
+		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
 

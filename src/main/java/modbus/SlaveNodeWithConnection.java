@@ -26,6 +26,8 @@ import org.dsa.iot.dslink.util.handler.Handler;
 public class SlaveNodeWithConnection extends SlaveNode {
 
 	private static final Logger LOGGER;
+	
+	Node connStatNode;
 
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
@@ -33,6 +35,10 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 	SlaveNodeWithConnection(ModbusConnection conn, Node node) {
 		super(conn, node);
+		connStatNode = node.getChild(ModbusConnection.NODE_STATUS, true);
+		if (connStatNode == null) {
+			connStatNode = node.createChild(ModbusConnection.NODE_STATUS, true).setValueType(ValueType.STRING).setValue(conn.statnode.getValue()).build();
+		}
 	}
 
 	@Override
@@ -83,7 +89,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 	@Override
 	protected void remove() {
 		super.remove();
-		conn.remove();
+		((IpConnectionWithDevice) conn).slaveRemoved();
 	}
 
 	private class EditHandler implements Handler<ActionResult> {

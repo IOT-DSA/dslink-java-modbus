@@ -1,9 +1,15 @@
 package modbus;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
+import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValuePair;
+import org.dsa.iot.dslink.util.handler.Handler;
 
 /*
  * A special class to handle the legacy project based on the two-tier design.
@@ -20,11 +26,32 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	IpConnectionWithDevice(ModbusLink link, Node node) {
 		super(link, node);
+		node.setAttribute(ATTR_RESTORE_TYPE, new Value(SlaveFolder.ATTR_RESTORE_FOLDER));
+		statnode.getListener().setValueHandler(new Handler<ValuePair>(){
+			@Override
+			public void handle(ValuePair event) {
+				Value value = event.getCurrent();
+				for (SlaveNode sn: slaves) {
+					if (sn.node != node) {
+						sn.statnode.setValue(value);
+					}
+				}
+			}
+		});
 	}
 
 	@Override
 	void restoreLastSession() {
 		init();
+		
+		Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
+		slaves.clear();
+		for (SlaveNode sn: slavescopy) {
+			if (sn.node != node) {
+				addSlave(sn.node);
+			}
+		}
+		
 	}
 
 	@Override
@@ -42,7 +69,6 @@ public class IpConnectionWithDevice extends IpConnection {
 		master = getMaster();
 		if (master != null) {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
-			slaves.clear();
 			SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, node);
 			sn.restoreLastSession();
 		} else {
@@ -50,4 +76,39 @@ public class IpConnectionWithDevice extends IpConnection {
 			scheduleReconnect();
 		}
 	}
+	
+	void addSlave(Node slaveNode) {
+		Action act = new Action(Permission.READ, new RestartHandler());
+		Node anode = node.getChild(ACTION_RESTART, true);
+		if (anode == null) {
+			slaveNode.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+
+		act = new Action(Permission.READ, new Handler<ActionResult>() {
+			public void handle(ActionResult event) {
+				reconnectFuture.cancel(false);
+				stop();
+			}
+		});
+
+		anode = slaveNode.getChild("stop", true);
+		if (anode == null)
+			slaveNode.createChild("stop", true).setAction(act).build().setSerializable(false);
+		else
+			anode.setAction(act);
+		
+		SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, slaveNode);
+		sn.restoreLastSession();
+	}
+	
+	void slaveRemoved() {
+		if (slaves.isEmpty()) {
+			remove();
+		} else if (!node.getParent().hasChild(node.getName())) {
+			node = slaves.iterator().next().node;
+		}
+	}
+	
 }
