@@ -24,7 +24,7 @@ import org.dsa.iot.dslink.util.handler.Handler;
 
 public class IpConnectionWithDevice extends IpConnection {
 
-	IpConnectionWithDevice(ModbusLink link, Node node) {
+	IpConnectionWithDevice(ModbusLink link, final Node node) {
 		super(link, node);
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value(SlaveFolder.ATTR_RESTORE_FOLDER));
 		statnode.getListener().setValueHandler(new Handler<ValuePair>(){
@@ -56,15 +56,7 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void init() {
-		Action act = new Action(Permission.READ, new RestartHandler());
-		Node anode = node.getChild(ACTION_RESTART, true);
-		if (anode == null) {
-			node.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
-		} else {
-			anode.setAction(act);
-		}
-
-		makeStopAction();
+		makeStopRestartActions(node);
 
 		master = getMaster();
 		if (master != null) {
@@ -78,6 +70,13 @@ public class IpConnectionWithDevice extends IpConnection {
 	}
 	
 	void addSlave(Node slaveNode) {
+		makeStopRestartActions(slaveNode);
+		
+		SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, slaveNode);
+		sn.restoreLastSession();
+	}
+	
+	void makeStopRestartActions(Node slaveNode) {
 		Action act = new Action(Permission.READ, new RestartHandler());
 		Node anode = node.getChild(ACTION_RESTART, true);
 		if (anode == null) {
@@ -98,9 +97,6 @@ public class IpConnectionWithDevice extends IpConnection {
 			slaveNode.createChild("stop", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
-		
-		SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, slaveNode);
-		sn.restoreLastSession();
 	}
 	
 	void slaveRemoved() {
