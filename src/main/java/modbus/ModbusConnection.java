@@ -279,6 +279,7 @@ abstract public class ModbusConnection {
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				master.destroy();
+				link.masters.remove(master);
 				master = null;
 			} else {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
