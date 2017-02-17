@@ -149,9 +149,9 @@ public class SerialConn extends ModbusConnection {
 
 			if (!name.equals(node.getName())) {
 				rename(name);
+			} else {
+				restoreLastSession();
 			}
-
-			restoreLastSession();
 		}
 	}
 

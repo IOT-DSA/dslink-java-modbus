@@ -14,10 +14,10 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonArray;
-
+import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.BatchRead;
@@ -132,9 +132,6 @@ public class SlaveNode extends SlaveFolder {
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
 
-			if (!name.equals(node.getName())) {
-				rename(name);
-			}
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
 			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
@@ -143,9 +140,12 @@ public class SlaveNode extends SlaveFolder {
 
 			conn.getLink().handleEdit(root);
 
-			checkDeviceConnected();
-
-			makeEditAction();
+			if (!name.equals(node.getName())) {
+				rename(name);
+			} else {
+				checkDeviceConnected();
+				makeEditAction();
+			}
 		}
 	}
 
@@ -332,5 +332,18 @@ public class SlaveNode extends SlaveFolder {
 			statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 		}
 		return;
+	}
+
+	@Override
+	protected void duplicate(String name) {
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
+		JsonObject parentobj = getParentJson(jobj);
+		JsonObject nodeobj = parentobj.get(node.getName());
+		parentobj.put(StringUtils.encodeName(name), nodeobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
+		Node newnode = node.getParent().getChild(name, true);
+
+		SlaveNode sn = new SlaveNode(conn, newnode);
+		sn.restoreLastSession();
 	}
 }

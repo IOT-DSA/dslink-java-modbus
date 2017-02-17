@@ -1,7 +1,5 @@
 package modbus;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -16,7 +14,7 @@ import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 /*
- * A special class to handle the legal project based on the two-tier design.
+ * A special class to handle the legacy project based on the two-tier design.
  * 
  * Link
  *     |
@@ -26,66 +24,21 @@ import org.dsa.iot.dslink.util.handler.Handler;
  * 
  * */
 public class SlaveNodeWithConnection extends SlaveNode {
+
 	private static final Logger LOGGER;
+	
+	Node connStatNode;
 
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
 
-	ModbusLink link;
-
-	SlaveNodeWithConnection(ModbusLink link, final ModbusConnection conn, Node node) {
+	SlaveNodeWithConnection(ModbusConnection conn, Node node) {
 		super(conn, node);
-
-		this.link = link;
-
-		statnode.setValue(conn.statnode.getValue());
-
-		if (getMaster() != null && getMaster().isInitialized()) {
-			makeStopAction();
-		} else {
-			makeStartAction();
+		connStatNode = node.getChild(ModbusConnection.NODE_STATUS, true);
+		if (connStatNode == null) {
+			connStatNode = node.createChild(ModbusConnection.NODE_STATUS, true).setValueType(ValueType.STRING).setValue(conn.statnode.getValue()).build();
 		}
-	}
-
-	private void makeStartAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				if (null != getMaster()) {
-					conn.checkConnection();
-					node.removeChild("start");
-					makeStopAction();
-				}
-
-			}
-		});
-
-		Node anode = node.getChild("start", true);
-		if (anode == null)
-			node.createChild("start", true).setAction(act).build().setSerializable(false);
-		else
-			anode.setAction(act);
-	}
-
-	private void makeStopAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				if (getMaster() != null) {
-					conn.master.destroy();
-					link.masters.remove(conn.master);
-					conn.master = null;
-				}
-				node.removeChild("stop");
-				statnode.setValue(new Value("Stopped"));
-				makeStartAction();
-			}
-		});
-
-		Node anode = node.getChild("stop", true);
-		if (anode == null)
-			node.createChild("stop", true).setAction(act).build().setSerializable(false);
-		else
-			anode.setAction(act);
 	}
 
 	@Override
@@ -136,19 +89,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 	@Override
 	protected void remove() {
 		super.remove();
-
-		if (conn.slaves.isEmpty()) {
-			try {
-				getMaster().destroy();
-				link.masters.remove(getMaster());
-			} catch (Exception e) {
-				LOGGER.debug("error destroying last master");
-			}
-
-			ScheduledThreadPoolExecutor stpe = conn.getDaemonThreadPool();
-			stpe.shutdown();
-		}
-
+		((IpConnectionWithDevice) conn).slaveRemoved();
 	}
 
 	private class EditHandler implements Handler<ActionResult> {
@@ -179,17 +120,6 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 				conn.writeMasterAttributes();
 
-				if (conn.master != null) {
-					try {
-						conn.master.destroy();
-						link.masters.remove(conn.master);
-						conn.master = null;
-					} catch (Exception e) {
-						LOGGER.debug("error destroying last master");
-					}
-				}
-
-				conn.checkConnection();
 			}
 
 			String name = event.getParameter(ATTR_NAME, ValueType.STRING).getString();
@@ -202,32 +132,39 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
 
-			link.handleEdit(root);
-
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
 			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
 
+			conn.getLink().handleEdit(root);
+
 			if (!name.equals(node.getName())) {
 				rename(name);
-			}
+			} else {
 
-			makeEditAction();
+				if (isConnectionChanged) {
+					conn.stop();
+					conn.restoreLastSession();
+				} else {
+					checkDeviceConnected();
+					makeEditAction();
+				}
+			}
 		}
 	}
 
 	@Override
 	protected void duplicate(String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = conn.getLink().copySerializer.serialize();
 		JsonObject parentobj = jobj;
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(StringUtils.encodeName(name), nodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		conn.getLink().copyDeserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
-		SlaveNode sn = new SlaveNodeWithConnection(link, conn, newnode);
-		sn.restoreLastSession();
+		ModbusConnection mc = new IpConnectionWithDevice(conn.getLink(), newnode);
+		mc.restoreLastSession();
 	}
 }
