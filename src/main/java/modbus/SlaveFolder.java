@@ -341,15 +341,20 @@ public class SlaveFolder {
 	}
 
 	private Node copyPoint(Node pointNode, String name) {
-		JsonObject jobj = conn.getLink().copySerializer.serialize();
-		JsonObject parentobj = getParentJson(jobj).get(node.getName());
-		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
-		parentobj.put(StringUtils.encodeName(name), pointnodeobj);
-		conn.getLink().copyDeserializer.deserialize(jobj);
-		Node newnode = node.getChild(name, true);
-		setupPointActions(newnode);
-		conn.getLink().setupPoint(newnode, root);
-		return newnode;
+		Node pointNodeCopy = node.createChild(name, true).setValueType(pointNode.getValueType()).setValue(pointNode.getValue()).build();
+		pointNodeCopy.setAttribute(ATTR_POINT_TYPE, pointNode.getAttribute(ATTR_POINT_TYPE));
+		pointNodeCopy.setAttribute(ATTR_OFFSET, pointNode.getAttribute(ATTR_OFFSET));
+		pointNodeCopy.setAttribute(ATTR_NUMBER_OF_REGISTERS, pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
+		pointNodeCopy.setAttribute(ATTR_DATA_TYPE, pointNode.getAttribute(ATTR_DATA_TYPE));
+		pointNodeCopy.setAttribute(ATTR_BIT, pointNode.getAttribute(ATTR_BIT));
+		pointNodeCopy.setAttribute(ATTR_SCALING, pointNode.getAttribute(ATTR_SCALING));
+		pointNodeCopy.setAttribute(ATTR_SCALING_OFFSET, pointNode.getAttribute(ATTR_SCALING_OFFSET));
+		pointNodeCopy.setAttribute(ATTR_WRITBLE, pointNode.getAttribute(ATTR_WRITBLE));
+		pointNodeCopy.setAttribute(ATTR_RESTORE_TYPE, new Value("point"));
+		setupPointActions(pointNodeCopy);
+		conn.getLink().setupPoint(pointNodeCopy, root);
+		
+		return pointNodeCopy;
 	}
 
 	protected class EditPointHandler implements Handler<ActionResult> {

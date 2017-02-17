@@ -279,6 +279,7 @@ abstract public class ModbusConnection {
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				master.destroy();
+				link.masters.remove(master);
 				master = null;
 			} else {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
@@ -292,7 +293,7 @@ abstract public class ModbusConnection {
 
 	void scheduleReconnect() {
 		if (link.restoring) {
-			return;
+			return; 
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
