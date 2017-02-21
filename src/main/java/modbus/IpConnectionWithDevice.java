@@ -31,7 +31,7 @@ public class IpConnectionWithDevice extends IpConnection {
 			@Override
 			public void handle(ValuePair event) {
 				Value value = event.getCurrent();
-				for (SlaveNode sn: slaves) {
+				for (SlaveNode sn: new HashSet<SlaveNode>(slaves)) {
 					if (sn.node != node) {
 						sn.statnode.setValue(value);
 					}
@@ -78,7 +78,7 @@ public class IpConnectionWithDevice extends IpConnection {
 	
 	void makeStopRestartActions(Node slaveNode) {
 		Action act = new Action(Permission.READ, new RestartHandler());
-		Node anode = node.getChild(ACTION_RESTART, true);
+		Node anode = slaveNode.getChild(ACTION_RESTART, true);
 		if (anode == null) {
 			slaveNode.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
 		} else {
