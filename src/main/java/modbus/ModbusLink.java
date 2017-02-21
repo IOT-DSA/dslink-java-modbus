@@ -296,7 +296,7 @@ public class ModbusLink {
 		for (Node child : children.values()) {
 			Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 			if (restype == null) {
-				node.removeChild(child);
+				node.removeChild(child, false);
 				continue;
 			}
 
@@ -353,7 +353,7 @@ public class ModbusLink {
 					SerialConn sc = new SerialConn(getLink(), child);
 					sc.restoreLastSession();
 				} else {
-					node.removeChild(child);
+					node.removeChild(child, false);
 				}
 			} else if (SlaveFolder.ATTR_RESTORE_FOLDER.equals(restype.getString())) {
 				// legacy issue - ip device is mixed together with the ip

@@ -33,7 +33,7 @@ public class IpConnectionWithDevice extends IpConnection {
 				Value value = event.getCurrent();
 				for (SlaveNode sn: new HashSet<SlaveNode>(slaves)) {
 					if (sn.node != node) {
-						sn.statnode.setValue(value);
+						((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
 					}
 				}
 			}
@@ -49,6 +49,8 @@ public class IpConnectionWithDevice extends IpConnection {
 		for (SlaveNode sn: slavescopy) {
 			if (sn.node != node) {
 				addSlave(sn.node);
+			} else {
+				slaves.add(sn);
 			}
 		}
 		
@@ -87,7 +89,9 @@ public class IpConnectionWithDevice extends IpConnection {
 
 		act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				reconnectFuture.cancel(false);
+				if (reconnectFuture != null) {
+					reconnectFuture.cancel(false);
+				}
 				stop();
 			}
 		});
