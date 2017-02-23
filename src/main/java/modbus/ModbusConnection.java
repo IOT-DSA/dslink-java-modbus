@@ -217,7 +217,9 @@ abstract public class ModbusConnection {
 
 	class RestartHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			reconnectFuture.cancel(false);
+			if (reconnectFuture != null) {
+				reconnectFuture.cancel(false);
+			}
 			stop();
 			restoreLastSession();
 		}
@@ -256,7 +258,9 @@ abstract public class ModbusConnection {
 	void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				reconnectFuture.cancel(false);
+				if (reconnectFuture != null) {
+					reconnectFuture.cancel(false);
+				}
 				stop();
 			}
 		});
@@ -276,7 +280,7 @@ abstract public class ModbusConnection {
 			for (SlaveNode slave : slaves) {
 				connected = connected || SlaveNode.NODE_STATUS_READY.equals(slave.statnode.getValue().getString());
 			}
-			if (!connected) {
+			if (!connected && master != null) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				master.destroy();
 				link.masters.remove(master);

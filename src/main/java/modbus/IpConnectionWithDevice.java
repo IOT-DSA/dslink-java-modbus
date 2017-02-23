@@ -31,9 +31,9 @@ public class IpConnectionWithDevice extends IpConnection {
 			@Override
 			public void handle(ValuePair event) {
 				Value value = event.getCurrent();
-				for (SlaveNode sn: slaves) {
+				for (SlaveNode sn: new HashSet<SlaveNode>(slaves)) {
 					if (sn.node != node) {
-						sn.statnode.setValue(value);
+						((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
 					}
 				}
 			}
@@ -49,6 +49,8 @@ public class IpConnectionWithDevice extends IpConnection {
 		for (SlaveNode sn: slavescopy) {
 			if (sn.node != node) {
 				addSlave(sn.node);
+			} else {
+				slaves.add(sn);
 			}
 		}
 		
@@ -56,17 +58,15 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void init() {
-		makeStopRestartActions(node);
 
 		master = getMaster();
 		if (master != null) {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
-			SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, node);
-			sn.restoreLastSession();
 		} else {
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			scheduleReconnect();
 		}
+		addSlave(node);
 	}
 	
 	void addSlave(Node slaveNode) {
@@ -78,7 +78,7 @@ public class IpConnectionWithDevice extends IpConnection {
 	
 	void makeStopRestartActions(Node slaveNode) {
 		Action act = new Action(Permission.READ, new RestartHandler());
-		Node anode = node.getChild(ACTION_RESTART, true);
+		Node anode = slaveNode.getChild(ACTION_RESTART, true);
 		if (anode == null) {
 			slaveNode.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
 		} else {
@@ -87,7 +87,9 @@ public class IpConnectionWithDevice extends IpConnection {
 
 		act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
-				reconnectFuture.cancel(false);
+				if (reconnectFuture != null) {
+					reconnectFuture.cancel(false);
+				}
 				stop();
 			}
 		});
@@ -106,5 +108,28 @@ public class IpConnectionWithDevice extends IpConnection {
 			node = slaves.iterator().next().node;
 		}
 	}
+	
+	@Override
+	public void writeMasterAttributes() {
+		for (SlaveNode sn: new HashSet<SlaveNode>(slaves)) {
+			sn.node.setAttribute(ATTR_TIMEOUT, new Value(timeout));
+			sn.node.setAttribute(ATTR_RETRIES, new Value(retries));
+			sn.node.setAttribute(ATTR_MAX_READ_BIT_COUNT, new Value(maxrbc));
+			sn.node.setAttribute(ATTR_MAX_READ_REGISTER_COUNT, new Value(maxrrc));
+			sn.node.setAttribute(ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
+			sn.node.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
+			sn.node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
+		}
+	}
+	
+	@Override
+	void writeIpAttributes() {
+		for (SlaveNode sn: new HashSet<SlaveNode>(slaves)) {
+			sn.node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transType.toString()));
+			sn.node.setAttribute(ATTR_HOST, new Value(host));
+			sn.node.setAttribute(ATTR_PORT, new Value(port));
+		}
+	}
+	
 	
 }

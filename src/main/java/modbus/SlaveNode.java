@@ -191,7 +191,10 @@ public class SlaveNode extends SlaveFolder {
 				batch.addLocator(pnode, locator);
 				polled.add(pnode);
 			}
-
+			
+			if (getMaster() == null) {
+				return;
+			}
 			try {
 				BatchResults<Node> response = getMaster().send(batch);
 
@@ -277,7 +280,7 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
-				LOGGER.debug("error during batch poll: ", e);
+				LOGGER.warn("error during batch poll: ", e);
 				checkDeviceConnected();
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
