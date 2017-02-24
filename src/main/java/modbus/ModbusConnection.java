@@ -276,10 +276,8 @@ abstract public class ModbusConnection {
 
 		boolean connected = false;
 		if (master != null) {
-			// if all slave are down, it is safe to re-connect
-			for (SlaveNode slave : slaves) {
-				connected = connected || SlaveNode.NODE_STATUS_READY.equals(slave.statnode.getValue().getString());
-			}
+			connected = master.isConnected();
+			
 			if (!connected && master != null) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				master.destroy();
@@ -295,18 +293,21 @@ abstract public class ModbusConnection {
 		}
 	}
 
-	void scheduleReconnect() {
-		if (link.restoring) {
+	synchronized void scheduleReconnect() {
+		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
+		//LOGGER.info("scheduling reconnect with delay " + retryDelay);
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
 
 			@Override
 			public void run() {
 				Value stat = statnode.getValue();
+				//LOGGER.info("checking status before attmpting reconnect");
 				if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
 						|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
+					//LOGGER.info("attempting reconnect");
 					stop();
 					restoreLastSession();
 				}
@@ -314,6 +315,7 @@ abstract public class ModbusConnection {
 		}, retryDelay, TimeUnit.SECONDS);
 		if (retryDelay < RETRY_DELAY_MAX)
 			retryDelay += RETRY_DELAY_STEP;
+		//LOGGER.info("scheduled reconnect, next delay is " + retryDelay);
 	}
 
 	public void readMasterParameters(ActionResult event) {

@@ -42,11 +42,12 @@ public class IpConnection extends ModbusConnection {
 			return master;
 		}
 
+		
+		statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 		if (reconnectFuture != null) {
 			reconnectFuture.cancel(false);
 			reconnectFuture = null;
 		}
-		statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 
 		readIpAttributes();
 		readMasterAttributes();
