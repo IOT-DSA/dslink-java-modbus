@@ -90,6 +90,12 @@ public class IpConnection extends ModbusConnection {
 			link.masters.add(master);
 			return master;
 		} else {
+			if (master != null) {
+				try {
+					master.destroy();
+				} catch (Exception e1) {
+				}
+			}
 			master = null;
 			return null;
 		}

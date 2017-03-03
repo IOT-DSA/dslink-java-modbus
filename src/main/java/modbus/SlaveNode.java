@@ -325,24 +325,26 @@ public class SlaveNode extends SlaveFolder {
 	@Override
 	void checkDeviceConnected() {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
-
-		boolean connected = false;
-		LOGGER.info(node.getName() + ": (2) conn.master is null? " + (conn.master==null));
-		if (conn.master != null) {
-			try {
-				LOGGER.debug("pinging device to test connectivity");
-				connected = conn.master.testSlaveNode(slaveId);
-			} catch (Exception e) {
-				LOGGER.debug("error during device ping: ", e);
-			}
-			if (connected) {
-				statnode.setValue(new Value(NODE_STATUS_READY));
+		
+		synchronized(conn.masterLock) {
+			boolean connected = false;
+			LOGGER.info(node.getName() + ": (2) conn.master is null? " + (conn.master==null));
+			if (conn.master != null) {
+				try {
+					LOGGER.debug("pinging device to test connectivity");
+					connected = conn.master.testSlaveNode(slaveId);
+				} catch (Exception e) {
+					LOGGER.debug("error during device ping: ", e);
+				}
+				if (connected) {
+					statnode.setValue(new Value(NODE_STATUS_READY));
+				} else {
+					statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
+					conn.checkConnection();
+				}
 			} else {
-				statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
-				conn.checkConnection();
+				statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 			}
-		} else {
-			statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 		}
 		return;
 	}
