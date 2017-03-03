@@ -13,13 +13,11 @@ import org.dsa.iot.dslink.serializer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.msg.ReadCoilsRequest;
-import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 @SuppressWarnings("unused")
 public class Main extends DSLinkHandler {
@@ -53,6 +51,7 @@ public class Main extends DSLinkHandler {
 		ModbusLink ml = ModbusLink.get();
 		for (ModbusMaster master : ml.masters) {
 			try {
+				LOGGER.info("destroying master");
 				master.destroy();
 			} catch (Exception e) {
 				LOGGER.debug("Error destroying master: ", e);

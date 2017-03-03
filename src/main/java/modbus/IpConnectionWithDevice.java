@@ -10,6 +10,8 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.util.handler.Handler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * A special class to handle the legacy project based on the two-tier design.
@@ -23,6 +25,11 @@ import org.dsa.iot.dslink.util.handler.Handler;
  * */
 
 public class IpConnectionWithDevice extends IpConnection {
+	private static final Logger LOGGER;
+
+	static {
+		LOGGER = LoggerFactory.getLogger(IpConnectionWithDevice.class);
+	}
 
 	IpConnectionWithDevice(ModbusLink link, final Node node) {
 		super(link, node);
@@ -42,15 +49,18 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void restoreLastSession() {
-		init();
-		
-		Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
-		slaves.clear();
-		for (SlaveNode sn: slavescopy) {
-			if (sn.node != node) {
-				addSlave(sn.node);
-			} else {
-				slaves.add(sn);
+		synchronized(masterLock) {
+			LOGGER.info(node.getName() + ": (-1) master is null? " + (master == null));
+			init();
+			
+			Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
+			//slaves.clear();
+			LOGGER.info(node.getName() + ": (0) master is null? " + (master == null));
+			for (SlaveNode sn: slavescopy) {
+				//SlaveNode newsn = addSlave(sn.node);
+				//link.handleSlaveTransfer(sn, newsn);
+				LOGGER.info(node.getName() + ": calling init on slave " + sn.node.getName());
+				sn.init();
 			}
 		}
 		
@@ -58,22 +68,25 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void init() {
-
+		LOGGER.info(node.getName() + ": getting Master");
 		master = getMaster();
 		if (master != null) {
+			LOGGER.info(node.getName() + ": got Master");
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
+			retryDelay = 1;
 		} else {
+			LOGGER.info(node.getName() + ": failed to get Master, calling scheduleReconnect");
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			scheduleReconnect();
 		}
-		addSlave(node);
 	}
 	
-	void addSlave(Node slaveNode) {
+	synchronized SlaveNode addSlave(Node slaveNode) {
 		makeStopRestartActions(slaveNode);
 		
 		SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, slaveNode);
 		sn.restoreLastSession();
+		return sn;
 	}
 	
 	void makeStopRestartActions(Node slaveNode) {

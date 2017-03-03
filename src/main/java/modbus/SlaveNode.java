@@ -67,13 +67,18 @@ public class SlaveNode extends SlaveFolder {
 			statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
 					.setValue(new Value(NODE_STATUS_SETTING_UP)).build();
 		}
-
+		
+		init();
+	}
+	
+	void init() {
+		LOGGER.info(node.getName() + ": (1) conn.master is null? " + (conn.master==null));
+		
 		checkDeviceConnected();
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
-
 	}
 
 	void addToSub(Node event) {
@@ -153,6 +158,7 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
+
 		if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
 			checkDeviceConnected();
 			if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
@@ -192,10 +198,13 @@ public class SlaveNode extends SlaveFolder {
 				polled.add(pnode);
 			}
 			
-			if (getMaster() == null) {
-				return;
-			}
+			
 			try {
+				synchronized(conn.masterLock) {
+					if (getMaster() == null) {
+						return;
+					}
+				}
 				BatchResults<Node> response = getMaster().send(batch);
 
 				for (Node pnode : polled) {
@@ -318,6 +327,7 @@ public class SlaveNode extends SlaveFolder {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 
 		boolean connected = false;
+		LOGGER.info(node.getName() + ": (2) conn.master is null? " + (conn.master==null));
 		if (conn.master != null) {
 			try {
 				LOGGER.debug("pinging device to test connectivity");
