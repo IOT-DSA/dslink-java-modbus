@@ -128,12 +128,12 @@ abstract public class ModbusConnection {
 		synchronized(masterLock) {
 			if (master != null) {
 				try {
-					LOGGER.info(node.getName() + ": (stop) destroying master");
+//					LOGGER.info(node.getName() + ": (stop) destroying master");
 					master.destroy();
-					LOGGER.info(node.getName() + ": (stop) destroyed master");
+//					LOGGER.info(node.getName() + ": (stop) destroyed master");
 					link.masters.remove(master);
 				} catch (Exception e) {
-					LOGGER.info(node.getName() + ": (stop) error destroying master");
+//					LOGGER.info(node.getName() + ": (stop) error destroying master");
 					LOGGER.debug("error destroying last master" + e.getMessage());
 				}
 				master = null;
@@ -283,27 +283,27 @@ abstract public class ModbusConnection {
 
 	void checkConnection() {
 		synchronized(masterLock) {
-			LOGGER.info(node.getName() + ": checking connection");
+//			LOGGER.info(node.getName() + ": checking connection");
 			boolean connected = (master != null) && master.isInitialized() && master.isConnected();
-			LOGGER.info(node.getName() + ": is connected: " + connected);
+//			LOGGER.info(node.getName() + ": is connected: " + connected);
 	
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				if (master != null) {
 					try {
-						LOGGER.info(node.getName() + ": (checkConnection) destroying master");
+//						LOGGER.info(node.getName() + ": (checkConnection) destroying master");
 						master.destroy();
-						LOGGER.info(node.getName() + ": (checkConnection) destroyed master");
+//						LOGGER.info(node.getName() + ": (checkConnection) destroyed master");
 						link.masters.remove(master);
 					} catch (Exception e) {	
-						LOGGER.info(node.getName() + ": (checkConnection) error destroying master");
+//						LOGGER.info(node.getName() + ": (checkConnection) error destroying master");
 					}
 				}
 				master = null;
-				LOGGER.info(node.getName() + ": not connected, calling scheduleReconnect");
+//				LOGGER.info(node.getName() + ": not connected, calling scheduleReconnect");
 				scheduleReconnect();
 			} else {
-				LOGGER.info(node.getName() + ": appears to be connected");
+//				LOGGER.info(node.getName() + ": appears to be connected");
 				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			}
 		}
@@ -313,17 +313,17 @@ abstract public class ModbusConnection {
 		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
-		LOGGER.info(node.getName() + ": scheduling reconnect with delay " + retryDelay);
+//		LOGGER.info(node.getName() + ": scheduling reconnect with delay " + retryDelay);
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
 
 			@Override
 			public void run() {
 				Value stat = statnode.getValue();
-				LOGGER.info(node.getName() + ": checking status before attempting reconnect");
+//				LOGGER.info(node.getName() + ": checking status before attempting reconnect");
 				if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
 						|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
-					LOGGER.info(node.getName() + ": attempting reconnect");
+//					LOGGER.info(node.getName() + ": attempting reconnect");
 					stop();
 					restoreLastSession();
 				}
@@ -331,7 +331,7 @@ abstract public class ModbusConnection {
 		}, retryDelay, TimeUnit.SECONDS);
 		if (retryDelay < RETRY_DELAY_MAX)
 			retryDelay += RETRY_DELAY_STEP;
-		LOGGER.info(node.getName() + ": scheduled reconnect, next delay is " + retryDelay);
+//		LOGGER.info(node.getName() + ": scheduled reconnect, next delay is " + retryDelay);
 	}
 
 	public void readMasterParameters(ActionResult event) {

@@ -72,7 +72,7 @@ public class SlaveNode extends SlaveFolder {
 	}
 	
 	void init() {
-		LOGGER.info(node.getName() + ": (1) conn.master is null? " + (conn.master==null));
+//		LOGGER.info(node.getName() + ": (1) conn.master is null? " + (conn.master==null));
 		
 		checkDeviceConnected();
 
@@ -328,7 +328,7 @@ public class SlaveNode extends SlaveFolder {
 		
 		synchronized(conn.masterLock) {
 			boolean connected = false;
-			LOGGER.info(node.getName() + ": (2) conn.master is null? " + (conn.master==null));
+//			LOGGER.info(node.getName() + ": (2) conn.master is null? " + (conn.master==null));
 			if (conn.master != null) {
 				try {
 					LOGGER.debug("pinging device to test connectivity");

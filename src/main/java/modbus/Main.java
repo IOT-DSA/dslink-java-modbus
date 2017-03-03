@@ -51,7 +51,7 @@ public class Main extends DSLinkHandler {
 		ModbusLink ml = ModbusLink.get();
 		for (ModbusMaster master : ml.masters) {
 			try {
-				LOGGER.info("destroying master");
+//				LOGGER.info("destroying master");
 				master.destroy();
 			} catch (Exception e) {
 				LOGGER.debug("Error destroying master: ", e);

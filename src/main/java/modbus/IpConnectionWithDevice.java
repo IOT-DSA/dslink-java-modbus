@@ -50,16 +50,16 @@ public class IpConnectionWithDevice extends IpConnection {
 	@Override
 	void restoreLastSession() {
 		synchronized(masterLock) {
-			LOGGER.info(node.getName() + ": (-1) master is null? " + (master == null));
+//			LOGGER.info(node.getName() + ": (-1) master is null? " + (master == null));
 			init();
 			
 			Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
 			//slaves.clear();
-			LOGGER.info(node.getName() + ": (0) master is null? " + (master == null));
+//			LOGGER.info(node.getName() + ": (0) master is null? " + (master == null));
 			for (SlaveNode sn: slavescopy) {
 				//SlaveNode newsn = addSlave(sn.node);
 				//link.handleSlaveTransfer(sn, newsn);
-				LOGGER.info(node.getName() + ": calling init on slave " + sn.node.getName());
+//				LOGGER.info(node.getName() + ": calling init on slave " + sn.node.getName());
 				sn.init();
 			}
 		}
@@ -68,14 +68,14 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void init() {
-		LOGGER.info(node.getName() + ": getting Master");
+//		LOGGER.info(node.getName() + ": getting Master");
 		master = getMaster();
 		if (master != null) {
-			LOGGER.info(node.getName() + ": got Master");
+//			LOGGER.info(node.getName() + ": got Master");
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			retryDelay = 1;
 		} else {
-			LOGGER.info(node.getName() + ": failed to get Master, calling scheduleReconnect");
+//			LOGGER.info(node.getName() + ": failed to get Master, calling scheduleReconnect");
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			scheduleReconnect();
 		}
