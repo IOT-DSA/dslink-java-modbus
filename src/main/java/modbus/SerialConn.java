@@ -69,7 +69,7 @@ public class SerialConn extends ModbusConnection {
 
 	@Override
 	void removeChild() {
-		node.removeChild(ACTION_ADD_SERIAL_DEVICE);
+		node.removeChild(ACTION_ADD_SERIAL_DEVICE, true);
 	}
 
 	Action getEditAction() {
@@ -86,7 +86,6 @@ public class SerialConn extends ModbusConnection {
 				portids.add(port);
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 		}
 		if (portids.size() > 0) {
 			if (portids.contains(node.getAttribute(ATTR_COMM_PORT_ID).getString())) {

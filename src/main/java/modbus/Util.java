@@ -14,7 +14,7 @@ import jssc.SerialNativeInterface;
 import jssc.SerialPortList;
 
 public class Util {
-	
+
 	public static String[] getCommPorts() {
 		String[] portNames;
 

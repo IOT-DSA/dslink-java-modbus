@@ -26,7 +26,7 @@ import org.dsa.iot.dslink.util.handler.Handler;
 public class SlaveNodeWithConnection extends SlaveNode {
 
 	private static final Logger LOGGER;
-	
+
 	Node connStatNode;
 
 	static {
@@ -37,7 +37,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		super(conn, node);
 		connStatNode = node.getChild(ModbusConnection.NODE_STATUS, true);
 		if (connStatNode == null) {
-			connStatNode = node.createChild(ModbusConnection.NODE_STATUS, true).setValueType(ValueType.STRING).setValue(conn.statnode.getValue()).build();
+			connStatNode = node.createChild(ModbusConnection.NODE_STATUS, true).setValueType(ValueType.STRING)
+					.setValue(conn.statnode.getValue()).build();
 		} else {
 			connStatNode.setValueType(ValueType.STRING);
 			connStatNode.setValue(conn.statnode.getValue());

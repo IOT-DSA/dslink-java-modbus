@@ -60,7 +60,7 @@ public class ModbusLink {
 	// modbus listener map: port <-> SlaveSet
 	private final Map<Integer, ModbusSlaveSet> tcpListeners;
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
-	
+
 	private final Map<String, IpConnectionWithDevice> hostToConnection;
 	boolean restoring = true;
 
@@ -74,7 +74,7 @@ public class ModbusLink {
 
 		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
 		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
-		
+
 		this.hostToConnection = new HashMap<String, IpConnectionWithDevice>();
 	}
 
@@ -98,7 +98,7 @@ public class ModbusLink {
 
 		act = getAddSerialConnectionAction();
 		node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build().setSerializable(false);
-//
+
 		act = new Action(Permission.READ, new PortScanHandler());
 		node.createChild(ACTION_SCAN_SERIAL_PORT, true).setAction(act).build().setSerializable(false);
 
@@ -585,7 +585,7 @@ public class ModbusLink {
 			}
 		}
 	}
-	
+
 	void handleSlaveTransfer(SlaveNode oldslave, SlaveNode newslave) {
 		Set<Node> set = new HashSet<>(oldslave.getSubscribed());
 

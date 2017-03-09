@@ -42,7 +42,6 @@ public class IpConnection extends ModbusConnection {
 			return master;
 		}
 
-		
 		statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 		if (reconnectFuture != null) {
 			reconnectFuture.cancel(false);
@@ -118,7 +117,7 @@ public class IpConnection extends ModbusConnection {
 
 	@Override
 	void removeChild() {
-		node.removeChild(ADD_IP_DEVICE_ACTION);
+		node.removeChild(ADD_IP_DEVICE_ACTION, true);
 	}
 
 	@Override
@@ -160,7 +159,7 @@ public class IpConnection extends ModbusConnection {
 				rename(name);
 			} else {
 				restoreLastSession();
-			}	
+			}
 		}
 	}
 

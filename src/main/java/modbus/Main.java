@@ -25,8 +25,6 @@ public class Main extends DSLinkHandler {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
 	public static void main(String[] args) {
-		// args = new String[] { "-b", "http://localhost:8080/conn", "-l",
-		// "debug" };
 		DSLinkFactory.start(args, new Main());
 	}
 
@@ -51,7 +49,6 @@ public class Main extends DSLinkHandler {
 		ModbusLink ml = ModbusLink.get();
 		for (ModbusMaster master : ml.masters) {
 			try {
-//				LOGGER.info("destroying master");
 				master.destroy();
 			} catch (Exception e) {
 				LOGGER.debug("Error destroying master: ", e);
