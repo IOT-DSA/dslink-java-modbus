@@ -1,7 +1,6 @@
 package modbus;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.dsa.iot.dslink.node.Node;
@@ -19,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
+import com.serotonin.modbus4j.serial.SerialPortWrapper;
 
 public class SerialConn extends ModbusConnection {
 	private static final Logger LOGGER;
@@ -80,14 +80,14 @@ public class SerialConn extends ModbusConnection {
 				node.getAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE)));
 
 		Set<String> portids = new HashSet<String>();
-//		try {
-//			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-//			for (CommPortProxy port : cports) {
-//				portids.add(port.getId());
-//			}
-//		} catch (CommPortConfigException e) {
-//			// TODO Auto-generated catch block
-//		}
+		try {
+			String[] cports = Util.getCommPorts();
+			for (String port : cports) {
+				portids.add(port);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+		}
 		if (portids.size() > 0) {
 			if (portids.contains(node.getAttribute(ATTR_COMM_PORT_ID).getString())) {
 				act.addParameter(new Parameter(ATTR_COMM_PORT_ID, ValueType.makeEnum(portids),
@@ -152,70 +152,44 @@ public class SerialConn extends ModbusConnection {
 
 	@Override
 	ModbusMaster getMaster() {
-//		if (this.master != null) {
-//			return this.master;
-//		}
-//
-//		readSerialAttributes();
-//		readMasterAttributes();
-//
-//		SerialParameters params;
-//		switch (transType) {
-//		case RTU:
-//			if (useMods) {
-//				params = new ModSerialParameters();
-//			} else {
-//				params = new SerialParameters();
-//			}
-//			params.setCommPortId(commPortId);
-//			params.setBaudRate(baudRate);
-//			params.setDataBits(dataBits);
-//			params.setStopBits(stopBits);
-//			params.setParity(parity);
-//
-//			LOGGER.debug("Getting RTU master");
-//			if (useCustomSpacing) {
-//				master = new ModbusFactory().createRtuMaster(params, charSpacing, msgSpacing);
-//			} else {
-//				master = new ModbusFactory().createRtuMaster(params);
-//			}
-//			break;
-//		case ASCII:
-//			if (useMods) {
-//				params = new ModSerialParameters();
-//			} else {
-//				params = new SerialParameters();
-//			}
-//			params.setCommPortId(commPortId);
-//			params.setBaudRate(baudRate);
-//			params.setDataBits(dataBits);
-//			params.setStopBits(stopBits);
-//			params.setParity(parity);
-//
-//			master = new ModbusFactory().createAsciiMaster(params);
-//			break;
-//		default:
-//			return null;
-//		}
-//
-//		master.setTimeout(timeout);
-//		master.setRetries(retries);
-//		master.setMaxReadBitCount(maxrbc);
-//		master.setMaxReadRegisterCount(maxrrc);
-//		master.setMaxWriteRegisterCount(maxwrc);
-//		master.setDiscardDataDelay(ddd);
-//		master.setMultipleWritesOnly(mwo);
-//
-//		try {
-//			master.init();
-//		} catch (ModbusInitException e) {
-//			LOGGER.error("error in initializing master : " + e.getMessage());
-//			LOGGER.debug("error: ", e);
-//			master = null;
-//			return null;
-//		}
-//
-//		link.masters.add(master);
+		if (this.master != null) {
+			return this.master;
+		}
+
+		readSerialAttributes();
+		readMasterAttributes();
+
+		SerialPortWrapper wrapper = new SerialPortWrapperImpl(commPortId, baudRate, dataBits, stopBits, parity);
+		switch (transType) {
+		case RTU:
+			LOGGER.debug("Getting RTU master");
+			master = new ModbusFactory().createRtuMaster(wrapper);
+			break;
+		case ASCII:
+			master = new ModbusFactory().createAsciiMaster(wrapper);
+			break;
+		default:
+			return null;
+		}
+
+		master.setTimeout(timeout);
+		master.setRetries(retries);
+		master.setMaxReadBitCount(maxrbc);
+		master.setMaxReadRegisterCount(maxrrc);
+		master.setMaxWriteRegisterCount(maxwrc);
+		master.setDiscardDataDelay(ddd);
+		master.setMultipleWritesOnly(mwo);
+
+		try {
+			master.init();
+		} catch (ModbusInitException e) {
+			LOGGER.error("error in initializing master : " + e.getMessage());
+			LOGGER.debug("error: ", e);
+			master = null;
+			return null;
+		}
+
+		link.masters.add(master);
 		return master;
 	}
 

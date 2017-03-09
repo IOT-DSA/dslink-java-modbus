@@ -2,7 +2,6 @@ package modbus;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -97,11 +96,11 @@ public class ModbusLink {
 		Action act = getAddIpConnectionAction();
 		node.createChild(ACTION_ADD_IP_CONNECTION, true).setAction(act).build().setSerializable(false);
 
-//		act = getAddSerialConnectionAction();
-//		node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build().setSerializable(false);
+		act = getAddSerialConnectionAction();
+		node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build().setSerializable(false);
 //
-//		act = new Action(Permission.READ, new PortScanHandler());
-//		node.createChild(ACTION_SCAN_SERIAL_PORT, true).setAction(act).build().setSerializable(false);
+		act = new Action(Permission.READ, new PortScanHandler());
+		node.createChild(ACTION_SCAN_SERIAL_PORT, true).setAction(act).build().setSerializable(false);
 
 		act = getMakeSlaveAction();
 		node.createChild(ACTION_ADD_LOCAL_SLAVE, true).setAction(act).build().setSerializable(false);
@@ -110,26 +109,26 @@ public class ModbusLink {
 		node.createChild(ACTION_ADD_IP_DEVICE, true).setAction(act).build().setSerializable(false);
 	}
 
-//	private class PortScanHandler implements Handler<ActionResult> {
-//		public void handle(ActionResult event) {
-//			Action act = getAddSerialConnectionAction();
-//			Node anode = node.getChild(ACTION_ADD_SERIAL_CONNECTION, true);
-//			if (anode == null) {
-//				anode = node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build();
-//				anode.setSerializable(false);
-//			} else {
-//				anode.setAction(act);
-//			}
-//
-//			for (ModbusConnection conn : connections) {
-//				anode = conn.node.getChild(ACTION_EDIT, true);
-//				if (anode != null) {
-//					act = conn.getEditAction();
-//					anode.setAction(act);
-//				}
-//			}
-//		}
-//	}
+	private class PortScanHandler implements Handler<ActionResult> {
+		public void handle(ActionResult event) {
+			Action act = getAddSerialConnectionAction();
+			Node anode = node.getChild(ACTION_ADD_SERIAL_CONNECTION, true);
+			if (anode == null) {
+				anode = node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build();
+				anode.setSerializable(false);
+			} else {
+				anode.setAction(act);
+			}
+
+			for (ModbusConnection conn : connections) {
+				anode = conn.node.getChild(ACTION_EDIT, true);
+				if (anode != null) {
+					act = conn.getEditAction();
+					anode.setAction(act);
+				}
+			}
+		}
+	}
 
 	private class MakeSlaveHandler implements Handler<ActionResult> {
 
@@ -203,48 +202,48 @@ public class ModbusLink {
 		return act;
 	}
 
-//	private Action getAddSerialConnectionAction() {
-//		Action act = new Action(Permission.READ, new AddSerialConnectionHandler());
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING));
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
-//				ValueType.makeEnum(Util.enumNames(SerialTransportType.class))));
-//		Set<String> portids = new HashSet<String>();
-//		try {
-//			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-//			for (CommPortProxy port : cports) {
-//				portids.add(port.getId());
-//			}
-//		} catch (CommPortConfigException e) {
-//			LOGGER.debug("", e);
-//		}
-//		if (portids.size() > 0) {
-//			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID, ValueType.makeEnum(portids)));
-//			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID_MANUAL, ValueType.STRING));
-//		} else {
-//			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID, ValueType.STRING));
-//		}
-//		act.addParameter(new Parameter(SerialConn.ATTR_BAUD_RATE, ValueType.NUMBER, new Value(9600)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_DATA_BITS, ValueType.NUMBER, new Value(8)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_STOP_BITS, ValueType.NUMBER, new Value(1)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_PARITY, ValueType.makeEnum(Util.enumNames(ParityType.class))));
-//
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_TIMEOUT, ValueType.NUMBER, new Value(500)));
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_RETRIES, ValueType.NUMBER, new Value(2)));
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_MAX_READ_BIT_COUNT, ValueType.NUMBER, new Value(2000)));
-//		act.addParameter(
-//				new Parameter(ModbusConnection.ATTR_MAX_READ_REGISTER_COUNT, ValueType.NUMBER, new Value(125)));
-//		act.addParameter(
-//				new Parameter(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
-//		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
-//		act.addParameter(
-//				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL, new Value(false)));
-//
-//		act.addParameter(new Parameter(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL, new Value(false)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL, new Value(false)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER, new Value(0)));
-//		act.addParameter(new Parameter(SerialConn.ATTR_CHARACTER_SPACING, ValueType.NUMBER, new Value(0)));
-//		return act;
-//	}
+	private Action getAddSerialConnectionAction() {
+		Action act = new Action(Permission.READ, new AddSerialConnectionHandler());
+		act.addParameter(new Parameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
+				ValueType.makeEnum(Util.enumNames(SerialTransportType.class))));
+		Set<String> portids = new HashSet<String>();
+		try {
+			String[] cports = Util.getCommPorts();
+			for (String port : cports) {
+				portids.add(port);
+			}
+		} catch (Exception e) {
+			LOGGER.debug("", e);
+		}
+		if (portids.size() > 0) {
+			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID, ValueType.makeEnum(portids)));
+			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID_MANUAL, ValueType.STRING));
+		} else {
+			act.addParameter(new Parameter(SerialConn.ATTR_COMM_PORT_ID, ValueType.STRING));
+		}
+		act.addParameter(new Parameter(SerialConn.ATTR_BAUD_RATE, ValueType.NUMBER, new Value(9600)));
+		act.addParameter(new Parameter(SerialConn.ATTR_DATA_BITS, ValueType.NUMBER, new Value(8)));
+		act.addParameter(new Parameter(SerialConn.ATTR_STOP_BITS, ValueType.NUMBER, new Value(1)));
+		act.addParameter(new Parameter(SerialConn.ATTR_PARITY, ValueType.makeEnum(Util.enumNames(ParityType.class))));
+
+		act.addParameter(new Parameter(ModbusConnection.ATTR_TIMEOUT, ValueType.NUMBER, new Value(500)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_RETRIES, ValueType.NUMBER, new Value(2)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_MAX_READ_BIT_COUNT, ValueType.NUMBER, new Value(2000)));
+		act.addParameter(
+				new Parameter(ModbusConnection.ATTR_MAX_READ_REGISTER_COUNT, ValueType.NUMBER, new Value(125)));
+		act.addParameter(
+				new Parameter(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
+		act.addParameter(
+				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL, new Value(false)));
+
+		act.addParameter(new Parameter(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(SerialConn.ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(SerialConn.ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER, new Value(0)));
+		act.addParameter(new Parameter(SerialConn.ATTR_CHARACTER_SPACING, ValueType.NUMBER, new Value(0)));
+		return act;
+	}
 
 	private Action getMakeSlaveAction() {
 		Action act = new Action(Permission.READ, new MakeSlaveHandler());

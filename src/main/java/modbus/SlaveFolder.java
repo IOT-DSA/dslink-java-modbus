@@ -145,6 +145,7 @@ public class SlaveFolder {
 					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
+						child.setValue(null);
 						setupPointActions(child);
 						conn.getLink().setupPoint(child, root);
 					} else {

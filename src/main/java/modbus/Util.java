@@ -1,6 +1,7 @@
 package modbus;
 
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
@@ -9,7 +10,31 @@ import org.dsa.iot.dslink.util.json.JsonArray;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
 
+import jssc.SerialNativeInterface;
+import jssc.SerialPortList;
+
 public class Util {
+	
+	public static String[] getCommPorts() {
+		String[] portNames;
+
+		switch (SerialNativeInterface.getOsType()) {
+		case SerialNativeInterface.OS_LINUX:
+			portNames = SerialPortList
+					.getPortNames(Pattern.compile("(cu|ttyS|ttyUSB|ttyACM|ttyAMA|rfcomm|ttyO)[0-9]{1,3}"));
+			break;
+		case SerialNativeInterface.OS_MAC_OS_X:
+			portNames = SerialPortList.getPortNames(Pattern.compile("(cu|tty)..*")); // Was
+																						// "tty.(serial|usbserial|usbmodem).*")
+			break;
+		default:
+			portNames = SerialPortList.getPortNames();
+			break;
+		}
+
+		return portNames;
+
+	}
 
 	public static <E> String[] enumNames(Class<E> enumData) {
 		String valuesStr = Arrays.toString(enumData.getEnumConstants());

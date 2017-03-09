@@ -120,7 +120,7 @@ abstract public class ModbusConnection {
 		stop();
 
 		node.clearChildren();
-		node.getParent().removeChild(node);
+		node.getParent().removeChild(node, false);
 		link.connections.remove(this);
 	}
 
@@ -171,7 +171,7 @@ abstract public class ModbusConnection {
 				SlaveNode sn = new SlaveNode(this, child);
 				sn.restoreLastSession();
 			} else if (child.getAction() == null && !NODE_STATUS.equals(child.getName())) {
-				node.removeChild(child);
+				node.removeChild(child, false);
 			}
 		}
 	}
