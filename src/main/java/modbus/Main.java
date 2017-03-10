@@ -13,13 +13,11 @@ import org.dsa.iot.dslink.serializer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.io.serial.SerialParameters;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.msg.ReadCoilsRequest;
-import com.serotonin.modbus4j.serial.ModSerialParameters;
 
 @SuppressWarnings("unused")
 public class Main extends DSLinkHandler {
@@ -27,8 +25,6 @@ public class Main extends DSLinkHandler {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
 	public static void main(String[] args) {
-		// args = new String[] { "-b", "http://localhost:8080/conn", "-l",
-		// "debug" };
 		DSLinkFactory.start(args, new Main());
 	}
 

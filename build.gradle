@@ -5,12 +5,12 @@ apply plugin: 'java'
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
-version = '0.1.34-SNAPSHOT'
+version = '0.2.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
     maven {
-    	url '.m2/repository'
+    	url 'http://mangoautomation.net:9902/maven-repo/'
     }
     maven {
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
@@ -20,7 +20,8 @@ repositories {
 
 dependencies {
     compile 'org.iot-dsa:dslink:0.17.1-SNAPSHOT'
-    compile 'com.infiniteautomation:modbus4j:2.1.1'
+    compile 'com.infiniteautomation:modbus4j:3.0.3'
+    compile 'org.scream3r:jssc:2.8.0'
 }
 
 

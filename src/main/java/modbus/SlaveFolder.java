@@ -145,15 +145,16 @@ public class SlaveFolder {
 					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
+						child.setValue(null);
 						setupPointActions(child);
 						conn.getLink().setupPoint(child, root);
 					} else {
-						node.removeChild(child);
+						node.removeChild(child, false);
 					}
 				}
 			} else if (child.getAction() == null && !(root == this
 					&& (NODE_STATUS.equals(child.getName()) || ModbusConnection.NODE_STATUS.equals(child.getName())))) {
-				node.removeChild(child);
+				node.removeChild(child, false);
 			}
 		}
 	}
@@ -182,7 +183,7 @@ public class SlaveFolder {
 
 	protected void remove() {
 		node.clearChildren();
-		node.getParent().removeChild(node);
+		node.getParent().removeChild(node, false);
 	}
 
 	protected void rename(String newname) {
@@ -398,7 +399,7 @@ public class SlaveFolder {
 
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
-				node.removeChild(pointNode);
+				node.removeChild(pointNode, false);
 				pointNode = newnode;
 			}
 			pointNode.setAttribute(ATTR_POINT_TYPE, new Value(type.toString()));
@@ -423,7 +424,7 @@ public class SlaveFolder {
 		}
 
 		public void handle(ActionResult event) {
-			node.removeChild(toRemove);
+			node.removeChild(toRemove, false);
 		}
 	}
 
@@ -477,8 +478,6 @@ public class SlaveFolder {
 				LOGGER.debug("Sending request: " + request.toString());
 			requestString = ":" + id + ":" + offset + ":" + numRegs + ":";
 			if (polledNodes.containsKey(requestString)) {
-				// LOGGER.info("Skipping already currently polling request: " +
-				// requestString);
 				return;
 			}
 			polledNodes.put(requestString, true);

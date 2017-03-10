@@ -1,7 +1,6 @@
 package modbus;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.dsa.iot.dslink.node.Node;
@@ -16,14 +15,10 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.io.serial.CommPortConfigException;
-import com.serotonin.io.serial.CommPortProxy;
-import com.serotonin.io.serial.SerialParameters;
-import com.serotonin.io.serial.SerialUtils;
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusInitException;
-import com.serotonin.modbus4j.serial.ModSerialParameters;
+import com.serotonin.modbus4j.serial.SerialPortWrapper;
 
 public class SerialConn extends ModbusConnection {
 	private static final Logger LOGGER;
@@ -74,7 +69,7 @@ public class SerialConn extends ModbusConnection {
 
 	@Override
 	void removeChild() {
-		node.removeChild(ACTION_ADD_SERIAL_DEVICE);
+		node.removeChild(ACTION_ADD_SERIAL_DEVICE, true);
 	}
 
 	Action getEditAction() {
@@ -86,12 +81,11 @@ public class SerialConn extends ModbusConnection {
 
 		Set<String> portids = new HashSet<String>();
 		try {
-			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-			for (CommPortProxy port : cports) {
-				portids.add(port.getId());
+			String[] cports = Util.getCommPorts();
+			for (String port : cports) {
+				portids.add(port);
 			}
-		} catch (CommPortConfigException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 		}
 		if (portids.size() > 0) {
 			if (portids.contains(node.getAttribute(ATTR_COMM_PORT_ID).getString())) {
@@ -164,40 +158,14 @@ public class SerialConn extends ModbusConnection {
 		readSerialAttributes();
 		readMasterAttributes();
 
-		SerialParameters params;
+		SerialPortWrapper wrapper = new SerialPortWrapperImpl(commPortId, baudRate, dataBits, stopBits, parity);
 		switch (transType) {
 		case RTU:
-			if (useMods) {
-				params = new ModSerialParameters();
-			} else {
-				params = new SerialParameters();
-			}
-			params.setCommPortId(commPortId);
-			params.setBaudRate(baudRate);
-			params.setDataBits(dataBits);
-			params.setStopBits(stopBits);
-			params.setParity(parity);
-
 			LOGGER.debug("Getting RTU master");
-			if (useCustomSpacing) {
-				master = new ModbusFactory().createRtuMaster(params, charSpacing, msgSpacing);
-			} else {
-				master = new ModbusFactory().createRtuMaster(params);
-			}
+			master = new ModbusFactory().createRtuMaster(wrapper);
 			break;
 		case ASCII:
-			if (useMods) {
-				params = new ModSerialParameters();
-			} else {
-				params = new SerialParameters();
-			}
-			params.setCommPortId(commPortId);
-			params.setBaudRate(baudRate);
-			params.setDataBits(dataBits);
-			params.setStopBits(stopBits);
-			params.setParity(parity);
-
-			master = new ModbusFactory().createAsciiMaster(params);
+			master = new ModbusFactory().createAsciiMaster(wrapper);
 			break;
 		default:
 			return null;

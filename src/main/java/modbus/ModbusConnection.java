@@ -71,10 +71,11 @@ abstract public class ModbusConnection {
 	Node statnode;
 	ModbusLink link;
 	ModbusMaster master;
+	final Object masterLock = new Object();
 	Set<SlaveNode> slaves;
 	ScheduledFuture<?> reconnectFuture = null;
 	String name;
-	int retryDelay = 1;
+	protected int retryDelay = 1;
 
 	int timeout;
 
@@ -119,20 +120,22 @@ abstract public class ModbusConnection {
 		stop();
 
 		node.clearChildren();
-		node.getParent().removeChild(node);
+		node.getParent().removeChild(node, false);
 		link.connections.remove(this);
 	}
 
 	void stop() {
-		if (master != null) {
-			try {
-				master.destroy();
-				link.masters.remove(master);
-			} catch (Exception e) {
-				LOGGER.debug("error destroying last master" + e.getMessage());
+		synchronized (masterLock) {
+			if (master != null) {
+				try {
+					master.destroy();
+					link.masters.remove(master);
+				} catch (Exception e) {
+					LOGGER.debug("error destroying last master" + e.getMessage());
+				}
+				master = null;
+				removeChild();
 			}
-			master = null;
-			removeChild();
 		}
 		statnode.setValue(new Value(NODE_STATUS_CONNECTION_STOPPED));
 	}
@@ -165,7 +168,7 @@ abstract public class ModbusConnection {
 				SlaveNode sn = new SlaveNode(this, child);
 				sn.restoreLastSession();
 			} else if (child.getAction() == null && !NODE_STATUS.equals(child.getName())) {
-				node.removeChild(child);
+				node.removeChild(child, false);
 			}
 		}
 	}
@@ -198,20 +201,23 @@ abstract public class ModbusConnection {
 
 		makeStopAction();
 
-		master = getMaster();
-		if (master != null) {
-			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
-			act = getAddDeviceAction();
-			anode = node.getChild(getAddDeviceActionName(), true);
-			if (anode == null) {
-				node.createChild(getAddDeviceActionName(), true).setAction(act).build().setSerializable(false);
+		synchronized (masterLock) {
+			master = getMaster();
+			if (master != null) {
+				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
+				retryDelay = 1;
+				act = getAddDeviceAction();
+				anode = node.getChild(getAddDeviceActionName(), true);
+				if (anode == null) {
+					node.createChild(getAddDeviceActionName(), true).setAction(act).build().setSerializable(false);
+				} else {
+					anode.setAction(act);
+				}
 			} else {
-				anode.setAction(act);
+				statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
+				removeChild();
+				scheduleReconnect();
 			}
-		} else {
-			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
-			removeChild();
-			scheduleReconnect();
 		}
 	}
 
@@ -273,30 +279,27 @@ abstract public class ModbusConnection {
 	}
 
 	void checkConnection() {
-
-		boolean connected = false;
-		if (master != null) {
-			// if all slave are down, it is safe to re-connect
-			for (SlaveNode slave : slaves) {
-				connected = connected || SlaveNode.NODE_STATUS_READY.equals(slave.statnode.getValue().getString());
-			}
-			if (!connected && master != null) {
+		synchronized (masterLock) {
+			boolean connected = (master != null) && master.isInitialized() && master.isConnected();
+			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
-				master.destroy();
-				link.masters.remove(master);
+				if (master != null) {
+					try {
+						master.destroy();
+						link.masters.remove(master);
+					} catch (Exception e) {
+					}
+				}
 				master = null;
+				scheduleReconnect();
 			} else {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			}
 		}
-
-		if (!slaves.isEmpty() && !connected) {
-			scheduleReconnect();
-		}
 	}
 
-	void scheduleReconnect() {
-		if (link.restoring) {
+	synchronized void scheduleReconnect() {
+		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();

@@ -49,7 +49,6 @@ public class SlaveNode extends SlaveFolder {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
 
-	// ModbusMaster master;
 	long intervalInMs;
 
 	Node statnode;
@@ -68,12 +67,15 @@ public class SlaveNode extends SlaveFolder {
 					.setValue(new Value(NODE_STATUS_SETTING_UP)).build();
 		}
 
+		init();
+	}
+
+	void init() {
 		checkDeviceConnected();
 
 		this.intervalInMs = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().longValue();
 
 		makeEditAction();
-
 	}
 
 	void addToSub(Node event) {
@@ -153,6 +155,7 @@ public class SlaveNode extends SlaveFolder {
 		if (getMaster() == null) {
 			return;
 		}
+
 		if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
 			checkDeviceConnected();
 			if (!NODE_STATUS_READY.equals(statnode.getValue().getString())) {
@@ -191,11 +194,13 @@ public class SlaveNode extends SlaveFolder {
 				batch.addLocator(pnode, locator);
 				polled.add(pnode);
 			}
-			
-			if (getMaster() == null) {
-				return;
-			}
+
 			try {
+				synchronized (conn.masterLock) {
+					if (getMaster() == null) {
+						return;
+					}
+				}
 				BatchResults<Node> response = getMaster().send(batch);
 
 				for (Node pnode : polled) {
@@ -317,22 +322,24 @@ public class SlaveNode extends SlaveFolder {
 	void checkDeviceConnected() {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 
-		boolean connected = false;
-		if (conn.master != null) {
-			try {
-				LOGGER.debug("pinging device to test connectivity");
-				connected = conn.master.testSlaveNode(slaveId);
-			} catch (Exception e) {
-				LOGGER.debug("error during device ping: ", e);
-			}
-			if (connected) {
-				statnode.setValue(new Value(NODE_STATUS_READY));
+		synchronized (conn.masterLock) {
+			boolean connected = false;
+			if (conn.master != null) {
+				try {
+					LOGGER.debug("pinging device to test connectivity");
+					connected = conn.master.testSlaveNode(slaveId);
+				} catch (Exception e) {
+					LOGGER.debug("error during device ping: ", e);
+				}
+				if (connected) {
+					statnode.setValue(new Value(NODE_STATUS_READY));
+				} else {
+					statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
+					conn.checkConnection();
+				}
 			} else {
-				statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
-				conn.checkConnection();
+				statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 			}
-		} else {
-			statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 		}
 		return;
 	}

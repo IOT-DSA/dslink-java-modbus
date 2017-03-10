@@ -2,7 +2,6 @@ package modbus;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,9 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
 
-import com.serotonin.io.serial.CommPortConfigException;
-import com.serotonin.io.serial.CommPortProxy;
-import com.serotonin.io.serial.SerialUtils;
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.ModbusSlaveSet;
 import com.serotonin.modbus4j.ip.tcp.TcpSlave;
@@ -64,7 +60,7 @@ public class ModbusLink {
 	// modbus listener map: port <-> SlaveSet
 	private final Map<Integer, ModbusSlaveSet> tcpListeners;
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
-	
+
 	private final Map<String, IpConnectionWithDevice> hostToConnection;
 	boolean restoring = true;
 
@@ -78,7 +74,7 @@ public class ModbusLink {
 
 		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
 		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
-		
+
 		this.hostToConnection = new HashMap<String, IpConnectionWithDevice>();
 	}
 
@@ -213,11 +209,11 @@ public class ModbusLink {
 				ValueType.makeEnum(Util.enumNames(SerialTransportType.class))));
 		Set<String> portids = new HashSet<String>();
 		try {
-			List<CommPortProxy> cports = SerialUtils.getCommPorts();
-			for (CommPortProxy port : cports) {
-				portids.add(port.getId());
+			String[] cports = Util.getCommPorts();
+			for (String port : cports) {
+				portids.add(port);
 			}
-		} catch (CommPortConfigException e) {
+		} catch (Exception e) {
 			LOGGER.debug("", e);
 		}
 		if (portids.size() > 0) {
@@ -386,6 +382,7 @@ public class ModbusLink {
 						conn = new IpConnectionWithDevice(getLink(), child);
 						hostToConnection.put(hostName, conn);
 						conn.restoreLastSession();
+						conn.addSlave(child);
 					}
 				}
 			} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
@@ -573,6 +570,7 @@ public class ModbusLink {
 				conn = new IpConnectionWithDevice(getLink(), snode);
 				hostToConnection.put(hostName, conn);
 				conn.init();
+				conn.addSlave(snode);
 			}
 		}
 	}
@@ -584,6 +582,17 @@ public class ModbusLink {
 			if (event.getMetaData() == slave) {
 				handleUnsub((SlaveNode) slave, event);
 				handleSub((SlaveNode) slave, event);
+			}
+		}
+	}
+
+	void handleSlaveTransfer(SlaveNode oldslave, SlaveNode newslave) {
+		Set<Node> set = new HashSet<>(oldslave.getSubscribed());
+
+		for (Node event : set) {
+			if (event.getMetaData() == newslave) {
+				handleUnsub((SlaveNode) oldslave, event);
+				handleSub((SlaveNode) newslave, event);
 			}
 		}
 	}
