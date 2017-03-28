@@ -145,7 +145,19 @@ public class SlaveFolder {
 					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
-						child.setValue(null);
+						
+						if (root.node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
+							if (child.getValueType().compare(ValueType.NUMBER)) {
+								child.setValue(new Value(0));
+							} else if (child.getValueType().compare(ValueType.BOOL)) {
+								child.setValue(new Value(false));
+							} else if (child.getValueType().compare(ValueType.STRING)) {
+								child.setValue(new Value(""));
+							}
+						} else {
+							child.setValue(null);
+						}
+						
 						setupPointActions(child);
 						conn.getLink().setupPoint(child, root);
 					} else {
