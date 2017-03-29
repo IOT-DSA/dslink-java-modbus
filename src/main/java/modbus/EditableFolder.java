@@ -71,7 +71,7 @@ public abstract class EditableFolder {
 
 	protected void remove() {
 		node.clearChildren();
-		node.getParent().removeChild(node);
+		node.getParent().removeChild(node, false);
 	}
 
 	protected void rename(String newname) {

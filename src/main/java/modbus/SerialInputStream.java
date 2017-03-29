@@ -7,8 +7,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.modbus4j.sero.io.StreamUtils;
-
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
@@ -68,8 +66,6 @@ public class SerialInputStream extends InputStream implements SerialPortEventLis
 
 	@Override
 	public void close() throws IOException {
-		if (LOGGER.isDebugEnabled())
-			LOGGER.debug("Attempting Close of Serial Port Input Stream.");
 		synchronized (closeLock) {
 			if (closed) {
 				return;
@@ -77,15 +73,12 @@ public class SerialInputStream extends InputStream implements SerialPortEventLis
 			closeImpl();
 			closed = true;
 		}
-		if (LOGGER.isDebugEnabled())
-			LOGGER.debug("Closed Serial Port Input Stream.");
 	}
 
 	@Override
 	public void serialEvent(SerialPortEvent event) {
 		if (event.isRXCHAR()) {// If data is available
-			if (LOGGER.isDebugEnabled())
-				LOGGER.debug("Serial Receive Event fired.");
+
 			// Read the bytes, store into queue
 			try {
 				synchronized (dataStreamLock) {
@@ -93,20 +86,13 @@ public class SerialInputStream extends InputStream implements SerialPortEventLis
 					for (int i = 0; i < buffer.length; i++) {
 						this.dataStream.put(buffer[i]);
 					}
-					if (LOGGER.isDebugEnabled()) {
-						LOGGER.debug("Recieved: " + StreamUtils.dumpHex(buffer, 0, buffer.length));
-					}
 				}
 
 			} catch (Exception e) {
-				LOGGER.error("", e);
+				LOGGER.debug("", e);
 			}
 
 		} // end was RX event
-		else {
-			if (LOGGER.isDebugEnabled())
-				LOGGER.debug("Non RX Event Type Recieved: " + event.getEventType());
-		}
 	}
 
 }

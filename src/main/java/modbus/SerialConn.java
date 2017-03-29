@@ -161,7 +161,6 @@ public class SerialConn extends ModbusConnection {
 		SerialPortWrapper wrapper = new SerialPortWrapperImpl(commPortId, baudRate, dataBits, stopBits, parity);
 		switch (transType) {
 		case RTU:
-			LOGGER.debug("Getting RTU master");
 			master = new ModbusFactory().createRtuMaster(wrapper);
 			break;
 		case ASCII:
@@ -183,7 +182,7 @@ public class SerialConn extends ModbusConnection {
 			master.init();
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master : " + e.getMessage());
-			LOGGER.debug("error: ", e);
+			LOGGER.debug("error in initializing master : ", e);
 			master = null;
 			return null;
 		}

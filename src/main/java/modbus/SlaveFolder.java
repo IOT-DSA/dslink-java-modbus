@@ -1,6 +1,5 @@
 package modbus;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -486,8 +485,6 @@ public class SlaveFolder {
 				request = new ReadInputRegistersRequest(id, offset, numRegs);
 				break;
 			}
-			if (request != null)
-				LOGGER.debug("Sending request: " + request.toString());
 			requestString = ":" + id + ":" + offset + ":" + numRegs + ":";
 			if (polledNodes.containsKey(requestString)) {
 				return;
@@ -495,7 +492,6 @@ public class SlaveFolder {
 			polledNodes.put(requestString, true);
 			ReadResponse response = (ReadResponse) root.getMaster().send(request);
 			polledNodes.remove(requestString);
-			LOGGER.debug("Got response: " + response.toString());
 			root.getStatusNode().setValue(new Value("Ready"));
 			if (response.getExceptionCode() != -1) {
 				LOGGER.debug("error response: " + response.getExceptionMessage());
@@ -503,17 +499,15 @@ public class SlaveFolder {
 			}
 			if (type == PointType.COIL || type == PointType.DISCRETE) {
 				boolean[] booldat = response.getBooleanData();
-				LOGGER.debug(Arrays.toString(booldat));
 				for (int j = 0; j < numRegs; j++) {
 					boolean b = booldat[j];
 					val.add(b);
 				}
 			} else {
-				LOGGER.debug(Arrays.toString(response.getShortData()));
 				val = parseResponse(response, dataType, scaling, addscale, type, id, offset, bit);
 			}
 		} catch (ModbusTransportException e) {
-			LOGGER.debug("ModbusTransportException: ", e);
+			LOGGER.debug("Error reading point: ", e);
 
 			polledNodes.remove(requestString);
 			checkDeviceConnected();
@@ -554,7 +548,6 @@ public class SlaveFolder {
 		if (v != null) {
 			pointNode.setValueType(vt);
 			pointNode.setValue(v);
-			LOGGER.debug("read and updated " + pointNode.getName());
 		}
 	}
 
@@ -631,18 +624,12 @@ public class SlaveFolder {
 				default:
 					break;
 				}
-				if (request != null)
-					LOGGER.debug("set request: " + request.toString());
 				root.getMaster().send(request);
-			} catch (ModbusTransportException e) {
-				LOGGER.error("Modbus transport exception");
-				LOGGER.debug("error: ", e);
-				return;
 			} catch (Exception e) {
-				LOGGER.error("make arr exception");
+				LOGGER.error("Error during set: " + e.getMessage());
 				LOGGER.debug("error: ", e);
 				return;
-			}
+			} 
 		}
 	}
 

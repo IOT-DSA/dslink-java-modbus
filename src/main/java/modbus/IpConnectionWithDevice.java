@@ -108,7 +108,7 @@ public class IpConnectionWithDevice extends IpConnection {
 	void slaveRemoved() {
 		if (slaves.isEmpty()) {
 			remove();
-		} else if (!node.getParent().hasChild(node.getName())) {
+		} else if (!node.getParent().hasChild(node.getName(), false)) {
 			node = slaves.iterator().next().node;
 		}
 	}

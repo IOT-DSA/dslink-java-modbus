@@ -312,7 +312,7 @@ public class LocalSlaveFolder extends EditableFolder {
 
 			if (!name.equals(pointNode.getName())) {
 				Node newnode = copyPoint(pointNode, name);
-				node.removeChild(pointNode);
+				node.removeChild(pointNode, false);
 				pointNode = newnode;
 			}
 
@@ -334,7 +334,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		}
 
 		public void handle(ActionResult event) {
-			node.removeChild(pointNode);
+			node.removeChild(pointNode, false);
 		}
 	}
 
@@ -417,12 +417,11 @@ public class LocalSlaveFolder extends EditableFolder {
 						// slave loads the value from the local data source
 						child.setValue(value, true);
 					} else {
-						LOGGER.info("delete : " + child.getName());
-						node.removeChild(child);
+						node.removeChild(child, false);
 					}
 				}
 			} else if (child.getAction() == null && !(NODE_STATUS.equals(child.getName()))) {
-				node.removeChild(child);
+				node.removeChild(child, false);
 			}
 		}
 	}

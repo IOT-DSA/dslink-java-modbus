@@ -164,7 +164,6 @@ public class SlaveNode extends SlaveFolder {
 		}
 
 		if (node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING).getBool()) {
-			LOGGER.debug("batch polling " + node.getName() + " :");
 			int id = Util.getIntValue(node.getAttribute(ModbusConnection.ATTR_SLAVE_ID));
 			BatchRead<Node> batch = new BatchRead<Node>();
 			batch.setContiguousRequests(
@@ -205,7 +204,6 @@ public class SlaveNode extends SlaveFolder {
 
 				for (Node pnode : polled) {
 					Object obj = response.getValue(pnode);
-					LOGGER.debug(pnode.getName() + " : " + obj.toString());
 
 					DataType dataType = DataType.valueOf(pnode.getAttribute(ATTR_DATA_TYPE).getString());
 					double scaling = Util.getDoubleValue(pnode.getAttribute(ATTR_SCALING));
@@ -285,7 +283,8 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
-				LOGGER.warn("error during batch poll: ", e);
+				LOGGER.warn("error during batch poll: " + e.getMessage() );
+				LOGGER.debug("error during batch poll: ", e);
 				checkDeviceConnected();
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 					for (Node pnode : polled) {
@@ -326,7 +325,6 @@ public class SlaveNode extends SlaveFolder {
 			boolean connected = false;
 			if (conn.master != null) {
 				try {
-					LOGGER.debug("pinging device to test connectivity");
 					connected = conn.master.testSlaveNode(slaveId);
 				} catch (Exception e) {
 					LOGGER.debug("error during device ping: ", e);
