@@ -610,7 +610,6 @@ public class ModbusLink {
 			}
 		}, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
 		futures.put(slave, future);
-//		LOGGER.debug("subscribed to " + slave.node.getName());
 	}
 
 	private void handleUnsub(SlaveNode slave, Node event) {
@@ -620,7 +619,6 @@ public class ModbusLink {
 			if (future != null) {
 				future.cancel(false);
 			}
-//			LOGGER.debug("unsubscribed from " + slave.node.getName());
 		}
 	}
 
