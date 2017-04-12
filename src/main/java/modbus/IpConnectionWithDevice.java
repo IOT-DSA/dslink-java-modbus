@@ -39,7 +39,8 @@ public class IpConnectionWithDevice extends IpConnection {
 			public void handle(ValuePair event) {
 				Value value = event.getCurrent();
 				for (SlaveNode sn : new HashSet<SlaveNode>(slaves)) {
-					if (sn.node != node) {
+					if (sn.node != node && sn instanceof SlaveNodeWithConnection
+							&& ((SlaveNodeWithConnection) sn).connStatNode != null) {
 						((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
 					}
 				}
