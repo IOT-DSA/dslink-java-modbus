@@ -73,12 +73,10 @@ public class IpConnection extends ModbusConnection {
 
 		try {
 			master.init();
-			LOGGER.debug("Trying to connect");
 		} catch (ModbusInitException e) {
 			LOGGER.error("error in initializing master: " + e.getMessage() + " on " + host + ":" + port);
 			try {
 				master.destroy();
-				LOGGER.debug("Close connection");
 			} catch (Exception e1) {
 				LOGGER.debug(e1.getMessage());
 			}

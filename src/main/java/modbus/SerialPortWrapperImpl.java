@@ -2,15 +2,11 @@ package modbus;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import jssc.SerialPort;
 
 import com.serotonin.modbus4j.serial.SerialPortWrapper;
 
 public class SerialPortWrapperImpl implements SerialPortWrapper {
-	private static final Logger LOGGER = LoggerFactory.getLogger(SerialPortWrapperImpl.class);
 	private final SerialPort port;
 	private SerialInputStream is;
 	private SerialOutputStream os;
@@ -30,7 +26,6 @@ public class SerialPortWrapperImpl implements SerialPortWrapper {
 	@Override
 	public void close() throws Exception {
 		port.closePort();
-		LOGGER.debug("serial port " + port.getPortName() + " is closed");
 	}
 
 	@Override
@@ -41,8 +36,6 @@ public class SerialPortWrapperImpl implements SerialPortWrapper {
 
 		this.os = new SerialOutputStream(port);
 		this.is = new SerialInputStream(port);
-
-		LOGGER.debug("serial port " + port.getPortName() + " is open");
 	}
 
 	@Override

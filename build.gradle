@@ -5,7 +5,7 @@ apply plugin: 'java'
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
-version = '0.2.0-SNAPSHOT'
+version = '0.2.3-SNAPSHOT'
 
 repositories {
     mavenCentral()
@@ -19,7 +19,7 @@ repositories {
 
 
 dependencies {
-    compile 'org.iot-dsa:dslink:0.17.1-SNAPSHOT'
+    compile 'org.iot-dsa:dslink:0.17.2-SNAPSHOT'
     compile 'com.infiniteautomation:modbus4j:3.0.3'
     compile 'org.scream3r:jssc:2.8.0'
 }
