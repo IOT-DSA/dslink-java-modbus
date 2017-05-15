@@ -358,29 +358,32 @@ public class LocalSlaveFolder extends EditableFolder {
 			Value newValue = event.getCurrent();
 			BasicProcessImage processImage = (BasicProcessImage) root.getProcessImage();
 
+			Boolean b = newValue.getBool();
+			String s = newValue.getString();
+			Number n = newValue.getNumber();
 			switch (type) {
 			case COIL:
-				processImage.setCoil(offset, newValue.getBool());
+				processImage.setCoil(offset, b != null ? b : false);
 				break;
 			case DISCRETE:
-				processImage.setInput(offset, newValue.getBool());
+				processImage.setInput(offset, b != null ? b : false);
 				break;
 			case HOLDING:
 				if (dataType.isString()) {
 					int registerCount = pointNode.getAttribute(ATTRIBUTE_REGISTER_COUNT).getNumber().intValue();
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
-							newValue.getString());
+							s != null ? s : "");
 				} else {
-					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), newValue.getNumber());
+					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
 			case INPUT:
 				if (dataType.isString()) {
 					int registerCount = pointNode.getAttribute(ATTRIBUTE_REGISTER_COUNT).getNumber().intValue();
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
-							newValue.getString());
+							s != null ? s : "");
 				} else {
-					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), newValue.getNumber());
+					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
 			}
