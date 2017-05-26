@@ -1,8 +1,6 @@
 package modbus;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -20,16 +18,9 @@ import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusTransportException;
-import com.serotonin.modbus4j.locator.BinaryLocator;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
 import com.serotonin.modbus4j.msg.ModbusRequest;
-import com.serotonin.modbus4j.msg.ReadCoilsRequest;
-import com.serotonin.modbus4j.msg.ReadDiscreteInputsRequest;
-import com.serotonin.modbus4j.msg.ReadHoldingRegistersRequest;
-import com.serotonin.modbus4j.msg.ReadInputRegistersRequest;
-import com.serotonin.modbus4j.msg.ReadResponse;
 import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
@@ -438,118 +429,7 @@ public class SlaveFolder {
 			node.removeChild(toRemove, false);
 		}
 	}
-
-	private final Map<String, Boolean> polledNodes = new ConcurrentHashMap<>();
-
-	protected void readPoint(Node pointNode) {
-		if (pointNode.getAttribute(ATTR_OFFSET) == null)
-			return;
-
-		if (root.getMaster() == null) {
-			root.getConnection().stop();
-			return;
-		}
-
-		if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString())) {
-			checkDeviceConnected();
-			if (!NODE_STATUS_READY.equals(root.getStatusNode().getValue().getString())) {
-				return;
-			}
-		}
-
-		PointType type = PointType.valueOf(pointNode.getAttribute(ATTR_POINT_TYPE).getString());
-		int offset = Util.getIntValue(pointNode.getAttribute(ATTR_OFFSET));
-		int numRegs = Util.getIntValue(pointNode.getAttribute(ATTR_NUMBER_OF_REGISTERS));
-		int id = Util.getIntValue(root.node.getAttribute(ModbusConnection.ATTR_SLAVE_ID));
-
-		int bit = Util.getIntValue(pointNode.getAttribute(ATTR_BIT));
-		double scaling = Util.getDoubleValue(pointNode.getAttribute(ATTR_SCALING));
-		double addscale = Util.getDoubleValue(pointNode.getAttribute(ATTR_SCALING_OFFSET));
-		DataType dataType = DataType.valueOf(pointNode.getAttribute(ATTR_DATA_TYPE).getString());
-		ModbusRequest request = null;
-		JsonArray val = new JsonArray();
-
-		String requestString = "";
-		try {
-			switch (type) {
-			case COIL:
-				request = new ReadCoilsRequest(id, offset, numRegs);
-				break;
-			case DISCRETE:
-				request = new ReadDiscreteInputsRequest(id, offset, numRegs);
-				break;
-			case HOLDING:
-				request = new ReadHoldingRegistersRequest(id, offset, numRegs);
-				break;
-			case INPUT:
-				request = new ReadInputRegistersRequest(id, offset, numRegs);
-				break;
-			}
-			requestString = ":" + id + ":" + offset + ":" + numRegs + ":";
-			if (polledNodes.containsKey(requestString)) {
-				return;
-			}
-			polledNodes.put(requestString, true);
-			ReadResponse response = (ReadResponse) root.getMaster().send(request);
-			polledNodes.remove(requestString);
-			root.getStatusNode().setValue(new Value("Ready"));
-			if (response.getExceptionCode() != -1) {
-				LOGGER.debug("error response: " + response.getExceptionMessage());
-				return;
-			}
-			if (type == PointType.COIL || type == PointType.DISCRETE) {
-				boolean[] booldat = response.getBooleanData();
-				for (int j = 0; j < numRegs; j++) {
-					boolean b = booldat[j];
-					val.add(b);
-				}
-			} else {
-				val = parseResponse(response, dataType, scaling, addscale, type, id, offset, bit);
-			}
-		} catch (ModbusTransportException e) {
-			LOGGER.debug("Error reading point: ", e);
-
-			polledNodes.remove(requestString);
-			checkDeviceConnected();
-			if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
-				if (pointNode.getValueType().compare(ValueType.NUMBER)) {
-					pointNode.setValue(new Value(0));
-				} else if (pointNode.getValueType().compare(ValueType.BOOL)) {
-					pointNode.setValue(new Value(false));
-				}
-			}
-		}
-		String valString = val.toString();
-		Value v = new Value(valString);
-		ValueType vt = ValueType.STRING;
-		if (val.size() == 0) {
-			vt = pointNode.getValueType();
-			v = null;
-		}
-		if (val.size() == 1) {
-			valString = val.get(0).toString();
-			if (dataType == DataType.BOOLEAN) {
-				vt = ValueType.BOOL;
-				v = new Value(Boolean.parseBoolean(valString));
-			} else if (dataType.isString()) {
-				vt = ValueType.STRING;
-				v = new Value(valString);
-			} else {
-				try {
-					vt = ValueType.NUMBER;
-					v = new Value(Double.parseDouble(valString));
-				} catch (Exception e) {
-					vt = ValueType.STRING;
-					v = new Value(valString);
-				}
-			}
-		}
-
-		if (v != null) {
-			pointNode.setValueType(vt);
-			pointNode.setValue(v);
-		}
-	}
+	
 
 	public Node getStatusNode() {
 		return null;
@@ -633,7 +513,7 @@ public class SlaveFolder {
 		}
 	}
 
-	protected static boolean[] makeBoolArr(JsonArray jarr) throws Exception {
+	private static boolean[] makeBoolArr(JsonArray jarr) throws Exception {
 		boolean[] retval = new boolean[jarr.size()];
 		for (int i = 0; i < jarr.size(); i++) {
 			Object o = jarr.get(i);
@@ -653,7 +533,7 @@ public class SlaveFolder {
 		return root.getMaster();
 	}
 
-	protected static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt,
+	private static short[] makeShortArr(JsonArray jarr, DataType dt, double scaling, double addscaling, PointType pt,
 			int slaveid, int offset, int numRegisters, int bitnum) throws Exception {
 		short[] retval = {};
 		Integer dtint = DataType.getDataTypeInt(dt);
@@ -729,88 +609,6 @@ public class SlaveFolder {
 		short[] retval = new short[len1 + len2];
 		System.arraycopy(arr1, 0, retval, 0, len1);
 		System.arraycopy(arr2, 0, retval, len1, len2);
-		return retval;
-	}
-
-	protected JsonArray parseResponse(ReadResponse response, DataType dataType, double scaling, double addscaling,
-			PointType pointType, int slaveid, int offset, int bit) {
-		short[] responseData = response.getShortData();
-		byte[] byteData = response.getData();
-		JsonArray retval = new JsonArray();
-		Integer dt = DataType.getDataTypeInt(dataType);
-		if (dt != null && dataType != DataType.BOOLEAN) {
-			if (!dataType.isString()) {
-				NumericLocator nloc = new NumericLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt);
-				int regsPerVal = nloc.getRegisterCount();
-				for (int i = 0; i < responseData.length; i += regsPerVal) {
-					try {
-						Number num = nloc.bytesToValueRealOffset(byteData, i);
-						retval.add(num.doubleValue() / scaling + addscaling);
-					} catch (Exception e) {
-						LOGGER.debug("Error retrieving numeric value", e);
-					}
-				}
-			} else {
-				StringLocator sloc = new StringLocator(slaveid, PointType.getPointTypeInt(pointType), offset, dt,
-						responseData.length);
-				retval.add(sloc.bytesToValueRealOffset(byteData, 0));
-			}
-		} else {
-			int last = 0;
-			int regnum = 0;
-			switch (dataType) {
-			case BOOLEAN:
-				if (bit != -1 && responseData.length > 0) {
-					BinaryLocator bloc = new BinaryLocator(slaveid, PointType.getPointTypeInt(pointType), offset, bit);
-					retval.add(bloc.bytesToValueRealOffset(byteData, 0));
-				} else {
-					for (short s : responseData) {
-						for (int i = 0; i < 16; i++) {
-							retval.add(((s >> i) & 1) != 0);
-						}
-					}
-				}
-				break;
-			case INT32M10KSWAP:
-			case INT32M10K:
-				for (short s : responseData) {
-					if (regnum == 0) {
-						regnum += 1;
-						last = s;
-					} else {
-						regnum = 0;
-						int num;
-						boolean swap = (dataType == DataType.INT32M10KSWAP);
-						if (swap)
-							num = s * 10000 + last;
-						else
-							num = last * 10000 + s;
-						retval.add(num / scaling + addscaling);
-					}
-				}
-				break;
-			case UINT32M10KSWAP:
-			case UINT32M10K:
-				for (short s : responseData) {
-					if (regnum == 0) {
-						regnum += 1;
-						last = Util.toUnsignedInt(s);
-					} else {
-						regnum = 0;
-						long num;
-						boolean swap = (dataType == DataType.UINT32M10KSWAP);
-						if (swap)
-							num = Util.toUnsignedLong(Util.toUnsignedInt(s) * 10000 + last);
-						else
-							num = Util.toUnsignedLong(last * 10000 + Util.toUnsignedInt(s));
-						retval.add(num / scaling + addscaling);
-					}
-				}
-				break;
-			default:
-				break;
-			}
-		}
 		return retval;
 	}
 
