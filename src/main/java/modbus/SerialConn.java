@@ -35,11 +35,6 @@ public class SerialConn extends ModbusConnection {
 	static final String ATTR_STOP_BITS = "stop bits";
 	static final String ATTR_PARITY = "parity";
 
-	static final String ATTR_SEND_REQUEST_ALL_AT_ONCE = "send requests all at once";
-	static final String ATTR_SET_CUSTOM_SPACINING = "set custom spacing";
-	static final String ATTR_MESSAGE_FRAME_SPACING = "message frame spacing";
-	static final String ATTR_CHARACTER_SPACING = "character spacing";
-
 	SerialTransportType transType;
 	String commPortId;
 	int baudRate;
@@ -47,11 +42,6 @@ public class SerialConn extends ModbusConnection {
 	int stopBits;
 	int parity;
 	String parityString;
-
-	boolean useMods;
-	boolean useCustomSpacing;
-	long msgSpacing;
-	long charSpacing;
 
 	SerialConn(ModbusLink link, Node node) {
 		super(link, node);
@@ -118,15 +108,6 @@ public class SerialConn extends ModbusConnection {
 				new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, node.getAttribute(ATTR_DISCARD_DATA_DELAY)));
 		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
 				node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
-
-		act.addParameter(new Parameter(ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL,
-				node.getAttribute(ATTR_SEND_REQUEST_ALL_AT_ONCE)));
-		act.addParameter(
-				new Parameter(ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL, node.getAttribute(ATTR_SET_CUSTOM_SPACINING)));
-		act.addParameter(new Parameter(ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER,
-				node.getAttribute(ATTR_MESSAGE_FRAME_SPACING)));
-		act.addParameter(
-				new Parameter(ATTR_CHARACTER_SPACING, ValueType.NUMBER, node.getAttribute(ATTR_CHARACTER_SPACING)));
 
 		return act;
 	}
@@ -214,11 +195,6 @@ public class SerialConn extends ModbusConnection {
 			int dataBits = 0;
 			int stopBits = 0;
 
-			long msgSpacing = 0;
-			long charSpacing = 0;
-			boolean useMods = false;
-			boolean useCustomSpacing = false;
-
 			int timeout = 0;
 			int retries = 0;
 			int maxrbc = 0;
@@ -241,11 +217,6 @@ public class SerialConn extends ModbusConnection {
 			dataBits = conn.node.getAttribute(ATTR_DATA_BITS).getNumber().intValue();
 			stopBits = conn.node.getAttribute(ATTR_STOP_BITS).getNumber().intValue();
 			parityString = conn.node.getAttribute(ATTR_PARITY).getString();
-
-			useMods = conn.node.getAttribute(ATTR_SEND_REQUEST_ALL_AT_ONCE).getBool();
-			useCustomSpacing = conn.node.getAttribute(ATTR_SET_CUSTOM_SPACINING).getBool();
-			msgSpacing = conn.node.getAttribute(ATTR_MESSAGE_FRAME_SPACING).getNumber().longValue();
-			charSpacing = conn.node.getAttribute(ATTR_CHARACTER_SPACING).getNumber().longValue();
 
 			timeout = conn.node.getAttribute(ATTR_TIMEOUT).getNumber().intValue();
 			retries = conn.node.getAttribute(ATTR_RETRIES).getNumber().intValue();
@@ -278,11 +249,6 @@ public class SerialConn extends ModbusConnection {
 			snode.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
 			snode.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
 
-			snode.setAttribute(ATTR_SEND_REQUEST_ALL_AT_ONCE, new Value(useMods));
-			snode.setAttribute(ATTR_SET_CUSTOM_SPACINING, new Value(useCustomSpacing));
-			snode.setAttribute(ATTR_MESSAGE_FRAME_SPACING, new Value(msgSpacing));
-			snode.setAttribute(ATTR_CHARACTER_SPACING, new Value(charSpacing));
-
 			new SlaveNode(conn, snode);
 		}
 	}
@@ -301,11 +267,6 @@ public class SerialConn extends ModbusConnection {
 		dataBits = event.getParameter(ATTR_DATA_BITS, ValueType.NUMBER).getNumber().intValue();
 		stopBits = event.getParameter(ATTR_STOP_BITS, ValueType.NUMBER).getNumber().intValue();
 		parityString = event.getParameter(ATTR_PARITY).getString();
-
-		useMods = event.getParameter(ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL).getBool();
-		useCustomSpacing = event.getParameter(ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL).getBool();
-		msgSpacing = event.getParameter(ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER).getNumber().longValue();
-		charSpacing = event.getParameter(ATTR_CHARACTER_SPACING, ValueType.NUMBER).getNumber().longValue();
 	}
 
 	void readSerialAttributes() {
@@ -315,11 +276,6 @@ public class SerialConn extends ModbusConnection {
 		dataBits = node.getAttribute(ATTR_DATA_BITS).getNumber().intValue();
 		stopBits = node.getAttribute(ATTR_STOP_BITS).getNumber().intValue();
 		parity = ParityType.parseParity(node.getAttribute(ATTR_PARITY).getString());
-
-		useMods = node.getAttribute(ATTR_SEND_REQUEST_ALL_AT_ONCE).getBool();
-		useCustomSpacing = node.getAttribute(ATTR_SET_CUSTOM_SPACINING).getBool();
-		msgSpacing = node.getAttribute(ATTR_MESSAGE_FRAME_SPACING).getNumber().longValue();
-		charSpacing = node.getAttribute(ATTR_CHARACTER_SPACING).getNumber().longValue();
 	}
 
 	void writeSerialAttributes() {
@@ -329,10 +285,5 @@ public class SerialConn extends ModbusConnection {
 		node.setAttribute(ATTR_DATA_BITS, new Value(dataBits));
 		node.setAttribute(ATTR_STOP_BITS, new Value(stopBits));
 		node.setAttribute(ATTR_PARITY, new Value(parityString));
-
-		node.setAttribute(ATTR_SEND_REQUEST_ALL_AT_ONCE, new Value(useMods));
-		node.setAttribute(ATTR_SET_CUSTOM_SPACINING, new Value(useCustomSpacing));
-		node.setAttribute(ATTR_MESSAGE_FRAME_SPACING, new Value(msgSpacing));
-		node.setAttribute(ATTR_CHARACTER_SPACING, new Value(charSpacing));
 	}
 }

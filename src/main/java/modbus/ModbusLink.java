@@ -237,11 +237,6 @@ public class ModbusLink {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL, new Value(false)));
-
-		act.addParameter(new Parameter(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL, new Value(false)));
-		act.addParameter(new Parameter(SerialConn.ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL, new Value(false)));
-		act.addParameter(new Parameter(SerialConn.ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER, new Value(0)));
-		act.addParameter(new Parameter(SerialConn.ATTR_CHARACTER_SPACING, ValueType.NUMBER, new Value(0)));
 		return act;
 	}
 
@@ -334,18 +329,12 @@ public class ModbusLink {
 				Value stopBits = child.getAttribute(SerialConn.ATTR_STOP_BITS);
 				Value parity = child.getAttribute(SerialConn.ATTR_PARITY);
 
-				Value useMods = child.getAttribute(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE);
-				Value useCustomSpacing = child.getAttribute(SerialConn.ATTR_SET_CUSTOM_SPACINING);
-				Value msgSpacing = child.getAttribute(SerialConn.ATTR_MESSAGE_FRAME_SPACING);
-				Value charSpacing = child.getAttribute(SerialConn.ATTR_CHARACTER_SPACING);
-
 				if (host != null && port != null) {
 					IpConnection ipConn = new IpConnection(getLink(), child);
 					ipConn.restoreLastSession();
 				} else if (transType != null && commPortId != null && baudRate != null && dataBits != null
 						&& stopBits != null && parity != null && maxrbc != null && maxrrc != null && maxwrc != null
-						&& ddd != null && mwo != null && timeout != null && retries != null && useMods != null
-						&& useCustomSpacing != null && msgSpacing != null && charSpacing != null) {
+						&& ddd != null && mwo != null && timeout != null && retries != null) {
 					SerialConn sc = new SerialConn(getLink(), child);
 					sc.restoreLastSession();
 				} else {
@@ -410,14 +399,6 @@ public class ModbusLink {
 			int stopBits = event.getParameter(SerialConn.ATTR_STOP_BITS, ValueType.NUMBER).getNumber().intValue();
 			String parityString = event.getParameter(SerialConn.ATTR_PARITY).getString();
 
-			boolean useMods = event.getParameter(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE, ValueType.BOOL).getBool();
-			boolean useCustomSpacing = event.getParameter(SerialConn.ATTR_SET_CUSTOM_SPACINING, ValueType.BOOL)
-					.getBool();
-			long msgSpacing = event.getParameter(SerialConn.ATTR_MESSAGE_FRAME_SPACING, ValueType.NUMBER).getNumber()
-					.longValue();
-			long charSpacing = event.getParameter(SerialConn.ATTR_CHARACTER_SPACING, ValueType.NUMBER).getNumber()
-					.longValue();
-
 			String name = event.getParameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING).getString();
 			String transtype = event.getParameter(ModbusConnection.ATTR_TRANSPORT_TYPE).getString();
 
@@ -449,11 +430,6 @@ public class ModbusLink {
 			snode.setAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
 			snode.setAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY, new Value(ddd));
 			snode.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
-
-			snode.setAttribute(SerialConn.ATTR_SEND_REQUEST_ALL_AT_ONCE, new Value(useMods));
-			snode.setAttribute(SerialConn.ATTR_SET_CUSTOM_SPACINING, new Value(useCustomSpacing));
-			snode.setAttribute(SerialConn.ATTR_MESSAGE_FRAME_SPACING, new Value(msgSpacing));
-			snode.setAttribute(SerialConn.ATTR_CHARACTER_SPACING, new Value(charSpacing));
 
 			SerialConn conn = new SerialConn(getLink(), snode);
 			conn.init();
