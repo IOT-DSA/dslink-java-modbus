@@ -45,6 +45,8 @@ import com.serotonin.modbus4j.locator.BinaryLocator;
 public class SlaveNode extends SlaveFolder {
 	private static final Logger LOGGER;
 
+	private static final int BITS_IN_REGISTER = 16;
+
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
 	}
@@ -187,7 +189,7 @@ public class SlaveNode extends SlaveFolder {
 					}
 					response = getMaster().send(batch);
 				}
-				
+
 				if (response == null) {
 					return;
 				}
@@ -197,7 +199,7 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 			} catch (ModbusTransportException | ErrorResponseException e) {
-				LOGGER.warn("error during batch poll: " + e.getMessage() );
+				LOGGER.warn("error during batch poll: " + e.getMessage());
 				LOGGER.debug("error during batch poll: ", e);
 				checkDeviceConnected();
 				if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
@@ -216,7 +218,7 @@ public class SlaveNode extends SlaveFolder {
 				if (locator == null) {
 					continue;
 				}
-				
+
 				try {
 					Object obj = null;
 					synchronized (conn.masterLock) {
@@ -225,14 +227,14 @@ public class SlaveNode extends SlaveFolder {
 						}
 						obj = getMaster().getValue(locator);
 					}
-					
+
 					if (obj == null) {
 						return;
 					}
 					updateValue(pnode, obj);
-					
+
 				} catch (ModbusTransportException | ErrorResponseException e) {
-					LOGGER.warn("error during poll: " + e.getMessage() );
+					LOGGER.warn("error during poll: " + e.getMessage());
 					LOGGER.debug("error during poll: ", e);
 					checkDeviceConnected();
 					if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
@@ -243,11 +245,11 @@ public class SlaveNode extends SlaveFolder {
 						}
 					}
 				}
-				
+
 			}
 		}
 	}
-	
+
 	private static BaseLocator<?> getLocator(int slaveId, Node pnode) {
 		if (pnode.getAttribute(ATTR_OFFSET) == null)
 			return null;
@@ -269,7 +271,31 @@ public class SlaveNode extends SlaveFolder {
 		BaseLocator<?> locator = BaseLocator.createLocator(slaveId, range, offset, dt, bit, numRegs);
 		return locator;
 	}
-	
+
+	private static boolean isBitSet(int num, int bit) {
+		return ((num >> bit) & 1) == 1;
+	}
+
+	private static int parseIntModulo10K(int registerContents, boolean swap) {
+		short highRegister = (short) (registerContents >>> BITS_IN_REGISTER);
+		short lowRegister = (short) (registerContents & 0xffff);
+		if (swap)
+			return ((int) lowRegister) * 10000 + (int) highRegister;
+		else
+			return ((int) highRegister) * 10000 + (int) lowRegister;
+	}
+
+	private static long parseUnsignedIntModulo10K(int registerContents, boolean swap) {
+		short highRegister = (short) (registerContents >>> BITS_IN_REGISTER);
+		short lowRegister = (short) (registerContents & 0xffff);
+		long num;
+		if (swap)
+			num = Util.toUnsignedLong(Util.toUnsignedInt(lowRegister) * 10000 + Util.toUnsignedInt(highRegister));
+		else
+			num = Util.toUnsignedLong(Util.toUnsignedInt(highRegister) * 10000 + Util.toUnsignedInt(lowRegister));
+		return num;
+	}
+
 	private void updateValue(Node pnode, Object obj) {
 		DataType dataType = DataType.valueOf(pnode.getAttribute(ATTR_DATA_TYPE).getString());
 		double scaling = Util.getDoubleValue(pnode.getAttribute(ATTR_SCALING));
@@ -284,8 +310,8 @@ public class SlaveNode extends SlaveFolder {
 			} else if (dataType == DataType.BOOLEAN && obj instanceof Number) {
 				vt = ValueType.ARRAY;
 				JsonArray jarr = new JsonArray();
-				for (int i = 0; i < 16; i++) {
-					jarr.add(((((Number) obj).intValue() >> i) & 1) == 1);
+				for (int i = 0; i < BITS_IN_REGISTER; i++) {
+					jarr.add(isBitSet(((Number) obj).intValue(), i));
 				}
 				v = new Value(jarr);
 			} else if (dataType.isString() && obj instanceof String) {
@@ -303,28 +329,18 @@ public class SlaveNode extends SlaveFolder {
 			switch (dataType) {
 			case INT32M10KSWAP:
 			case INT32M10K: {
-				short shi = (short) (((Number) obj).intValue() >>> 16);
-				short slo = (short) (((Number) obj).intValue() & 0xffff);
+				int registerContents = ((Number) obj).intValue();
 				boolean swap = (dataType == DataType.INT32M10KSWAP);
-				int num;
-				if (swap)
-					num = ((int) slo) * 10000 + (int) shi;
-				else
-					num = ((int) shi) * 10000 + (int) slo;
+				int num = parseIntModulo10K(registerContents, swap);
 				vt = ValueType.NUMBER;
 				v = new Value(num / scaling + addscale);
 				break;
 			}
 			case UINT32M10KSWAP:
 			case UINT32M10K: {
-				short shi = (short) (((Number) obj).intValue() >>> 16);
-				short slo = (short) (((Number) obj).intValue() & 0xffff);
-				boolean swap = (dataType == DataType.INT32M10KSWAP);
-				long num;
-				if (swap)
-					num = Util.toUnsignedLong(Util.toUnsignedInt(slo) * 10000 + Util.toUnsignedInt(shi));
-				else
-					num = Util.toUnsignedLong(Util.toUnsignedInt(shi) * 10000 + Util.toUnsignedInt(slo));
+				int registerContents = ((Number) obj).intValue();
+				boolean swap = (dataType == DataType.UINT32M10KSWAP);
+				long num = parseUnsignedIntModulo10K(registerContents, swap);
 				vt = ValueType.NUMBER;
 				v = new Value(num / scaling + addscale);
 				break;
