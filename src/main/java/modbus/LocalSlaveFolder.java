@@ -156,34 +156,36 @@ public class LocalSlaveFolder extends EditableFolder {
 		switch (type) {
 		case COIL:
 			processImage.setCoil(offset, defaultStatus);
-			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
+			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus))
+					.build();
 			break;
 		case DISCRETE:
 			processImage.setInput(offset, defaultStatus);
-			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus)).build();
+			pointNode = node.createChild(name, true).setValueType(ValueType.BOOL).setValue(new Value(defaultStatus))
+					.build();
 			break;
 		case HOLDING:
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount, defaultString);
-				pointNode = node.createChild(name, true).setValueType(ValueType.STRING).setValue(new Value(defaultString))
-						.build();
+				pointNode = node.createChild(name, true).setValueType(ValueType.STRING)
+						.setValue(new Value(defaultString)).build();
 			} else {
 				processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), defaultNumber);
-				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
-						.build();
+				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER)
+						.setValue(new Value(defaultNumber)).build();
 			}
 			break;
 		case INPUT:
 			if (dataType.isString()) {
 				registerCount = event.getParameter(ATTRIBUTE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 				processImage.setString(range, offset, dataType.ordinal(), registerCount, defaultString);
-				pointNode = node.createChild(name, true).setValueType(ValueType.STRING).setValue(new Value(defaultString))
-						.build();
+				pointNode = node.createChild(name, true).setValueType(ValueType.STRING)
+						.setValue(new Value(defaultString)).build();
 			} else {
 				processImage.setNumeric(range, offset, dataType.ordinal(), defaultNumber);
-				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER).setValue(new Value(defaultNumber))
-						.build();
+				pointNode = node.createChild(name, true).setValueType(ValueType.NUMBER)
+						.setValue(new Value(defaultNumber)).build();
 			}
 			break;
 		default:
@@ -361,11 +363,18 @@ public class LocalSlaveFolder extends EditableFolder {
 			Boolean b = newValue.getBool();
 			String s = newValue.getString();
 			Number n = newValue.getNumber();
+			
 			switch (type) {
 			case COIL:
+				if (b == null && s != null) {
+					b = (s.equalsIgnoreCase("true") || s.equals("1"));
+				}
 				processImage.setCoil(offset, b != null ? b : false);
 				break;
 			case DISCRETE:
+				if (b == null && s != null) {
+					b = (s.equalsIgnoreCase("true") || s.equals("1"));
+				}
 				processImage.setInput(offset, b != null ? b : false);
 				break;
 			case HOLDING:
@@ -374,6 +383,13 @@ public class LocalSlaveFolder extends EditableFolder {
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
 							s != null ? s : "");
 				} else {
+					if (n == null && s != null) {
+						try {
+							n = Double.parseDouble(s);
+						} catch (NumberFormatException e) {
+							n = null;
+						}
+					}
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
@@ -383,6 +399,13 @@ public class LocalSlaveFolder extends EditableFolder {
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
 							s != null ? s : "");
 				} else {
+					if (n == null && s != null) {
+						try {
+							n = Double.parseDouble(s);
+						} catch (NumberFormatException e) {
+							n = null;
+						}
+					}
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
