@@ -63,6 +63,7 @@ abstract public class ModbusConnection {
 	static final String ACTION_STOP = "stop";
 	static final String ACTION_REMOVE = "remove";
 	static final String ACTION_EDIT = "edit";
+	static final String ACTION_ADD_VIRTUAL_DEVICE = "add virtual device";
 
 	static final int RETRY_DELAY_MAX = 60;
 	static final int RETRY_DELAY_STEP = 2;
@@ -150,25 +151,31 @@ abstract public class ModbusConnection {
 
 		Map<String, Node> children = node.getChildren();
 		for (Node child : children.values()) {
-			Value slaveId = child.getAttribute(ATTR_SLAVE_ID);
-			Value interval = child.getAttribute(ATTR_POLLING_INTERVAL);
-			Value zerofail = child.getAttribute(ATTR_ZERO_ON_FAILED_POLL);
-			if (zerofail == null) {
-				child.setAttribute(ATTR_ZERO_ON_FAILED_POLL, new Value(false));
-			}
-			Value batchpoll = child.getAttribute(ATTR_USE_BATCH_POLLING);
-			if (batchpoll == null) {
-				child.setAttribute(ATTR_USE_BATCH_POLLING, new Value(true));
-			}
-			Value contig = child.getAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
-			if (contig == null) {
-				child.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
-			}
-			if (slaveId != null && interval != null) {
-				SlaveNode sn = new SlaveNode(this, child);
-				sn.restoreLastSession();
-			} else if (child.getAction() == null && !NODE_STATUS.equals(child.getName())) {
-				node.removeChild(child, false);
+			Value restype = child.getAttribute(ATTR_RESTORE_TYPE);
+			if (restype != null && "virtual".equals(restype.getString())) {
+				VirtualDeviceFolder vdf = new VirtualDeviceFolder(getLink(), child);
+				vdf.restoreLastSession();
+			} else {
+				Value slaveId = child.getAttribute(ATTR_SLAVE_ID);
+				Value interval = child.getAttribute(ATTR_POLLING_INTERVAL);
+				Value zerofail = child.getAttribute(ATTR_ZERO_ON_FAILED_POLL);
+				if (zerofail == null) {
+					child.setAttribute(ATTR_ZERO_ON_FAILED_POLL, new Value(false));
+				}
+				Value batchpoll = child.getAttribute(ATTR_USE_BATCH_POLLING);
+				if (batchpoll == null) {
+					child.setAttribute(ATTR_USE_BATCH_POLLING, new Value(true));
+				}
+				Value contig = child.getAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
+				if (contig == null) {
+					child.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
+				}
+				if (slaveId != null && interval != null) {
+					SlaveNode sn = new SlaveNode(this, child);
+					sn.restoreLastSession();
+				} else if (child.getAction() == null && !NODE_STATUS.equals(child.getName())) {
+					node.removeChild(child, false);
+				}
 			}
 		}
 	}
@@ -200,6 +207,14 @@ abstract public class ModbusConnection {
 		}
 
 		makeStopAction();
+		
+		act = getMakeVirtualDeviceAction();
+		anode = node.getChild(ACTION_ADD_VIRTUAL_DEVICE, true);
+		if (anode == null) {
+			node.createChild(ACTION_ADD_VIRTUAL_DEVICE, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
 
 		synchronized (masterLock) {
 			master = getMaster();
@@ -276,6 +291,24 @@ abstract public class ModbusConnection {
 			node.createChild("stop", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
+	}
+	
+	private Action getMakeVirtualDeviceAction() {
+		Action act = new Action(Permission.READ, new MakeVirtualDeviceHandler());
+		act.addParameter(new Parameter(ModbusLink.ATTRIBUTE_NAME, ValueType.STRING));
+		return act;
+	}
+	
+	private class MakeVirtualDeviceHandler implements Handler<ActionResult> {
+
+		public void handle(ActionResult event) {
+			String name = event.getParameter(ModbusLink.ATTRIBUTE_NAME, ValueType.STRING).getString();
+			Node slaveNode;
+
+			slaveNode = node.createChild(name, true).build();
+
+			new VirtualDeviceFolder(getLink(), slaveNode);
+		}
 	}
 
 	void checkConnection() {
