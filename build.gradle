@@ -10,7 +10,7 @@ version = '0.2.6-SNAPSHOT'
 repositories {
     mavenCentral()
     maven {
-    	url 'http://mangoautomation.net:9902/maven-repo/'
+    	url 'https://maven.mangoautomation.net/repository/ias-release/'
     }
     maven {
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
