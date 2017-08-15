@@ -280,7 +280,7 @@ abstract public class ModbusConnection {
 
 	void checkConnection() {
 		synchronized (masterLock) {
-			boolean connected = (master != null) && master.isInitialized() && master.isConnected();
+			boolean connected = (master != null) && master.isInitialized();
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				if (master != null) {
