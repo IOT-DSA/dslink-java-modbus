@@ -364,6 +364,20 @@ public class LocalSlaveFolder extends EditableFolder {
 			String s = newValue.getString();
 			Number n = newValue.getNumber();
 			
+			if (n == null && s != null) {
+				try {
+					n = Double.parseDouble(s);
+				} catch (NumberFormatException e) {
+					n = null;
+				}
+			}
+			
+			boolean withinBounds = (n == null || dataType.checkBounds(n));
+			if (!withinBounds) {
+				event.setReject(true);
+				return;
+			}
+			
 			switch (type) {
 			case COIL:
 				if (b == null && s != null) {
@@ -383,13 +397,6 @@ public class LocalSlaveFolder extends EditableFolder {
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
 							s != null ? s : "");
 				} else {
-					if (n == null && s != null) {
-						try {
-							n = Double.parseDouble(s);
-						} catch (NumberFormatException e) {
-							n = null;
-						}
-					}
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
@@ -399,13 +406,6 @@ public class LocalSlaveFolder extends EditableFolder {
 					processImage.setString(range, offset, DataType.getDataTypeInt(dataType), registerCount,
 							s != null ? s : "");
 				} else {
-					if (n == null && s != null) {
-						try {
-							n = Double.parseDouble(s);
-						} catch (NumberFormatException e) {
-							n = null;
-						}
-					}
 					processImage.setNumeric(range, offset, DataType.getDataTypeInt(dataType), n != null ? n : 0);
 				}
 				break;
