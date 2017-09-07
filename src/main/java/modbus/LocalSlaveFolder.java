@@ -266,11 +266,11 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	private Node copyPoint(Node pointNode, String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+		JsonObject jobj = link.serializer.serialize();
 		JsonObject parentobj = getParentJson(jobj).get(node.getName());
 		JsonObject pointnodeobj = parentobj.get(pointNode.getName());
 		parentobj.put(StringUtils.encodeName(name), pointnodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		link.deserializer.deserialize(jobj);
 		Node newnode = node.getChild(name, true);
 		setEditPointActions(newnode);
 

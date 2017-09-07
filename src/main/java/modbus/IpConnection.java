@@ -25,7 +25,6 @@ public class IpConnection extends ModbusConnection {
 
 	static final String ATTR_NAME = "name";
 	static final String ATTR_TRANSPORT_TYPE = "transport type";
-	static final String ATTR_HOST = "host";
 	static final String ATTR_PORT = "port";
 	static final String ADD_IP_DEVICE_ACTION = "add ip device";
 

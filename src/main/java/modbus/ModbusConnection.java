@@ -1,5 +1,7 @@
 package modbus;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -11,9 +13,12 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.actions.EditorType;
 import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.StringUtils;
 import org.dsa.iot.dslink.util.handler.Handler;
@@ -50,6 +55,9 @@ abstract public class ModbusConnection {
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_CONNECITON = "conn";
+    static final String ATTR_HOST = "host";
+    static final String ATTR_COMM_PORT_ID = "comm port id";
+    static final String ATTR_COMM_PORT_ID_MANUAL = "comm port id (manual entry)";
 
 	static final String NODE_STATUS = "Connection Status";
 	static final String NODE_STATUS_SETTINGUP = "Setting up connection";
@@ -63,6 +71,8 @@ abstract public class ModbusConnection {
 	static final String ACTION_STOP = "stop";
 	static final String ACTION_REMOVE = "remove";
 	static final String ACTION_EDIT = "edit";
+    static final String ACTION_EXPORT = "export";
+    static final String ACTION_IMPORT = "import device";
 
 	static final int RETRY_DELAY_MAX = 60;
 	static final int RETRY_DELAY_STEP = 2;
@@ -90,22 +100,26 @@ abstract public class ModbusConnection {
 	final ModbusFactory modbusFactory;
 
 	public ModbusConnection(ModbusLink link, Node node) {
-		this.link = link;
-		this.node = node;
+        this.link = link;
+        this.node = node;
 
-		modbusFactory = new ModbusFactory();
-		this.statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
-				.setValue(new Value(NODE_STATUS_SETTINGUP)).build();
-		slaves = new HashSet<>();
-		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
-		link.connections.add(this);
-	}
+        modbusFactory = new ModbusFactory();
+        this.statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
+                .setValue(new Value(NODE_STATUS_SETTINGUP)).build();
+        slaves = new HashSet<>();
+        node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
+        link.connections.add(this);
+    }
 
-	void duplicate(String name) {
-		JsonObject jobj = link.copySerializer.serialize();
+    /**
+     * Duplicates the Connection using a new name
+     * @param name Specifies new name
+     */
+	private void duplicate(String name) {
+		JsonObject jobj = link.serializer.serialize();
 		JsonObject nodeobj = jobj.get(node.getName());
 		jobj.put(StringUtils.encodeName(name), nodeobj);
-		link.copyDeserializer.deserialize(jobj);
+		link.deserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
 		duplicate(link, newnode);
@@ -219,6 +233,9 @@ abstract public class ModbusConnection {
 				scheduleReconnect();
 			}
 		}
+
+		makeExportAction();
+
 	}
 
 	class RestartHandler implements Handler<ActionResult> {
@@ -249,7 +266,7 @@ abstract public class ModbusConnection {
 		return this.link;
 	}
 
-	Action getAddDeviceAction() {
+	private Action getAddDeviceAction() {
 		Action act = new Action(Permission.READ, getAddDeviceActionHandler());
 		act.addParameter(new Parameter(ATTR_SLAVE_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ATTR_SLAVE_ID, ValueType.NUMBER, new Value(1)));
@@ -261,7 +278,7 @@ abstract public class ModbusConnection {
 		return act;
 	}
 
-	void makeStopAction() {
+	private void makeStopAction() {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				if (reconnectFuture != null) {
@@ -277,6 +294,35 @@ abstract public class ModbusConnection {
 		else
 			anode.setAction(act);
 	}
+
+    private void makeExportAction() {
+        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+            @Override
+            public void handle(ActionResult event) {
+                handleExport(event);
+            }
+        });
+        act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+        Node anode = node.getChild(ACTION_EXPORT, true);
+        if (anode == null) {
+            node.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
+        } else {
+            anode.setAction(act);
+        }
+    }
+
+    private void handleExport(ActionResult event) {
+        try {
+            Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
+            serMethod.setAccessible(true);
+            JsonObject childOut = new JsonObject();
+            serMethod.invoke(link.serializer, childOut, node);
+            String retval = childOut.toString();
+            event.getTable().addRow(Row.make(new Value(retval)));
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            LOGGER.debug("", e);
+        }
+    }
 
 	void checkConnection() {
 		synchronized (masterLock) {

@@ -194,11 +194,11 @@ public class SlaveFolder {
 	}
 
 	protected void duplicate(String name) {
-		JsonObject jobj = conn.getLink().copySerializer.serialize();
+		JsonObject jobj = conn.getLink().serializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(StringUtils.encodeName(name), nodeobj);
-		conn.getLink().copyDeserializer.deserialize(jobj);
+		conn.getLink().deserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
 		SlaveFolder sf = new SlaveFolder(conn, newnode, root);

@@ -405,11 +405,11 @@ public class SlaveNode extends SlaveFolder {
 
 	@Override
 	protected void duplicate(String name) {
-		JsonObject jobj = conn.getLink().copySerializer.serialize();
+		JsonObject jobj = conn.getLink().serializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(StringUtils.encodeName(name), nodeobj);
-		conn.getLink().copyDeserializer.deserialize(jobj);
+		conn.getLink().deserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
 		SlaveNode sn = new SlaveNode(conn, newnode);
