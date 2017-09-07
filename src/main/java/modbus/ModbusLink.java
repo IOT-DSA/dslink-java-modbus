@@ -277,7 +277,6 @@ public class ModbusLink {
     }
 
     private void handleImport(ActionResult event) {
-		System.out.println("Click");
         String name = event.getParameter("Name", ValueType.STRING).getString();
         String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
         JsonObject children = new JsonObject(jsonStr);
@@ -289,12 +288,11 @@ public class ModbusLink {
             ModbusConnection mc = null;
             if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
                 mc = new IpConnection(this, child);
-                System.out.println("Import IP");
             } else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null ||
                     child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
                 mc = new SerialConn(this, child);
             } else {
-                System.err.print("ERROR: Unknown connection type.");
+                LOGGER.debug("ERROR: Unknown connection type.");
                 //TODO: Throw exception here?
             }
             if (mc != null) {
