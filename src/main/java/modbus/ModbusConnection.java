@@ -18,6 +18,7 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.StringUtils;
@@ -235,6 +236,7 @@ abstract public class ModbusConnection {
 		}
 
 		makeExportAction();
+		makeImportAction();
 
 	}
 
@@ -308,6 +310,40 @@ abstract public class ModbusConnection {
             node.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
         } else {
             anode.setAction(act);
+        }
+    }
+
+    private void makeImportAction() {
+        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+            @Override
+            public void handle(ActionResult event) {
+                handleImport(event);
+            }
+        });
+        act.addParameter(new Parameter("Name", ValueType.STRING));
+        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+        Node anode = node.getChild(ACTION_IMPORT, true);
+        if (anode == null) {
+            node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+        } else {
+            anode.setAction(act);
+        }
+    }
+
+    private void handleImport(ActionResult event) {
+        String name = event.getParameter("Name", ValueType.STRING).getString();
+        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+        JsonObject children = new JsonObject(jsonStr);
+        Node child = node.createChild(name, true).build();
+        try {
+            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+            deserMethod.setAccessible(true);
+            deserMethod.invoke(link.deserializer, child, children);
+            SlaveFolder bd = new SlaveNode(this, child);
+            bd.restoreLastSession();
+        } catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            LOGGER.debug("", e);
+            child.delete(false);
         }
     }
 
