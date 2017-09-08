@@ -7,6 +7,7 @@ import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
@@ -103,6 +104,7 @@ public abstract class EditableFolder {
 	protected class RemoveHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			remove();
+			event.getTable().addRow(Row.make(new Value("Done")));
 		}
 	}
 
@@ -148,6 +150,7 @@ public abstract class EditableFolder {
 	public void setRemoveAction() {
 		Action act;
 		act = new Action(Permission.READ, new RemoveHandler());
+		act.addResult(new Parameter("Result", ValueType.STRING));
 		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 	}
 

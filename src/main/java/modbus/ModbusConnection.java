@@ -12,6 +12,7 @@ import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
@@ -254,9 +255,10 @@ abstract public class ModbusConnection {
 		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				remove();
+				event.getTable().addRow(Row.make(new Value("Done")));
 			}
 		});
-
+		act.addResult(new Parameter("Result", ValueType.STRING));
 		return act;
 	}
 

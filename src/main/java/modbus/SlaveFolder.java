@@ -7,6 +7,7 @@ import org.dsa.iot.dslink.node.Writable;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
@@ -82,6 +83,7 @@ public class SlaveFolder {
 		node.createChild(ACTION_MAKE_COPY, true).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new RemoveHandler());
+		act.addResult(new Parameter("Result", ValueType.STRING));
 		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 
 		act = new Action(Permission.READ, new AddFolderHandler());
@@ -180,6 +182,7 @@ public class SlaveFolder {
 	protected class RemoveHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			remove();
+			event.getTable().addRow(Row.make(new Value("Done")));
 		}
 	}
 
