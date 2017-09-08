@@ -145,7 +145,6 @@ public class SlaveFolder {
 					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
-						
 						if (root.node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 							if (child.getValueType().compare(ValueType.NUMBER)) {
 								child.setValue(new Value(0));
@@ -276,7 +275,7 @@ public class SlaveFolder {
             Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
             deserMethod.setAccessible(true);
             deserMethod.invoke(conn.link.deserializer, child, children);
-            SlaveFolder bd = new SlaveNode(conn, child);
+            SlaveFolder bd = new SlaveFolder(conn, child, root);
             bd.restoreLastSession();
         } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             LOGGER.debug("", e);
