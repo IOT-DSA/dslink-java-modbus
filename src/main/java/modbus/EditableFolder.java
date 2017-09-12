@@ -84,11 +84,11 @@ public abstract class EditableFolder {
 	protected abstract void addPoint(String name, PointType type, ActionResult event);
 
 	protected void duplicate(String name) {
-		JsonObject jsonObj = link.copySerializer.serialize();
+		JsonObject jsonObj = link.serializer.serialize();
 		JsonObject parentObj = getParentJson(jsonObj);
 		JsonObject nodeObj = parentObj.get(node.getName());
 		parentObj.put(name, nodeObj);
-		link.copyDeserializer.deserialize(jsonObj);
+		link.deserializer.deserialize(jsonObj);
 	};
 
 	protected abstract void addFolder(String name);

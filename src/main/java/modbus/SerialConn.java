@@ -28,8 +28,6 @@ public class SerialConn extends ModbusConnection {
 	}
 
 	static final String ACTION_ADD_SERIAL_DEVICE = "add serial device";
-	static final String ATTR_COMM_PORT_ID = "comm port id";
-	static final String ATTR_COMM_PORT_ID_MANUAL = "comm port id (manual entry)";
 	static final String ATTR_BAUD_RATE = "baud rate";
 	static final String ATTR_DATA_BITS = "data bits";
 	static final String ATTR_STOP_BITS = "stop bits";
@@ -174,7 +172,6 @@ public class SerialConn extends ModbusConnection {
 
 	@Override
 	void duplicate(ModbusLink link, Node newnode) {
-
 		ModbusConnection conn = new SerialConn(link, newnode);
 		conn.restoreLastSession();
 	}

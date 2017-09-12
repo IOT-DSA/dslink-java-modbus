@@ -161,11 +161,11 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 	@Override
 	protected void duplicate(String name) {
-		JsonObject jobj = conn.getLink().copySerializer.serialize();
+		JsonObject jobj = conn.getLink().serializer.serialize();
 		JsonObject parentobj = jobj;
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(StringUtils.encodeName(name), nodeobj);
-		conn.getLink().copyDeserializer.deserialize(jobj);
+		conn.getLink().deserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
 		ModbusConnection mc = new IpConnectionWithDevice(conn.getLink(), newnode);

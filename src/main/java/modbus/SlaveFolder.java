@@ -1,15 +1,21 @@
 package modbus;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Map;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.actions.EditorType;
 import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.serializer.Deserializer;
+import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
@@ -37,6 +43,8 @@ public class SlaveFolder {
 	static final String ACTION_REMOVE = "remove";
 	static final String ACTION_RENAME = "rename";
 	static final String ACTION_ADD_FOLDER = "add folder";
+	static final String ACTION_EXPORT = "export";
+    static final String ACTION_IMPORT = "import folder";
 
 	static final String ATTR_SLAVE_ID = "slave id";
 
@@ -87,12 +95,14 @@ public class SlaveFolder {
 		act = new Action(Permission.READ, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild(ACTION_ADD_FOLDER, true).setAction(act).build().setSerializable(false);
+
+		makeExportAction(node);
+		makeImportAction(node);
 	}
 
 	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
 		this(conn, node);
 		this.root = root;
-
 	}
 
 	Action getAddPointAction() {
@@ -135,7 +145,6 @@ public class SlaveFolder {
 					Value writable = child.getAttribute(ATTR_WRITBLE);
 					if (type != null && offset != null && numRegs != null && dataType != null && scaling != null
 							&& addScale != null && writable != null) {
-						
 						if (root.node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 							if (child.getValueType().compare(ValueType.NUMBER)) {
 								child.setValue(new Value(0));
@@ -194,11 +203,11 @@ public class SlaveFolder {
 	}
 
 	protected void duplicate(String name) {
-		JsonObject jobj = conn.getLink().copySerializer.serialize();
+		JsonObject jobj = conn.getLink().serializer.serialize();
 		JsonObject parentobj = getParentJson(jobj);
 		JsonObject nodeobj = parentobj.get(node.getName());
 		parentobj.put(StringUtils.encodeName(name), nodeobj);
-		conn.getLink().copyDeserializer.deserialize(jobj);
+		conn.getLink().deserializer.deserialize(jobj);
 		Node newnode = node.getParent().getChild(name, true);
 
 		SlaveFolder sf = new SlaveFolder(conn, newnode, root);
@@ -210,6 +219,70 @@ public class SlaveFolder {
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 		node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 	}
+
+    private void makeExportAction(final Node fnode) {
+        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+            @Override
+            public void handle(ActionResult event) {
+                handleExport(fnode, event);
+            }
+        });
+        act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+        Node anode = fnode.getChild(ACTION_EXPORT, true);
+        if (anode == null) {
+            fnode.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
+        } else {
+            anode.setAction(act);
+        }
+    }
+
+    private void handleExport(Node fnode, ActionResult event) {
+        try {
+            Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
+            serMethod.setAccessible(true);
+            JsonObject childOut = new JsonObject();
+            serMethod.invoke(conn.link.serializer, childOut, fnode);
+            String retval = childOut.toString();
+            event.getTable().addRow(Row.make(new Value(retval)));
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            LOGGER.debug("", e);
+        }
+    }
+
+    private void makeImportAction(final Node fnode) {
+        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+            @Override
+            public void handle(ActionResult event) {
+                handleImport(fnode, event);
+            }
+        });
+        act.addParameter(new Parameter("Name", ValueType.STRING));
+        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+        Node anode = fnode.getChild(ACTION_IMPORT, true);
+        if (anode == null) {
+            fnode.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+        } else {
+            anode.setAction(act);
+        }
+    }
+
+    private void handleImport(Node fnode, ActionResult event) {
+        String name = event.getParameter("Name", ValueType.STRING).getString();
+        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+        JsonObject children = new JsonObject(jsonStr);
+        Node child = fnode.createChild(name, true).build();
+        try {
+            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+            deserMethod.setAccessible(true);
+            deserMethod.invoke(conn.link.deserializer, child, children);
+            SlaveFolder bd = new SlaveFolder(conn, child, root);
+            bd.restoreLastSession();
+        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            LOGGER.debug("", e);
+            child.delete(false);
+        }
+    }
+
 
 	protected JsonObject getParentJson(JsonObject jobj) {
 		return getParentJson(jobj, node);

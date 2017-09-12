@@ -1,5 +1,7 @@
 package modbus;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -13,11 +15,13 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.actions.EditorType;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
+import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.dsa.iot.dslink.util.handler.Handler;
@@ -41,6 +45,7 @@ public class ModbusLink {
 	static final String ACTION_SCAN_SERIAL_PORT = "scan for serial ports";
 
 	static final String ACTION_EDIT = "edit";
+    static final String ACTION_IMPORT = "import connection";
 
 	static final String ATTRIBUTE_NAME = "name";
 	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
@@ -49,8 +54,8 @@ public class ModbusLink {
 	static final String ATTRIBUTE_RESTORE_TYPE = "restoreType";
 
 	Node node;
-	Serializer copySerializer;
-	Deserializer copyDeserializer;
+	Serializer serializer;
+	Deserializer deserializer;
 	private final Map<SlaveNode, ScheduledFuture<?>> futures;
 	final Set<ModbusConnection> connections;
 	final Set<ModbusMaster> masters;
@@ -66,8 +71,8 @@ public class ModbusLink {
 
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
-		this.copySerializer = ser;
-		this.copyDeserializer = deser;
+		this.serializer = ser;
+		this.deserializer = deser;
 		this.futures = new ConcurrentHashMap<>();
 		this.connections = new HashSet<ModbusConnection>();
 		this.masters = new HashSet<ModbusMaster>();
@@ -107,6 +112,9 @@ public class ModbusLink {
 
 		act = getAddIpDeviceAction();
 		node.createChild(ACTION_ADD_IP_DEVICE, true).setAction(act).build().setSerializable(false);
+
+		makeImportAction();
+
 	}
 
 	private class PortScanHandler implements Handler<ActionResult> {
@@ -250,6 +258,53 @@ public class ModbusLink {
 
 		return act;
 	}
+
+	private void makeImportAction() {
+        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+            @Override
+            public void handle(ActionResult event) {
+                handleImport(event);
+            }
+        });
+        act.addParameter(new Parameter("Name", ValueType.STRING));
+        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+        Node anode = node.getChild(ACTION_IMPORT, true);
+        if (anode == null) {
+            node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+        } else {
+            anode.setAction(act);
+        }
+    }
+
+    private void handleImport(ActionResult event) {
+        String name = event.getParameter("Name", ValueType.STRING).getString();
+        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+        JsonObject children = new JsonObject(jsonStr);
+        Node child = node.createChild(name, true).build();
+        try {
+            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+            deserMethod.setAccessible(true);
+            deserMethod.invoke(deserializer, child, children);
+            ModbusConnection mc = null;
+            if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
+                mc = new IpConnection(this, child);
+            } else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null ||
+                    child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
+                mc = new SerialConn(this, child);
+            } else {
+                LOGGER.debug("ERROR: Unknown connection type.");
+                //TODO: Throw exception here?
+            }
+            if (mc != null) {
+                mc.restoreLastSession();
+            } else {
+                child.delete(false);
+            }
+        } catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            LOGGER.debug("", e);
+            child.delete(false);
+        }
+    }
 
 	public ModbusSlaveSet getSlaveSet(modbus.IpTransportType transtype, int port) {
 		ModbusSlaveSet slaveSet = null;
