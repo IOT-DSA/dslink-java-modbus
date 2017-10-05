@@ -147,12 +147,12 @@ public abstract class EditableFolder {
 
 	public void setRemoveAction() {
 		Action act;
-		act = new Action(Permission.READ, new RemoveHandler());
+		act = new Action(Permission.WRITE, new RemoveHandler());
 		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 	}
 
 	public void setMakeCopyAction() {
-		Action act = new Action(Permission.READ, new CopyHandler());
+		Action act = new Action(Permission.WRITE, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild("make copy", true).setAction(act).build().setSerializable(false);
 
@@ -160,7 +160,7 @@ public abstract class EditableFolder {
 
 	public void setAddFolderAction() {
 		Action act;
-		act = new Action(Permission.READ, new AddFolderHandler());
+		act = new Action(Permission.WRITE, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild("add folder", true).setAction(act).build().setSerializable(false);
 	}

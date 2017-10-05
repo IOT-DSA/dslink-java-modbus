@@ -82,7 +82,7 @@ public class IpConnectionWithDevice extends IpConnection {
 	}
 
 	void makeStopRestartActions(Node slaveNode) {
-		Action act = new Action(Permission.READ, new RestartHandler());
+		Action act = new Action(Permission.WRITE, new RestartHandler());
 		Node anode = slaveNode.getChild(ACTION_RESTART, true);
 		if (anode == null) {
 			slaveNode.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
@@ -90,7 +90,7 @@ public class IpConnectionWithDevice extends IpConnection {
 			anode.setAction(act);
 		}
 
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
+		act = new Action(Permission.WRITE, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				if (reconnectFuture != null) {
 					reconnectFuture.cancel(false);

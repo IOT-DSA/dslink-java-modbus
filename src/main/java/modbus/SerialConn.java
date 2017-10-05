@@ -61,7 +61,7 @@ public class SerialConn extends ModbusConnection {
 	}
 
 	Action getEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 		act.addParameter(new Parameter(ATTR_CONNECTION_NAME, ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
 				ValueType.makeEnum(Util.enumNames(SerialTransportType.class)),

@@ -85,14 +85,14 @@ public class SlaveFolder {
 
 		makeEditAction();
 
-		act = new Action(Permission.READ, new CopyHandler());
+		act = new Action(Permission.WRITE, new CopyHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild(ACTION_MAKE_COPY, true).setAction(act).build().setSerializable(false);
 
-		act = new Action(Permission.READ, new RemoveHandler());
+		act = new Action(Permission.WRITE, new RemoveHandler());
 		node.createChild(ACTION_REMOVE, true).setAction(act).build().setSerializable(false);
 
-		act = new Action(Permission.READ, new AddFolderHandler());
+		act = new Action(Permission.WRITE, new AddFolderHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING));
 		node.createChild(ACTION_ADD_FOLDER, true).setAction(act).build().setSerializable(false);
 
@@ -106,7 +106,7 @@ public class SlaveFolder {
 	}
 
 	Action getAddPointAction() {
-		Action act = new Action(Permission.READ, new AddPointHandler());
+		Action act = new Action(Permission.WRITE, new AddPointHandler());
 
 		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ATTR_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class))));
@@ -215,13 +215,13 @@ public class SlaveFolder {
 	}
 
 	void makeEditAction() {
-		Action act = new Action(Permission.READ, new RenameHandler());
+		Action act = new Action(Permission.WRITE, new RenameHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 		node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 	}
 
     private void makeExportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+        Action act = new Action(Permission.WRITE, new Handler<ActionResult>(){
             @Override
             public void handle(ActionResult event) {
                 handleExport(fnode, event);
@@ -250,7 +250,7 @@ public class SlaveFolder {
     }
 
     private void makeImportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+        Action act = new Action(Permission.WRITE, new Handler<ActionResult>(){
             @Override
             public void handle(ActionResult event) {
                 handleImport(fnode, event);
@@ -358,14 +358,14 @@ public class SlaveFolder {
 	}
 
 	protected void setupPointActions(Node pointNode) {
-		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
+		Action act = new Action(Permission.WRITE, new RemovePointHandler(pointNode));
 		Node anode = pointNode.getChild("remove", true);
 		if (anode == null)
 			pointNode.createChild("remove", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
 
-		act = new Action(Permission.READ, new EditPointHandler(pointNode));
+		act = new Action(Permission.WRITE, new EditPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING, new Value(pointNode.getName())));
 		act.addParameter(new Parameter(ATTR_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class)),
 				pointNode.getAttribute(ATTR_POINT_TYPE)));
@@ -385,7 +385,7 @@ public class SlaveFolder {
 		else
 			anode.setAction(act);
 
-		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
+		act = new Action(Permission.WRITE, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING));
 		anode = pointNode.getChild(ACTION_MAKE_COPY, true);
 		if (anode == null)
