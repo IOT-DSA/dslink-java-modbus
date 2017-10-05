@@ -93,7 +93,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	public void setEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
 

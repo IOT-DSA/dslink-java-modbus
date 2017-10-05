@@ -62,7 +62,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	@Override
 	public void setAddPointAction() {
 
-		Action act = new Action(Permission.READ, new AddPointHandler());
+		Action act = new Action(Permission.WRITE, new AddPointHandler());
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ATTRIBUTE_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class))));
 
@@ -75,7 +75,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	public void setEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(node.getName())));
 
@@ -212,7 +212,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	protected void setEditPointActions(Node pointNode) {
-		Action act = new Action(Permission.READ, new RemovePointHandler(pointNode));
+		Action act = new Action(Permission.WRITE, new RemovePointHandler(pointNode));
 
 		Node child = pointNode.getChild(ACTION_REMOVE, true);
 		if (child == null)
@@ -220,7 +220,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		else
 			child.setAction(act);
 
-		act = new Action(Permission.READ, new EditPointHandler(pointNode));
+		act = new Action(Permission.WRITE, new EditPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING, new Value(pointNode.getName())));
 		act.addParameter(new Parameter(ATTRIBUTE_POINT_TYPE, ValueType.makeEnum(Util.enumNames(PointType.class)),
 				pointNode.getAttribute(ATTRIBUTE_POINT_TYPE)));
@@ -237,7 +237,7 @@ public class LocalSlaveFolder extends EditableFolder {
 		else
 			child.setAction(act);
 
-		act = new Action(Permission.READ, new CopyPointHandler(pointNode));
+		act = new Action(Permission.WRITE, new CopyPointHandler(pointNode));
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
 		child = pointNode.getChild(ACTION_MAKE_COPY, true);
 		if (child == null)

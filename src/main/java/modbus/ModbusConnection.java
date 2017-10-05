@@ -206,7 +206,7 @@ abstract public class ModbusConnection {
 			anode.setAction(act);
 		}
 
-		act = new Action(Permission.READ, new RestartHandler());
+		act = new Action(Permission.WRITE, new RestartHandler());
 		anode = node.getChild(ACTION_RESTART, true);
 		if (anode == null) {
 			node.createChild(ACTION_RESTART, true).setAction(act).build().setSerializable(false);
@@ -255,7 +255,7 @@ abstract public class ModbusConnection {
 	}
 
 	public Action getRemoveAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+		Action act = new Action(Permission.WRITE, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				remove();
 			}
@@ -269,7 +269,7 @@ abstract public class ModbusConnection {
 	}
 
 	private Action getAddDeviceAction() {
-		Action act = new Action(Permission.READ, getAddDeviceActionHandler());
+		Action act = new Action(Permission.WRITE, getAddDeviceActionHandler());
 		act.addParameter(new Parameter(ATTR_SLAVE_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ATTR_SLAVE_ID, ValueType.NUMBER, new Value(1)));
 		act.addParameter(new Parameter(ATTR_POLLING_INTERVAL, ValueType.NUMBER, new Value(5)));
@@ -281,7 +281,7 @@ abstract public class ModbusConnection {
 	}
 
 	private void makeStopAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+		Action act = new Action(Permission.WRITE, new Handler<ActionResult>() {
 			public void handle(ActionResult event) {
 				if (reconnectFuture != null) {
 					reconnectFuture.cancel(false);
@@ -298,7 +298,7 @@ abstract public class ModbusConnection {
 	}
 
     private void makeExportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+        Action act = new Action(Permission.WRITE, new Handler<ActionResult>(){
             @Override
             public void handle(ActionResult event) {
                 handleExport(event);
@@ -314,7 +314,7 @@ abstract public class ModbusConnection {
     }
 
     private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+        Action act = new Action(Permission.WRITE, new Handler<ActionResult>(){
             @Override
             public void handle(ActionResult event) {
                 handleImport(event);

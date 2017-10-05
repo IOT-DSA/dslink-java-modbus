@@ -47,7 +47,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 
 	@Override
 	void makeEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 		act.addParameter(new Parameter("name", ValueType.STRING, new Value(node.getName())));
 
 		act.addParameter(

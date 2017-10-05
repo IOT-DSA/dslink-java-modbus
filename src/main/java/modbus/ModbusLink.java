@@ -104,7 +104,7 @@ public class ModbusLink {
 		act = getAddSerialConnectionAction();
 		node.createChild(ACTION_ADD_SERIAL_CONNECTION, true).setAction(act).build().setSerializable(false);
 
-		act = new Action(Permission.READ, new PortScanHandler());
+		act = new Action(Permission.WRITE, new PortScanHandler());
 		node.createChild(ACTION_SCAN_SERIAL_PORT, true).setAction(act).build().setSerializable(false);
 
 		act = getMakeSlaveAction();
@@ -161,7 +161,7 @@ public class ModbusLink {
 	}
 
 	private Action getAddIpDeviceAction() {
-		Action act = new Action(Permission.READ, new AddIpDeviceHandler());
+		Action act = new Action(Permission.WRITE, new AddIpDeviceHandler());
 		act.addParameter(new Parameter(SlaveFolder.ATTR_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
 				ValueType.makeEnum(Util.enumNames(IpTransportType.class))));
@@ -190,7 +190,7 @@ public class ModbusLink {
 	}
 
 	private Action getAddIpConnectionAction() {
-		Action act = new Action(Permission.READ, new AddIpConnectionHandler());
+		Action act = new Action(Permission.WRITE, new AddIpConnectionHandler());
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE, ValueType.makeEnum("TCP", "UDP")));
 		act.addParameter(new Parameter(IpConnection.ATTR_HOST, ValueType.STRING, new Value("")));
@@ -211,7 +211,7 @@ public class ModbusLink {
 	}
 
 	private Action getAddSerialConnectionAction() {
-		Action act = new Action(Permission.READ, new AddSerialConnectionHandler());
+		Action act = new Action(Permission.WRITE, new AddSerialConnectionHandler());
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
 				ValueType.makeEnum(Util.enumNames(SerialTransportType.class))));
@@ -249,7 +249,7 @@ public class ModbusLink {
 	}
 
 	private Action getMakeSlaveAction() {
-		Action act = new Action(Permission.READ, new MakeSlaveHandler());
+		Action act = new Action(Permission.WRITE, new MakeSlaveHandler());
 		act.addParameter(new Parameter(ATTRIBUTE_NAME, ValueType.STRING));
 		act.addParameter(
 				new Parameter(ATTRIBUTE_TRANSPORT_TYPE, ValueType.makeEnum(Util.enumNames(IpTransportType.class))));
@@ -260,7 +260,7 @@ public class ModbusLink {
 	}
 
 	private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
+        Action act = new Action(Permission.WRITE, new Handler<ActionResult>(){
             @Override
             public void handle(ActionResult event) {
                 handleImport(event);

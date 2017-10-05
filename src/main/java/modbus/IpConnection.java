@@ -119,7 +119,7 @@ public class IpConnection extends ModbusConnection {
 
 	@Override
 	Action getEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 		act.addParameter(new Parameter(ATTR_NAME, ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter(ATTR_TRANSPORT_TYPE, ValueType.makeEnum(Util.enumNames(IpTransportType.class))));
 		act.addParameter(new Parameter(ATTR_HOST, ValueType.STRING, node.getAttribute(ATTR_HOST)));

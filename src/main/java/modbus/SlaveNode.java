@@ -102,7 +102,7 @@ public class SlaveNode extends SlaveFolder {
 	}
 
 	void makeEditAction() {
-		Action act = new Action(Permission.READ, new EditHandler());
+		Action act = new Action(Permission.WRITE, new EditHandler());
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_NAME, ValueType.STRING, new Value(node.getName())));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER,
 				node.getAttribute(ModbusConnection.ATTR_SLAVE_ID)));
