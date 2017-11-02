@@ -1,6 +1,7 @@
 apply plugin: 'application'
 apply plugin: 'findbugs'
 apply plugin: 'java'
+apply plugin: 'maven'
 
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
@@ -8,6 +9,7 @@ targetCompatibility = 1.7
 version = '0.2.8.1-SNAPSHOT'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
     	url 'https://maven.mangoautomation.net/repository/ias-release/'
