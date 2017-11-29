@@ -123,7 +123,7 @@ public class IpConnectionWithDevice extends IpConnection {
 			sn.node.setAttribute(ATTR_MAX_READ_REGISTER_COUNT, new Value(maxrrc));
 			sn.node.setAttribute(ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
 			sn.node.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
-			sn.node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
+			sn.node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(mw));
 		}
 	}
 
