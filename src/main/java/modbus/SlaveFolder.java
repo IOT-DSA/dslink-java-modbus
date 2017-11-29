@@ -580,8 +580,8 @@ public class SlaveFolder {
 					if (bvalues.length == 1 && !ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS.equals(conn.getUseMultipleWrites())) {
 						requests.add(new WriteCoilRequest(id, offset, bvalues[0]));
 					} else if (bvalues.length > 1 && ModbusConnection.MULTIPLE_WRITE_COMMAND_NEVER.equals(conn.getUseMultipleWrites())) {
-						for (boolean b: bvalues) {
-							requests.add(new WriteCoilRequest(id, offset, b));
+						for (int i=0; i<bvalues.length; i++) {
+							requests.add(new WriteCoilRequest(id, offset + i, bvalues[i]));
 						}
 					} else {
 						requests.add(new WriteCoilsRequest(id, offset, bvalues));
@@ -595,8 +595,8 @@ public class SlaveFolder {
 					if (svalues.length == 1 && !ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS.equals(conn.getUseMultipleWrites())) {
 						requests.add(new WriteRegisterRequest(id, offset, svalues[0]));
 					} else if (svalues.length > 1 && ModbusConnection.MULTIPLE_WRITE_COMMAND_NEVER.equals(conn.getUseMultipleWrites())) {
-						for (short s: svalues) {
-							requests.add(new WriteRegisterRequest(id, offset, s));
+						for (int i=0; i<svalues.length; i++) {
+							requests.add(new WriteRegisterRequest(id, offset + i, svalues[i]));
 						}
 					} else {
 						requests.add(new WriteRegistersRequest(id, offset, svalues));
