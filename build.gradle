@@ -6,7 +6,7 @@ apply plugin: 'maven'
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
-version = '0.2.9-SNAPSHOT'
+version = '0.2.10-SNAPSHOT'
 
 repositories {
     mavenLocal()
