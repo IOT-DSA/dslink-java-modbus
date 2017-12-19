@@ -1,7 +1,5 @@
 package modbus;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,12 +10,9 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
-import org.dsa.iot.dslink.node.actions.EditorType;
 import org.dsa.iot.dslink.node.actions.Parameter;
-import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
@@ -51,7 +46,6 @@ public class SlaveNode extends SlaveFolder {
 	private static final Logger LOGGER;
 
 	private static final int BITS_IN_REGISTER = 16;
-	private static final String ATTR_LAST_UPDATE = "last update";
 
 	static {
 		LOGGER = LoggerFactory.getLogger(SlaveNode.class);
@@ -62,6 +56,7 @@ public class SlaveNode extends SlaveFolder {
 	Node statnode;
 
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
+	final ConcurrentMap<Node, Long> lastUpdates = new ConcurrentHashMap<Node, Long>();
 
 	SlaveNode(ModbusConnection conn, Node node) {
 		super(conn, node);
@@ -376,7 +371,7 @@ public class SlaveNode extends SlaveFolder {
 		}
 		if (v != null && (!v.equals(pnode.getValue()) || isTimeForNonCovUpdate(pnode))) {
 			pnode.setValue(v);
-			pnode.setRoConfig(ATTR_LAST_UPDATE, new Value(System.currentTimeMillis()));
+			lastUpdates.put(pnode, System.currentTimeMillis());
 		}
 	}
 	
@@ -385,11 +380,10 @@ public class SlaveNode extends SlaveFolder {
 		if (suppressDuration == 0) {
 			return true;
 		}
-		Value lastUpdateVal = pnode.getRoConfig(ATTR_LAST_UPDATE);
-		if (lastUpdateVal == null || lastUpdateVal.getNumber() == null) {
+		Long lastUpdate = lastUpdates.get(pnode);
+		if (lastUpdate == null) {
 			return true;
 		}
-		long lastUpdate = lastUpdateVal.getNumber().longValue();
 		long now = System.currentTimeMillis();
 		return now - lastUpdate > suppressDuration;
 	}
