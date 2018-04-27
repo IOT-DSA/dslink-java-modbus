@@ -386,7 +386,7 @@ abstract public class ModbusConnection {
 	}
 
 	synchronized void scheduleReconnect() {
-		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
+		if (link.unrestoredChildCount.get() > 0 || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();

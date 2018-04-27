@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -24,6 +25,7 @@ import org.dsa.iot.dslink.serializer.Serializer;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 
 import com.serotonin.modbus4j.ModbusMaster;
@@ -67,7 +69,7 @@ public class ModbusLink {
 	private final Map<Integer, ModbusSlaveSet> udpListeners;
 
 	private final Map<String, IpConnectionWithDevice> hostToConnection;
-	boolean restoring = true;
+	final AtomicInteger unrestoredChildCount = new AtomicInteger(1);
 
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
@@ -96,7 +98,6 @@ public class ModbusLink {
 
 	private void init() {
 		restoreLastSession();
-		restoring = false;
 
 		Action act = getAddIpConnectionAction();
 		node.createChild(ACTION_ADD_IP_CONNECTION, true).setAction(act).build().setSerializable(false);
@@ -338,112 +339,124 @@ public class ModbusLink {
 			return;
 
 		Map<String, Node> children = node.getChildren();
-		for (Node child : children.values()) {
-			Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
-			if (restype == null) {
-				node.removeChild(child, false);
-				continue;
-			}
+		unrestoredChildCount.set(children.size());
+		for (final Node child : children.values()) {
+			Objects.getDaemonThreadPool().execute(new Runnable() {
+				@Override
+				public void run() {
+					restoreConnection(child);
+					unrestoredChildCount.decrementAndGet();
+				}
+			});
+		}
+	}
+	private void restoreConnection(Node child) {
+		Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
+		if (restype == null) {
+			node.removeChild(child, false);
+			return;
+		}
 
-			// common parameters of connection
-			Value transType = child.getAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE);
-			Value timeout = null;
-			Value retries = null;
-			Value maxrbc = null;
-			Value maxrrc = null;
-			Value maxwrc = null;
-			Value ddd = null;
-			Value mw = null;
+		// common parameters of connection
+		Value transType = child.getAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE);
+		Value timeout = null;
+		Value retries = null;
+		Value maxrbc = null;
+		Value maxrrc = null;
+		Value maxwrc = null;
+		Value ddd = null;
+		Value mw = null;
 
-			if (ModbusConnection.ATTR_RESTORE_CONNECITON.equals(restype.getString())
-					|| SlaveFolder.ATTR_RESTORE_FOLDER.equals(restype.getString())) {
-				timeout = child.getAttribute(ModbusConnection.ATTR_TIMEOUT);
-				if (timeout == null)
-					child.setAttribute(ModbusConnection.ATTR_TIMEOUT, new Value(500));
-				retries = child.getAttribute(ModbusConnection.ATTR_RETRIES);
-				if (retries == null)
-					child.setAttribute(ModbusConnection.ATTR_RETRIES, new Value(2));
-				maxrbc = child.getAttribute(ModbusConnection.ATTR_MAX_READ_BIT_COUNT);
-				maxrrc = child.getAttribute(ModbusConnection.ATTR_MAX_READ_REGISTER_COUNT);
-				maxwrc = child.getAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT);
-				ddd = child.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY);
+		if (ModbusConnection.ATTR_RESTORE_CONNECITON.equals(restype.getString())
+				|| SlaveFolder.ATTR_RESTORE_FOLDER.equals(restype.getString())) {
+			timeout = child.getAttribute(ModbusConnection.ATTR_TIMEOUT);
+			if (timeout == null)
+				child.setAttribute(ModbusConnection.ATTR_TIMEOUT, new Value(500));
+			retries = child.getAttribute(ModbusConnection.ATTR_RETRIES);
+			if (retries == null)
+				child.setAttribute(ModbusConnection.ATTR_RETRIES, new Value(2));
+			maxrbc = child.getAttribute(ModbusConnection.ATTR_MAX_READ_BIT_COUNT);
+			maxrrc = child.getAttribute(ModbusConnection.ATTR_MAX_READ_REGISTER_COUNT);
+			maxwrc = child.getAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT);
+			ddd = child.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY);
+			mw = child.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND);
+			if (mw == null) {
+				Value mwo = child.getAttribute("use multiple write commands only");
+				String useMW = ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT;
+				if (mwo != null && mwo.getBool() != null && mwo.getBool()) {
+					useMW = ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS;
+				}
+				child.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(useMW));
 				mw = child.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND);
-				if (mw == null) {
-					Value mwo = child.getAttribute("use multiple write commands only");
-					String useMW = ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT;
-					if (mwo != null && mwo.getBool() != null && mwo.getBool()) {
-						useMW = ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS;
-					}
-					child.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(useMW));
-					mw = child.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND);
-				}
-
 			}
 
-			if (ModbusConnection.ATTR_RESTORE_CONNECITON.equals(restype.getString())) {
-				// ip connection only
-				Value host = child.getAttribute(IpConnection.ATTR_HOST);
-				Value port = child.getAttribute(IpConnection.ATTR_PORT);
+		}
 
-				// serial connection only
-				Value commPortId = child.getAttribute(SerialConn.ATTR_COMM_PORT_ID);
-				Value baudRate = child.getAttribute(SerialConn.ATTR_BAUD_RATE);
-				Value dataBits = child.getAttribute(SerialConn.ATTR_DATA_BITS);
-				Value stopBits = child.getAttribute(SerialConn.ATTR_STOP_BITS);
-				Value parity = child.getAttribute(SerialConn.ATTR_PARITY);
+		if (ModbusConnection.ATTR_RESTORE_CONNECITON.equals(restype.getString())) {
+			// ip connection only
+			Value host = child.getAttribute(IpConnection.ATTR_HOST);
+			Value port = child.getAttribute(IpConnection.ATTR_PORT);
 
-				if (host != null && port != null) {
-					IpConnection ipConn = new IpConnection(getLink(), child);
-					ipConn.restoreLastSession();
-				} else if (transType != null && commPortId != null && baudRate != null && dataBits != null
-						&& stopBits != null && parity != null && maxrbc != null && maxrrc != null && maxwrc != null
-						&& ddd != null && mw != null && timeout != null && retries != null) {
-					SerialConn sc = new SerialConn(getLink(), child);
-					sc.restoreLastSession();
-				} else {
-					node.removeChild(child, false);
-				}
-			} else if (SlaveFolder.ATTR_RESTORE_FOLDER.equals(restype.getString())) {
-				// legacy issue - ip device is mixed together with the ip
-				// connection
-				Value host = child.getAttribute(IpConnection.ATTR_HOST);
-				Value port = child.getAttribute(IpConnection.ATTR_PORT);
+			// serial connection only
+			Value commPortId = child.getAttribute(SerialConn.ATTR_COMM_PORT_ID);
+			Value baudRate = child.getAttribute(SerialConn.ATTR_BAUD_RATE);
+			Value dataBits = child.getAttribute(SerialConn.ATTR_DATA_BITS);
+			Value stopBits = child.getAttribute(SerialConn.ATTR_STOP_BITS);
+			Value parity = child.getAttribute(SerialConn.ATTR_PARITY);
 
-				Value slaveId = child.getAttribute(ModbusConnection.ATTR_SLAVE_ID);
-				Value interval = child.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL);
-				Value zerofail = child.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL);
-				if (zerofail == null)
-					child.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(false));
-				Value batchpoll = child.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING);
-				if (batchpoll == null)
-					child.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(true));
-				Value contig = child.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
-				if (contig == null)
-					child.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
+			if (host != null && port != null) {
+				IpConnection ipConn = new IpConnection(getLink(), child);
+				ipConn.restoreLastSession();
+			} else if (transType != null && commPortId != null && baudRate != null && dataBits != null
+					&& stopBits != null && parity != null && maxrbc != null && maxrrc != null && maxwrc != null
+					&& ddd != null && mw != null && timeout != null && retries != null) {
+				SerialConn sc = new SerialConn(getLink(), child);
+				sc.restoreLastSession();
+			} else {
+				node.removeChild(child, false);
+			}
+		} else if (SlaveFolder.ATTR_RESTORE_FOLDER.equals(restype.getString())) {
+			// legacy issue - ip device is mixed together with the ip
+			// connection
+			Value host = child.getAttribute(IpConnection.ATTR_HOST);
+			Value port = child.getAttribute(IpConnection.ATTR_PORT);
 
-				if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
-						&& maxwrc != null && ddd != null && mw != null && slaveId != null && interval != null
-						&& timeout != null && retries != null) {
+			Value slaveId = child.getAttribute(ModbusConnection.ATTR_SLAVE_ID);
+			Value interval = child.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL);
+			Value zerofail = child.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL);
+			if (zerofail == null)
+				child.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(false));
+			Value batchpoll = child.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING);
+			if (batchpoll == null)
+				child.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(true));
+			Value contig = child.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
+			if (contig == null)
+				child.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
 
-					String hostName = host + ":" + port;
-					IpConnectionWithDevice conn = null;
+			if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
+					&& maxwrc != null && ddd != null && mw != null && slaveId != null && interval != null
+					&& timeout != null && retries != null) {
+
+				String hostName = host + ":" + port;
+				IpConnectionWithDevice conn = null;
+				synchronized(hostToConnection) {
 					if (hostToConnection.containsKey(hostName)) {
 						conn = hostToConnection.get(hostName);
-						conn.addSlave(child);
 					} else {
 						conn = new IpConnectionWithDevice(getLink(), child);
 						hostToConnection.put(hostName, conn);
 						conn.restoreLastSession();
-						conn.addSlave(child);
 					}
 				}
-			} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
-				Value port = child.getAttribute(ATTRIBUTE_PORT);
-				Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
-				if (transType != null && port != null && slaveId != null) {
-					EditableFolder folder = new LocalSlaveNode(getLink(), child);
-					folder.restoreLastSession();
-				}
+				
+				conn.addSlave(child);
+			}
+		} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
+			Value port = child.getAttribute(ATTRIBUTE_PORT);
+			Value slaveId = child.getAttribute(ATTRIBUTE_SLAVE_ID);
+			if (transType != null && port != null && slaveId != null) {
+				EditableFolder folder = new LocalSlaveNode(getLink(), child);
+				folder.restoreLastSession();
 			}
 		}
 	}
