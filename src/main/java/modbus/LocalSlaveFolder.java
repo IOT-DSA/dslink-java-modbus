@@ -363,7 +363,7 @@ public class LocalSlaveFolder extends EditableFolder {
 			Boolean b = newValue.getBool();
 			String s = newValue.getString();
 			Number n = newValue.getNumber();
-			
+
 			if (n == null && s != null) {
 				try {
 					n = Double.parseDouble(s);
@@ -371,13 +371,13 @@ public class LocalSlaveFolder extends EditableFolder {
 					n = null;
 				}
 			}
-			
+
 			boolean withinBounds = (n == null || dataType.checkBounds(n));
 			if (!withinBounds) {
 				event.setReject(true);
 				return;
 			}
-			
+
 			switch (type) {
 			case COIL:
 				if (b == null && s != null) {

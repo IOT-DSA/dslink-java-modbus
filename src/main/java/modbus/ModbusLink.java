@@ -45,7 +45,7 @@ public class ModbusLink {
 	static final String ACTION_SCAN_SERIAL_PORT = "scan for serial ports";
 
 	static final String ACTION_EDIT = "edit";
-    static final String ACTION_IMPORT = "import connection";
+	static final String ACTION_IMPORT = "import connection";
 
 	static final String ATTRIBUTE_NAME = "name";
 	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
@@ -174,7 +174,8 @@ public class ModbusLink {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL, new Value(true)));
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL, new Value(false)));
-		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(60)).setDescription("how many seconds to wait before sending an update for an unchanged value"));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(60))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TIMEOUT, ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_RETRIES, ValueType.NUMBER, new Value(2)));
@@ -261,51 +262,52 @@ public class ModbusLink {
 	}
 
 	private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(event);
-            }
-        });
-        act.addParameter(new Parameter("Name", ValueType.STRING));
-        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = node.getChild(ACTION_IMPORT, true);
-        if (anode == null) {
-            node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleImport(event);
+			}
+		});
+		act.addParameter(new Parameter("Name", ValueType.STRING));
+		act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = node.getChild(ACTION_IMPORT, true);
+		if (anode == null) {
+			node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void handleImport(ActionResult event) {
-        String name = event.getParameter("Name", ValueType.STRING).getString();
-        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
-        JsonObject children = new JsonObject(jsonStr);
-        Node child = node.createChild(name, true).build();
-        try {
-            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
-            deserMethod.setAccessible(true);
-            deserMethod.invoke(deserializer, child, children);
-            ModbusConnection mc = null;
-            if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
-                mc = new IpConnection(this, child);
-            } else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null ||
-                    child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
-                mc = new SerialConn(this, child);
-            } else {
-                LOGGER.debug("ERROR: Unknown connection type.");
-                //TODO: Throw exception here?
-            }
-            if (mc != null) {
-                mc.restoreLastSession();
-            } else {
-                child.delete(false);
-            }
-        } catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-            child.delete(false);
-        }
-    }
+	private void handleImport(ActionResult event) {
+		String name = event.getParameter("Name", ValueType.STRING).getString();
+		String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+		JsonObject children = new JsonObject(jsonStr);
+		Node child = node.createChild(name, true).build();
+		try {
+			Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+			deserMethod.setAccessible(true);
+			deserMethod.invoke(deserializer, child, children);
+			ModbusConnection mc = null;
+			if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
+				mc = new IpConnection(this, child);
+			} else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null
+					|| child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
+				mc = new SerialConn(this, child);
+			} else {
+				LOGGER.debug("ERROR: Unknown connection type.");
+				// TODO: Throw exception here?
+			}
+			if (mc != null) {
+				mc.restoreLastSession();
+			} else {
+				child.delete(false);
+			}
+		} catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+			child.delete(false);
+		}
+	}
 
 	public ModbusSlaveSet getSlaveSet(modbus.IpTransportType transtype, int port) {
 		ModbusSlaveSet slaveSet = null;
@@ -578,7 +580,9 @@ public class ModbusLink {
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
-			long suppressDuration = (long) (event.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber().doubleValue() * 1000);
+			long suppressDuration = (long) (event
+					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
 
 			snode.setAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE, new Value(transtype));
 			snode.setAttribute(IpConnection.ATTR_HOST, new Value(host));

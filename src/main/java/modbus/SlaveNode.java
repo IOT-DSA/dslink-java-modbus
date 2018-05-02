@@ -110,9 +110,11 @@ public class SlaveNode extends SlaveFolder {
 				node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
-		double defdur = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().doubleValue() / 1000;
-		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(defdur))
-				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
+		double defdur = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().doubleValue()
+				/ 1000;
+		act.addParameter(
+				new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(defdur))
+						.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		Node anode = node.getChild(ACTION_EDIT, true);
 		if (anode == null)
@@ -139,7 +141,9 @@ public class SlaveNode extends SlaveFolder {
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
-			long suppressDuration = (long) (event.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber().doubleValue() * 1000);
+			long suppressDuration = (long) (event
+					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
 
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
 			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
@@ -357,7 +361,7 @@ public class SlaveNode extends SlaveFolder {
 				break;
 			}
 		}
-		
+
 		if (v == null && node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 			if (pnode.getValueType().compare(ValueType.NUMBER)) {
 				v = new Value(0);
@@ -365,7 +369,7 @@ public class SlaveNode extends SlaveFolder {
 				v = new Value(false);
 			}
 		}
-		
+
 		if (vt != null && !vt.equals(pnode.getValueType())) {
 			pnode.setValueType(vt);
 		}
@@ -374,9 +378,10 @@ public class SlaveNode extends SlaveFolder {
 			lastUpdates.put(pnode, System.currentTimeMillis());
 		}
 	}
-	
+
 	private boolean isTimeForNonCovUpdate(Node pnode) {
-		long suppressDuration = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().longValue();
+		long suppressDuration = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber()
+				.longValue();
 		if (suppressDuration == 0) {
 			return true;
 		}

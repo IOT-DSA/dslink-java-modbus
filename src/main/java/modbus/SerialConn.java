@@ -207,7 +207,9 @@ public class SerialConn extends ModbusConnection {
 			boolean zerofail = event.getParameter(ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter(ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL).getBool();
-			long suppressDuration = (long) (event.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber().doubleValue() * 1000);
+			long suppressDuration = (long) (event
+					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
 
 			transtype = conn.node.getAttribute(ATTR_TRANSPORT_TYPE).getString();
 			commPortId = conn.node.getAttribute(ATTR_COMM_PORT_ID).getString();

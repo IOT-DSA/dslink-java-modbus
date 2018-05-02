@@ -44,7 +44,7 @@ public class SlaveFolder {
 	static final String ACTION_RENAME = "rename";
 	static final String ACTION_ADD_FOLDER = "add folder";
 	static final String ACTION_EXPORT = "export";
-    static final String ACTION_IMPORT = "import folder";
+	static final String ACTION_IMPORT = "import folder";
 
 	static final String ATTR_SLAVE_ID = "slave id";
 
@@ -156,7 +156,7 @@ public class SlaveFolder {
 						} else {
 							child.setValue(null);
 						}
-						
+
 						setupPointActions(child);
 						conn.getLink().setupPoint(child, root);
 					} else {
@@ -220,69 +220,70 @@ public class SlaveFolder {
 		node.createChild(ACTION_EDIT, true).setAction(act).build().setSerializable(false);
 	}
 
-    private void makeExportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleExport(fnode, event);
-            }
-        });
-        act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = fnode.getChild(ACTION_EXPORT, true);
-        if (anode == null) {
-            fnode.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+	private void makeExportAction(final Node fnode) {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleExport(fnode, event);
+			}
+		});
+		act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = fnode.getChild(ACTION_EXPORT, true);
+		if (anode == null) {
+			fnode.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void handleExport(Node fnode, ActionResult event) {
-        try {
-            Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
-            serMethod.setAccessible(true);
-            JsonObject childOut = new JsonObject();
-            serMethod.invoke(conn.link.serializer, childOut, fnode);
-            String retval = childOut.toString();
-            event.getTable().addRow(Row.make(new Value(retval)));
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-        }
-    }
+	private void handleExport(Node fnode, ActionResult event) {
+		try {
+			Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
+			serMethod.setAccessible(true);
+			JsonObject childOut = new JsonObject();
+			serMethod.invoke(conn.link.serializer, childOut, fnode);
+			String retval = childOut.toString();
+			event.getTable().addRow(Row.make(new Value(retval)));
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+		}
+	}
 
-    private void makeImportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(fnode, event);
-            }
-        });
-        act.addParameter(new Parameter("Name", ValueType.STRING));
-        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = fnode.getChild(ACTION_IMPORT, true);
-        if (anode == null) {
-            fnode.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+	private void makeImportAction(final Node fnode) {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleImport(fnode, event);
+			}
+		});
+		act.addParameter(new Parameter("Name", ValueType.STRING));
+		act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = fnode.getChild(ACTION_IMPORT, true);
+		if (anode == null) {
+			fnode.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void handleImport(Node fnode, ActionResult event) {
-        String name = event.getParameter("Name", ValueType.STRING).getString();
-        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
-        JsonObject children = new JsonObject(jsonStr);
-        Node child = fnode.createChild(name, true).build();
-        try {
-            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
-            deserMethod.setAccessible(true);
-            deserMethod.invoke(conn.link.deserializer, child, children);
-            SlaveFolder bd = new SlaveFolder(conn, child, root);
-            bd.restoreLastSession();
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-            child.delete(false);
-        }
-    }
-
+	private void handleImport(Node fnode, ActionResult event) {
+		String name = event.getParameter("Name", ValueType.STRING).getString();
+		String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+		JsonObject children = new JsonObject(jsonStr);
+		Node child = fnode.createChild(name, true).build();
+		try {
+			Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+			deserMethod.setAccessible(true);
+			deserMethod.invoke(conn.link.deserializer, child, children);
+			SlaveFolder bd = new SlaveFolder(conn, child, root);
+			bd.restoreLastSession();
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+			child.delete(false);
+		}
+	}
 
 	protected JsonObject getParentJson(JsonObject jobj) {
 		return getParentJson(jobj, node);
@@ -399,7 +400,7 @@ public class SlaveFolder {
 			pointNode.setWritable(Writable.WRITE);
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
 		}
-		
+
 		pointNode.getListener().setNodeRemovedHandler(new Handler<Node>() {
 			@Override
 			public void handle(Node event) {
@@ -509,7 +510,6 @@ public class SlaveFolder {
 			node.removeChild(toRemove, false);
 		}
 	}
-	
 
 	public Node getStatusNode() {
 		return null;
@@ -589,7 +589,7 @@ public class SlaveFolder {
 				LOGGER.error("Error during set: " + e.getMessage());
 				LOGGER.debug("error: ", e);
 				return;
-			} 
+			}
 		}
 	}
 
