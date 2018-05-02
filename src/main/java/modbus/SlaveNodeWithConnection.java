@@ -80,7 +80,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 				node.getAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER,
 				node.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY)));
-		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND,
+				ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
 				node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND)));
 
 		Node anode = node.getChild("edit", true);

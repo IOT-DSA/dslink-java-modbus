@@ -47,7 +47,7 @@ public class ModbusLink {
 	static final String ACTION_SCAN_SERIAL_PORT = "scan for serial ports";
 
 	static final String ACTION_EDIT = "edit";
-    static final String ACTION_IMPORT = "import connection";
+	static final String ACTION_IMPORT = "import connection";
 
 	static final String ATTRIBUTE_NAME = "name";
 	static final String ATTRIBUTE_TRANSPORT_TYPE = "transport type";
@@ -183,8 +183,9 @@ public class ModbusLink {
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
-		act.addParameter(
-				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS), new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND,
+				ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
+				new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
 
 		return act;
 	}
@@ -204,8 +205,9 @@ public class ModbusLink {
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
-		act.addParameter(
-				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS), new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND,
+				ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
+				new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
 
 		return act;
 	}
@@ -243,8 +245,9 @@ public class ModbusLink {
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER, new Value(120)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, new Value(0)));
-		act.addParameter(
-				new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS), new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND,
+				ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
+				new Value(ModbusConnection.MULTIPLE_WRITE_COMMAND_DEFAULT)));
 		return act;
 	}
 
@@ -260,51 +263,52 @@ public class ModbusLink {
 	}
 
 	private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(event);
-            }
-        });
-        act.addParameter(new Parameter("Name", ValueType.STRING));
-        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = node.getChild(ACTION_IMPORT, true);
-        if (anode == null) {
-            node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleImport(event);
+			}
+		});
+		act.addParameter(new Parameter("Name", ValueType.STRING));
+		act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = node.getChild(ACTION_IMPORT, true);
+		if (anode == null) {
+			node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void handleImport(ActionResult event) {
-        String name = event.getParameter("Name", ValueType.STRING).getString();
-        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
-        JsonObject children = new JsonObject(jsonStr);
-        Node child = node.createChild(name, true).build();
-        try {
-            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
-            deserMethod.setAccessible(true);
-            deserMethod.invoke(deserializer, child, children);
-            ModbusConnection mc = null;
-            if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
-                mc = new IpConnection(this, child);
-            } else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null ||
-                    child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
-                mc = new SerialConn(this, child);
-            } else {
-                LOGGER.debug("ERROR: Unknown connection type.");
-                //TODO: Throw exception here?
-            }
-            if (mc != null) {
-                mc.restoreLastSession();
-            } else {
-                child.delete(false);
-            }
-        } catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-            child.delete(false);
-        }
-    }
+	private void handleImport(ActionResult event) {
+		String name = event.getParameter("Name", ValueType.STRING).getString();
+		String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+		JsonObject children = new JsonObject(jsonStr);
+		Node child = node.createChild(name, true).build();
+		try {
+			Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+			deserMethod.setAccessible(true);
+			deserMethod.invoke(deserializer, child, children);
+			ModbusConnection mc = null;
+			if (child.getAttribute(ModbusConnection.ATTR_HOST) != null) {
+				mc = new IpConnection(this, child);
+			} else if (child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID) != null
+					|| child.getAttribute(ModbusConnection.ATTR_COMM_PORT_ID_MANUAL) != null) {
+				mc = new SerialConn(this, child);
+			} else {
+				LOGGER.debug("ERROR: Unknown connection type.");
+				// TODO: Throw exception here?
+			}
+			if (mc != null) {
+				mc.restoreLastSession();
+			} else {
+				child.delete(false);
+			}
+		} catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+			child.delete(false);
+		}
+	}
 
 	public ModbusSlaveSet getSlaveSet(modbus.IpTransportType transtype, int port) {
 		ModbusSlaveSet slaveSet = null;
@@ -350,6 +354,7 @@ public class ModbusLink {
 			});
 		}
 	}
+
 	private void restoreConnection(Node child) {
 		Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 		if (restype == null) {
@@ -433,13 +438,13 @@ public class ModbusLink {
 			if (contig == null)
 				child.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
 
-			if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null
-					&& maxwrc != null && ddd != null && mw != null && slaveId != null && interval != null
-					&& timeout != null && retries != null) {
+			if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null && maxwrc != null
+					&& ddd != null && mw != null && slaveId != null && interval != null && timeout != null
+					&& retries != null) {
 
 				String hostName = host + ":" + port;
 				IpConnectionWithDevice conn = null;
-				synchronized(hostToConnection) {
+				synchronized (hostToConnection) {
 					if (hostToConnection.containsKey(hostName)) {
 						conn = hostToConnection.get(hostName);
 					} else {
@@ -448,7 +453,7 @@ public class ModbusLink {
 						conn.restoreLastSession();
 					}
 				}
-				
+
 				conn.addSlave(child);
 			}
 		} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {

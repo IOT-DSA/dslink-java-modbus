@@ -1,5 +1,5 @@
 package modbus;
 
 public enum SerialTransportType {
-      RTU, ASCII
+	RTU, ASCII
 }
