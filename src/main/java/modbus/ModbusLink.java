@@ -174,6 +174,8 @@ public class ModbusLink {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL, new Value(true)));
 		act.addParameter(
 				new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(60))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TIMEOUT, ValueType.NUMBER, new Value(500)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_RETRIES, ValueType.NUMBER, new Value(2)));
@@ -437,6 +439,10 @@ public class ModbusLink {
 			Value contig = child.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
 			if (contig == null)
 				child.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
+      Value suppressDuration = child.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION);
+				if (suppressDuration == null) {
+					child.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(60000));
+				}
 
 			if (transType != null && host != null && port != null && maxrbc != null && maxrrc != null && maxwrc != null
 					&& ddd != null && mw != null && slaveId != null && interval != null && timeout != null
@@ -453,7 +459,6 @@ public class ModbusLink {
 						conn.restoreLastSession();
 					}
 				}
-
 				conn.addSlave(child);
 			}
 		} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
@@ -598,6 +603,9 @@ public class ModbusLink {
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
+			long suppressDuration = (long) (event
+					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
 
 			snode.setAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE, new Value(transtype));
 			snode.setAttribute(IpConnection.ATTR_HOST, new Value(host));
@@ -608,6 +616,7 @@ public class ModbusLink {
 			snode.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			snode.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			snode.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
+			snode.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(suppressDuration));
 
 			snode.setAttribute(ModbusConnection.ATTR_TIMEOUT, new Value(timeout));
 			snode.setAttribute(ModbusConnection.ATTR_RETRIES, new Value(retries));

@@ -43,6 +43,7 @@ abstract public class ModbusConnection {
 	static final String ATTR_ZERO_ON_FAILED_POLL = "zero on failed poll";
 	static final String ATTR_USE_BATCH_POLLING = "use batch polling";
 	static final String ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY = "contiguous batch requests only";
+	static final String ATTR_SUPPRESS_NON_COV_DURATION = "suppress non-cov update duration";
 
 	static final String ATTR_CONNECTION_NAME = "name";
 	static final String ATTR_TRANSPORT_TYPE = "transport type";
@@ -187,6 +188,10 @@ abstract public class ModbusConnection {
 			if (contig == null) {
 				child.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
 			}
+			Value suppressDuration = child.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION);
+			if (suppressDuration == null) {
+				child.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(60000));
+			}
 			if (slaveId != null && interval != null) {
 				SlaveNode sn = new SlaveNode(this, child);
 				sn.restoreLastSession();
@@ -284,6 +289,8 @@ abstract public class ModbusConnection {
 		act.addParameter(new Parameter(ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL, new Value(false)));
 		act.addParameter(new Parameter(ATTR_USE_BATCH_POLLING, ValueType.BOOL, new Value(true)));
 		act.addParameter(new Parameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(60))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		return act;
 	}

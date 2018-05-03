@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-
+import java.util.Map;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -33,6 +33,7 @@ import com.serotonin.modbus4j.msg.ModbusRequest;
 import com.serotonin.modbus4j.msg.WriteCoilRequest;
 import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegisterRequest;
+import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveFolder {
@@ -77,7 +78,7 @@ public class SlaveFolder {
 
 	ModbusConnection conn;
 	protected Node node;
-	protected SlaveFolder root;
+	protected SlaveNode root;
 
 	SlaveFolder(ModbusConnection conn, Node node) {
 		this.conn = conn;
@@ -105,7 +106,7 @@ public class SlaveFolder {
 		makeImportAction(node);
 	}
 
-	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
+	SlaveFolder(ModbusConnection conn, Node node, SlaveNode root) {
 		this(conn, node);
 		this.root = root;
 	}
@@ -405,6 +406,13 @@ public class SlaveFolder {
 			pointNode.setWritable(Writable.WRITE);
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
 		}
+
+		pointNode.getListener().setNodeRemovedHandler(new Handler<Node>() {
+			@Override
+			public void handle(Node event) {
+				root.lastUpdates.remove(event);
+			}
+		});
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {

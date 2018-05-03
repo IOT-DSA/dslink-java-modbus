@@ -3,6 +3,8 @@ build/
 *.iml
 .m2
 .idea
-/bin/
-/nodes.json
-/nodes.json.bak
+out/
+bin/
+nodes.json
+nodes.json.bak
+.key

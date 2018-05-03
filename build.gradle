@@ -1,6 +1,7 @@
 apply plugin: 'application'
 apply plugin: 'findbugs'
 apply plugin: 'java'
+apply plugin: 'maven'
 
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
@@ -8,6 +9,7 @@ targetCompatibility = 1.7
 version = '0.2.11-SNAPSHOT'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven {
     	url 'https://maven.mangoautomation.net/repository/ias-release/'
@@ -19,9 +21,10 @@ repositories {
 
 
 dependencies {
-    compile 'org.iot-dsa:dslink:0.17.2-SNAPSHOT'
-    compile 'com.infiniteautomation:modbus4j:3.0.3'
-    compile 'org.scream3r:jssc:2.8.0'
+    compile 'org.iot-dsa:dslink:+'
+    compile 'com.infiniteautomation:modbus4j:+'
+    compile 'org.scream3r:jssc:+'
+    compileOnly 'com.google.code.findbugs:annotations:+'
 }
 
 
@@ -32,9 +35,6 @@ run {
 
 
 tasks.withType(FindBugs) {
-	//classes = classes.filter {
-    //    !it.path.contains(new File('com/serotonin').path)
-    //}
     reports {
         xml.enabled = false
         html.enabled = true
