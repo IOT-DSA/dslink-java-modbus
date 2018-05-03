@@ -7,13 +7,28 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonArray;
 
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
+import com.serotonin.modbus4j.msg.ReportSlaveIdRequest;
 
 import jssc.SerialNativeInterface;
 import jssc.SerialPortList;
 
 public class Util {
+
+	public static boolean pingModbusSlave(ModbusMaster master, int slaveId) {
+		if (master.testSlaveNode(slaveId)) {
+			return true;
+		}
+		try {
+			master.send(new ReportSlaveIdRequest(slaveId));
+		} catch (ModbusTransportException e) {
+			return false;
+		}
+		return true;
+	}
 
 	public static String[] getCommPorts() {
 		String[] portNames;

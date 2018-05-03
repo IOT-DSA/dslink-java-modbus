@@ -53,7 +53,13 @@ abstract public class ModbusConnection {
 	static final String ATTR_MAX_READ_REGISTER_COUNT = "max read register count";
 	static final String ATTR_MAX_WRITE_REGISTER_COUNT = "max write register count";
 	static final String ATTR_DISCARD_DATA_DELAY = "discard data delay";
-	static final String ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY = "use multiple write commands only";
+	static final String ATTR_USE_MULTIPLE_WRITE_COMMAND = "use multiple write commands";
+
+	static final String MULTIPLE_WRITE_COMMAND_ALWAYS = "Always";
+	static final String MULTIPLE_WRITE_COMMAND_NEVER = "Never";
+	static final String MULTIPLE_WRITE_COMMAND_DEFAULT = "As Appropriate";
+	static final String[] MULTIPLE_WRITE_COMMAND_OPTIONS = { MULTIPLE_WRITE_COMMAND_ALWAYS,
+			MULTIPLE_WRITE_COMMAND_NEVER, MULTIPLE_WRITE_COMMAND_DEFAULT };
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_CONNECITON = "conn";
@@ -96,7 +102,7 @@ abstract public class ModbusConnection {
 	int maxrrc;
 	int maxwrc;
 	int ddd;
-	boolean mwo;
+	String mw;
 
 	final ScheduledThreadPoolExecutor stpe = Objects.createDaemonThreadPool();
 	final ModbusFactory modbusFactory;
@@ -392,7 +398,7 @@ abstract public class ModbusConnection {
 	}
 
 	synchronized void scheduleReconnect() {
-		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
+		if (link.unrestoredChildCount.get() > 0 || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
@@ -420,7 +426,7 @@ abstract public class ModbusConnection {
 		maxrrc = event.getParameter(ATTR_MAX_READ_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 		maxwrc = event.getParameter(ATTR_MAX_WRITE_REGISTER_COUNT, ValueType.NUMBER).getNumber().intValue();
 		ddd = event.getParameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER).getNumber().intValue();
-		mwo = event.getParameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL).getBool();
+		mw = event.getParameter(ATTR_USE_MULTIPLE_WRITE_COMMAND).getString();
 	}
 
 	public void writeMasterParameters() {
@@ -430,7 +436,7 @@ abstract public class ModbusConnection {
 		master.setMaxReadRegisterCount(maxrrc);
 		master.setMaxWriteRegisterCount(maxwrc);
 		master.setDiscardDataDelay(ddd);
-		master.setMultipleWritesOnly(mwo);
+		master.setMultipleWritesOnly(MULTIPLE_WRITE_COMMAND_ALWAYS.equals(mw));
 	}
 
 	public void writeMasterAttributes() {
@@ -440,7 +446,7 @@ abstract public class ModbusConnection {
 		node.setAttribute(ATTR_MAX_READ_REGISTER_COUNT, new Value(maxrrc));
 		node.setAttribute(ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
 		node.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
-		node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
+		node.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(mw));
 	}
 
 	public void readMasterAttributes() {
@@ -450,7 +456,7 @@ abstract public class ModbusConnection {
 		maxrrc = node.getAttribute(ATTR_MAX_READ_REGISTER_COUNT).getNumber().intValue();
 		maxwrc = node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT).getNumber().intValue();
 		ddd = node.getAttribute(ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
-		mwo = node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY).getBool();
+		mw = node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND).getString();
 	}
 
 	public int getTimeout() {
@@ -477,8 +483,8 @@ abstract public class ModbusConnection {
 		return maxwrc;
 	}
 
-	public boolean isMwo() {
-		return mwo;
+	public String getUseMultipleWrites() {
+		return mw;
 	}
 
 	abstract void duplicate(ModbusLink link, Node node);

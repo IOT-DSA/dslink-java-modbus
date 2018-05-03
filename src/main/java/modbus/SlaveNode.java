@@ -415,7 +415,7 @@ public class SlaveNode extends SlaveFolder {
 			boolean connected = false;
 			if (conn.master != null) {
 				try {
-					connected = conn.master.testSlaveNode(slaveId);
+					connected = Util.pingModbusSlave(conn.master, slaveId);
 				} catch (Exception e) {
 					LOGGER.debug("error during device ping: ", e);
 				}

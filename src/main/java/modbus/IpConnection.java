@@ -135,8 +135,9 @@ public class IpConnection extends ModbusConnection {
 				node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT)));
 		act.addParameter(
 				new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, node.getAttribute(ATTR_DISCARD_DATA_DELAY)));
-		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
-				node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
+		act.addParameter(
+				new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(MULTIPLE_WRITE_COMMAND_OPTIONS),
+						node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND)));
 
 		return act;
 	}

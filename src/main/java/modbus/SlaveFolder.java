@@ -2,6 +2,9 @@ package modbus;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Map;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -27,6 +30,9 @@ import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
 import com.serotonin.modbus4j.msg.ModbusRequest;
+import com.serotonin.modbus4j.msg.WriteCoilRequest;
+import com.serotonin.modbus4j.msg.WriteCoilsRequest;
+import com.serotonin.modbus4j.msg.WriteRegisterRequest;
 import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
@@ -571,20 +577,51 @@ public class SlaveFolder {
 				return;
 			}
 
-			ModbusRequest request = null;
+			Queue<ModbusRequest> requests = new LinkedList<ModbusRequest>();
 			try {
 				switch (type) {
 				case COIL:
-					request = new WriteCoilsRequest(id, offset, makeBoolArr(newValArr));
+					boolean[] bvalues = makeBoolArr(newValArr);
+					if (bvalues.length < 1) {
+						throw new RuntimeException("Need to provide at least one value to set");
+					}
+					if (bvalues.length == 1
+							&& !ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS.equals(conn.getUseMultipleWrites())) {
+						requests.add(new WriteCoilRequest(id, offset, bvalues[0]));
+					} else if (bvalues.length > 1
+							&& ModbusConnection.MULTIPLE_WRITE_COMMAND_NEVER.equals(conn.getUseMultipleWrites())) {
+						for (int i = 0; i < bvalues.length; i++) {
+							requests.add(new WriteCoilRequest(id, offset + i, bvalues[i]));
+						}
+					} else {
+						requests.add(new WriteCoilsRequest(id, offset, bvalues));
+					}
 					break;
 				case HOLDING:
-					request = new WriteRegistersRequest(id, offset,
-							makeShortArr(newValArr, dataType, scaling, addscale, type, id, offset, numRegs, bit));
+					short[] svalues = makeShortArr(newValArr, dataType, scaling, addscale, type, id, offset, numRegs,
+							bit);
+					if (svalues.length < 1) {
+						throw new RuntimeException("Need to provide at least one value to set");
+					}
+					if (svalues.length == 1
+							&& !ModbusConnection.MULTIPLE_WRITE_COMMAND_ALWAYS.equals(conn.getUseMultipleWrites())) {
+						requests.add(new WriteRegisterRequest(id, offset, svalues[0]));
+					} else if (svalues.length > 1
+							&& ModbusConnection.MULTIPLE_WRITE_COMMAND_NEVER.equals(conn.getUseMultipleWrites())) {
+						for (int i = 0; i < svalues.length; i++) {
+							requests.add(new WriteRegisterRequest(id, offset + i, svalues[i]));
+						}
+					} else {
+						requests.add(new WriteRegistersRequest(id, offset, svalues));
+					}
+
 					break;
 				default:
 					break;
 				}
-				root.getMaster().send(request);
+				for (ModbusRequest request = requests.poll(); request != null; request = requests.poll()) {
+					root.getMaster().send(request);
+				}
 			} catch (Exception e) {
 				LOGGER.error("Error during set: " + e.getMessage());
 				LOGGER.debug("error: ", e);

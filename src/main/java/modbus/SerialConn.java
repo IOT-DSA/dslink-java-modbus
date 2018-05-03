@@ -104,8 +104,9 @@ public class SerialConn extends ModbusConnection {
 				node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT)));
 		act.addParameter(
 				new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, node.getAttribute(ATTR_DISCARD_DATA_DELAY)));
-		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
-				node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
+		act.addParameter(
+				new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(MULTIPLE_WRITE_COMMAND_OPTIONS),
+						node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND)));
 
 		return act;
 	}
@@ -155,7 +156,7 @@ public class SerialConn extends ModbusConnection {
 		master.setMaxReadRegisterCount(maxrrc);
 		master.setMaxWriteRegisterCount(maxwrc);
 		master.setDiscardDataDelay(ddd);
-		master.setMultipleWritesOnly(mwo);
+		master.setMultipleWritesOnly(MULTIPLE_WRITE_COMMAND_ALWAYS.equals(mw));
 
 		try {
 			master.init();
@@ -198,7 +199,7 @@ public class SerialConn extends ModbusConnection {
 			int maxrrc = 0;
 			int maxwrc = 0;
 			int ddd = 0;
-			boolean mwo = false;
+			String mw = MULTIPLE_WRITE_COMMAND_DEFAULT;
 
 			String name = event.getParameter(ATTR_CONNECTION_NAME, ValueType.STRING).getString();
 			int slaveid = event.getParameter(ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();
@@ -210,7 +211,7 @@ public class SerialConn extends ModbusConnection {
 			long suppressDuration = (long) (event
 					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
 					.doubleValue() * 1000);
-
+      
 			transtype = conn.node.getAttribute(ATTR_TRANSPORT_TYPE).getString();
 			commPortId = conn.node.getAttribute(ATTR_COMM_PORT_ID).getString();
 			baudRate = conn.node.getAttribute(ATTR_BAUD_RATE).getNumber().intValue();
@@ -224,7 +225,7 @@ public class SerialConn extends ModbusConnection {
 			maxrrc = conn.node.getAttribute(ATTR_MAX_READ_REGISTER_COUNT).getNumber().intValue();
 			maxwrc = conn.node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT).getNumber().intValue();
 			ddd = conn.node.getAttribute(ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
-			mwo = conn.node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY).getBool();
+			mw = conn.node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND).getString();
 
 			Node snode = conn.node.createChild(name, true).build();
 
@@ -248,7 +249,7 @@ public class SerialConn extends ModbusConnection {
 			snode.setAttribute(ATTR_MAX_READ_REGISTER_COUNT, new Value(maxrrc));
 			snode.setAttribute(ATTR_MAX_WRITE_REGISTER_COUNT, new Value(maxwrc));
 			snode.setAttribute(ATTR_DISCARD_DATA_DELAY, new Value(ddd));
-			snode.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, new Value(mwo));
+			snode.setAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(mw));
 
 			new SlaveNode(conn, snode);
 		}
