@@ -43,6 +43,7 @@ abstract public class ModbusConnection {
 	static final String ATTR_ZERO_ON_FAILED_POLL = "zero on failed poll";
 	static final String ATTR_USE_BATCH_POLLING = "use batch polling";
 	static final String ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY = "contiguous batch requests only";
+	static final String ATTR_SUPPRESS_NON_COV_DURATION = "suppress non-cov update duration";
 
 	static final String ATTR_CONNECTION_NAME = "name";
 	static final String ATTR_TRANSPORT_TYPE = "transport type";
@@ -53,17 +54,18 @@ abstract public class ModbusConnection {
 	static final String ATTR_MAX_WRITE_REGISTER_COUNT = "max write register count";
 	static final String ATTR_DISCARD_DATA_DELAY = "discard data delay";
 	static final String ATTR_USE_MULTIPLE_WRITE_COMMAND = "use multiple write commands";
-	
+
 	static final String MULTIPLE_WRITE_COMMAND_ALWAYS = "Always";
 	static final String MULTIPLE_WRITE_COMMAND_NEVER = "Never";
 	static final String MULTIPLE_WRITE_COMMAND_DEFAULT = "As Appropriate";
-	static final String[] MULTIPLE_WRITE_COMMAND_OPTIONS = {MULTIPLE_WRITE_COMMAND_ALWAYS, MULTIPLE_WRITE_COMMAND_NEVER, MULTIPLE_WRITE_COMMAND_DEFAULT};
+	static final String[] MULTIPLE_WRITE_COMMAND_OPTIONS = { MULTIPLE_WRITE_COMMAND_ALWAYS,
+			MULTIPLE_WRITE_COMMAND_NEVER, MULTIPLE_WRITE_COMMAND_DEFAULT };
 
 	static final String ATTR_RESTORE_TYPE = "restoreType";
 	static final String ATTR_RESTORE_CONNECITON = "conn";
-    static final String ATTR_HOST = "host";
-    static final String ATTR_COMM_PORT_ID = "comm port id";
-    static final String ATTR_COMM_PORT_ID_MANUAL = "comm port id (manual entry)";
+	static final String ATTR_HOST = "host";
+	static final String ATTR_COMM_PORT_ID = "comm port id";
+	static final String ATTR_COMM_PORT_ID_MANUAL = "comm port id (manual entry)";
 
 	static final String NODE_STATUS = "Connection Status";
 	static final String NODE_STATUS_SETTINGUP = "Setting up connection";
@@ -77,8 +79,8 @@ abstract public class ModbusConnection {
 	static final String ACTION_STOP = "stop";
 	static final String ACTION_REMOVE = "remove";
 	static final String ACTION_EDIT = "edit";
-    static final String ACTION_EXPORT = "export";
-    static final String ACTION_IMPORT = "import device";
+	static final String ACTION_EXPORT = "export";
+	static final String ACTION_IMPORT = "import device";
 
 	static final int RETRY_DELAY_MAX = 60;
 	static final int RETRY_DELAY_STEP = 2;
@@ -106,21 +108,23 @@ abstract public class ModbusConnection {
 	final ModbusFactory modbusFactory;
 
 	public ModbusConnection(ModbusLink link, Node node) {
-        this.link = link;
-        this.node = node;
+		this.link = link;
+		this.node = node;
 
-        modbusFactory = new ModbusFactory();
-        this.statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
-                .setValue(new Value(NODE_STATUS_SETTINGUP)).build();
-        slaves = new HashSet<>();
-        node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
-        link.connections.add(this);
-    }
+		modbusFactory = new ModbusFactory();
+		this.statnode = node.createChild(NODE_STATUS, true).setValueType(ValueType.STRING)
+				.setValue(new Value(NODE_STATUS_SETTINGUP)).build();
+		slaves = new HashSet<>();
+		node.setAttribute(ATTR_RESTORE_TYPE, new Value("conn"));
+		link.connections.add(this);
+	}
 
-    /**
-     * Duplicates the Connection using a new name
-     * @param name Specifies new name
-     */
+	/**
+	 * Duplicates the Connection using a new name
+	 * 
+	 * @param name
+	 *            Specifies new name
+	 */
 	private void duplicate(String name) {
 		JsonObject jobj = link.serializer.serialize();
 		JsonObject nodeobj = jobj.get(node.getName());
@@ -183,6 +187,10 @@ abstract public class ModbusConnection {
 			Value contig = child.getAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
 			if (contig == null) {
 				child.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
+			}
+			Value suppressDuration = child.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION);
+			if (suppressDuration == null) {
+				child.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(60000));
 			}
 			if (slaveId != null && interval != null) {
 				SlaveNode sn = new SlaveNode(this, child);
@@ -281,6 +289,8 @@ abstract public class ModbusConnection {
 		act.addParameter(new Parameter(ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL, new Value(false)));
 		act.addParameter(new Parameter(ATTR_USE_BATCH_POLLING, ValueType.BOOL, new Value(true)));
 		act.addParameter(new Parameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL, new Value(false)));
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(60))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		return act;
 	}
@@ -302,68 +312,70 @@ abstract public class ModbusConnection {
 			anode.setAction(act);
 	}
 
-    private void makeExportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleExport(event);
-            }
-        });
-        act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = node.getChild(ACTION_EXPORT, true);
-        if (anode == null) {
-            node.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+	private void makeExportAction() {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleExport(event);
+			}
+		});
+		act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = node.getChild(ACTION_EXPORT, true);
+		if (anode == null) {
+			node.createChild(ACTION_EXPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(event);
-            }
-        });
-        act.addParameter(new Parameter("Name", ValueType.STRING));
-        act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
-        Node anode = node.getChild(ACTION_IMPORT, true);
-        if (anode == null) {
-            node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
-        } else {
-            anode.setAction(act);
-        }
-    }
+	private void makeImportAction() {
+		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
+			@Override
+			public void handle(ActionResult event) {
+				handleImport(event);
+			}
+		});
+		act.addParameter(new Parameter("Name", ValueType.STRING));
+		act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
+		Node anode = node.getChild(ACTION_IMPORT, true);
+		if (anode == null) {
+			node.createChild(ACTION_IMPORT, true).setAction(act).build().setSerializable(false);
+		} else {
+			anode.setAction(act);
+		}
+	}
 
-    private void handleImport(ActionResult event) {
-        String name = event.getParameter("Name", ValueType.STRING).getString();
-        String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
-        JsonObject children = new JsonObject(jsonStr);
-        Node child = node.createChild(name, true).build();
-        try {
-            Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
-            deserMethod.setAccessible(true);
-            deserMethod.invoke(link.deserializer, child, children);
-            SlaveFolder bd = new SlaveNode(this, child);
-            bd.restoreLastSession();
-        } catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-            child.delete(false);
-        }
-    }
+	private void handleImport(ActionResult event) {
+		String name = event.getParameter("Name", ValueType.STRING).getString();
+		String jsonStr = event.getParameter("JSON", ValueType.STRING).getString();
+		JsonObject children = new JsonObject(jsonStr);
+		Node child = node.createChild(name, true).build();
+		try {
+			Method deserMethod = Deserializer.class.getDeclaredMethod("deserializeNode", Node.class, JsonObject.class);
+			deserMethod.setAccessible(true);
+			deserMethod.invoke(link.deserializer, child, children);
+			SlaveFolder bd = new SlaveNode(this, child);
+			bd.restoreLastSession();
+		} catch (SecurityException | IllegalArgumentException | NoSuchMethodException | IllegalAccessException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+			child.delete(false);
+		}
+	}
 
-    private void handleExport(ActionResult event) {
-        try {
-            Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
-            serMethod.setAccessible(true);
-            JsonObject childOut = new JsonObject();
-            serMethod.invoke(link.serializer, childOut, node);
-            String retval = childOut.toString();
-            event.getTable().addRow(Row.make(new Value(retval)));
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            LOGGER.debug("", e);
-        }
-    }
+	private void handleExport(ActionResult event) {
+		try {
+			Method serMethod = Serializer.class.getDeclaredMethod("serializeChildren", JsonObject.class, Node.class);
+			serMethod.setAccessible(true);
+			JsonObject childOut = new JsonObject();
+			serMethod.invoke(link.serializer, childOut, node);
+			String retval = childOut.toString();
+			event.getTable().addRow(Row.make(new Value(retval)));
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			LOGGER.debug("", e);
+		}
+	}
 
 	void checkConnection() {
 		synchronized (masterLock) {
@@ -386,7 +398,7 @@ abstract public class ModbusConnection {
 	}
 
 	synchronized void scheduleReconnect() {
-		if (link.restoring || (reconnectFuture != null && !reconnectFuture.isDone())) {
+		if (link.unrestoredChildCount.get() > 0 || (reconnectFuture != null && !reconnectFuture.isDone())) {
 			return;
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();

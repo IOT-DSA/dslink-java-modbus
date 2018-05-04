@@ -104,8 +104,9 @@ public class SerialConn extends ModbusConnection {
 				node.getAttribute(ATTR_MAX_WRITE_REGISTER_COUNT)));
 		act.addParameter(
 				new Parameter(ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER, node.getAttribute(ATTR_DISCARD_DATA_DELAY)));
-		act.addParameter(new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(MULTIPLE_WRITE_COMMAND_OPTIONS),
-				node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND)));
+		act.addParameter(
+				new Parameter(ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(MULTIPLE_WRITE_COMMAND_OPTIONS),
+						node.getAttribute(ATTR_USE_MULTIPLE_WRITE_COMMAND)));
 
 		return act;
 	}
@@ -207,7 +208,10 @@ public class SerialConn extends ModbusConnection {
 			boolean zerofail = event.getParameter(ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL).getBool();
 			boolean batchpoll = event.getParameter(ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL).getBool();
-
+			long suppressDuration = (long) (event
+					.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber()
+					.doubleValue() * 1000);
+      
 			transtype = conn.node.getAttribute(ATTR_TRANSPORT_TYPE).getString();
 			commPortId = conn.node.getAttribute(ATTR_COMM_PORT_ID).getString();
 			baudRate = conn.node.getAttribute(ATTR_BAUD_RATE).getNumber().intValue();
@@ -230,6 +234,7 @@ public class SerialConn extends ModbusConnection {
 			snode.setAttribute(ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			snode.setAttribute(ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			snode.setAttribute(ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
+			snode.setAttribute(ATTR_SUPPRESS_NON_COV_DURATION, new Value(suppressDuration));
 
 			snode.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transtype));
 			snode.setAttribute(ATTR_COMM_PORT_ID, new Value(commPortId));

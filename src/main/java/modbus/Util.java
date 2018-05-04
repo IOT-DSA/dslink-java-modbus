@@ -17,7 +17,7 @@ import jssc.SerialNativeInterface;
 import jssc.SerialPortList;
 
 public class Util {
-	
+
 	public static boolean pingModbusSlave(ModbusMaster master, int slaveId) {
 		if (master.testSlaveNode(slaveId)) {
 			return true;
