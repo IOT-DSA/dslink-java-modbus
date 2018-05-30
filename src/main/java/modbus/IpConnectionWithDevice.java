@@ -51,6 +51,7 @@ public class IpConnectionWithDevice extends IpConnection {
 	@Override
 	void restoreLastSession() {
 		synchronized (masterLock) {
+			LOGGER.info("(!) Restoring: " + node.getName());
 			init();
 
 			Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
@@ -65,9 +66,11 @@ public class IpConnectionWithDevice extends IpConnection {
 	void init() {
 		master = getMaster();
 		if (master != null) {
+			LOGGER.info("(!) Got master: " + node.getName());
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			retryDelay = 1;
 		} else {
+			LOGGER.info("(!) Failed to get master: " + node.getName());
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			scheduleReconnect();
 		}

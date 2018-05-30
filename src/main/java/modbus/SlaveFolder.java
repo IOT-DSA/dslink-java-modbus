@@ -530,7 +530,7 @@ public class SlaveFolder {
 
 		public void handle(ValuePair event) {
 			if (root.getMaster() == null) {
-				root.getConnection().stop();
+//				root.getConnection().stop();
 				return;
 			}
 

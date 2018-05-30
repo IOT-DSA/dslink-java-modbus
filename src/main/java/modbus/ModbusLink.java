@@ -358,6 +358,7 @@ public class ModbusLink {
 	}
 
 	private void restoreConnection(Node child) {
+		LOGGER.info("(!) Restoring " + child.getName());
 		Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 		if (restype == null) {
 			node.removeChild(child, false);
@@ -451,15 +452,19 @@ public class ModbusLink {
 				String hostName = host + ":" + port;
 				IpConnectionWithDevice conn = null;
 				synchronized (hostToConnection) {
+					LOGGER.info("(!) Acquired hostToConnection lock: " + child.getName());
 					if (hostToConnection.containsKey(hostName)) {
 						conn = hostToConnection.get(hostName);
+						LOGGER.info("(!) Using existing connection: " + child.getName());
 					} else {
 						conn = new IpConnectionWithDevice(getLink(), child);
 						hostToConnection.put(hostName, conn);
 						conn.restoreLastSession();
+						LOGGER.info("(!) Created/restored connection: " + child.getName());
 					}
 				}
 				conn.addSlave(child);
+				LOGGER.info("(!) Added as slave to connection: " + child.getName());
 			}
 		} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
 			Value port = child.getAttribute(ATTRIBUTE_PORT);
