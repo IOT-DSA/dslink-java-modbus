@@ -53,7 +53,7 @@ public class SlaveNode extends SlaveFolder {
 
 	long intervalInMs;
 
-	Node statnode;
+	private Node statnode;
 
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
 	final ConcurrentMap<Node, Long> lastUpdates = new ConcurrentHashMap<Node, Long>();

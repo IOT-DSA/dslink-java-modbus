@@ -70,6 +70,8 @@ public class ModbusLink {
 
 	private final Map<String, IpConnectionWithDevice> hostToConnection;
 	final AtomicInteger unrestoredChildCount = new AtomicInteger(1);
+	
+	private final Object restoreLock = new Object();
 
 	private ModbusLink(Node node, Serializer ser, Deserializer deser) {
 		this.node = node;
@@ -346,15 +348,62 @@ public class ModbusLink {
 
 		Map<String, Node> children = node.getChildren();
 		unrestoredChildCount.set(children.size());
+		
+		ScheduledThreadPoolExecutor tp = Objects.getDaemonThreadPool();
+		if (tp.getCorePoolSize() < children.size()) {
+			tp.setCorePoolSize(children.size());
+		}
+		
 		for (final Node child : children.values()) {
-			Objects.getDaemonThreadPool().execute(new Runnable() {
+			tp.execute(new Runnable() {
 				@Override
 				public void run() {
 					restoreConnection(child);
-					unrestoredChildCount.decrementAndGet();
+					synchronized (restoreLock) {
+						int count = unrestoredChildCount.decrementAndGet();
+						if (count < 1) {
+							restoreLock.notifyAll();
+						}
+					}
 				}
 			});
 		}
+				
+		synchronized (restoreLock) {
+			while(unrestoredChildCount.get() > 0) {
+				try {
+					restoreLock.wait();
+				} catch (InterruptedException e) {
+					LOGGER.error("", e);
+				}
+			}
+		}
+		
+		tp.schedule(new Runnable() {
+			@Override
+			public void run() {
+				for (int i = 0; i < 5; i++) {
+					Map<String, Node> children = node.getChildren();
+					for (Node child: children.values()) {
+						Node connStat = child.getChild(ModbusConnection.NODE_STATUS, true);
+						if (connStat != null) {
+							connStat.setValue(connStat.getValue());
+						}
+						Node devStat = child.getChild(SlaveNode.NODE_STATUS, true);
+						if (devStat != null) {
+							devStat.setValue(devStat.getValue());
+						}
+						LOGGER.info("(!) Refreshed statuses: " + child.getName());
+					}
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						LOGGER.error("", e);
+					}
+				}
+			}
+		}, 2000, TimeUnit.MILLISECONDS);
+		
 	}
 
 	private void restoreConnection(Node child) {
@@ -440,7 +489,7 @@ public class ModbusLink {
 			Value contig = child.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY);
 			if (contig == null)
 				child.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(true));
-      Value suppressDuration = child.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION);
+			Value suppressDuration = child.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION);
 				if (suppressDuration == null) {
 					child.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(60000));
 				}
@@ -459,10 +508,10 @@ public class ModbusLink {
 					} else {
 						conn = new IpConnectionWithDevice(getLink(), child);
 						hostToConnection.put(hostName, conn);
-						conn.restoreLastSession();
-						LOGGER.info("(!) Created/restored connection: " + child.getName());
+						LOGGER.info("(!) Created connection: " + child.getName());
 					}
 				}
+				conn.restorer.restore();
 				conn.addSlave(child);
 				LOGGER.info("(!) Added as slave to connection: " + child.getName());
 			}
@@ -473,6 +522,16 @@ public class ModbusLink {
 				EditableFolder folder = new LocalSlaveNode(getLink(), child);
 				folder.restoreLastSession();
 			}
+		}
+		
+		try {
+			Node statNode = child.getChild(ModbusConnection.NODE_STATUS, true);
+			if (statNode != null) {
+//				statNode.setValue(statNode.getValue());
+				LOGGER.info(child.getName() + " - Connection Status: " + statNode.getValue());
+			}
+		} catch (Exception e) {
+			LOGGER.info("whoops");
 		}
 	}
 

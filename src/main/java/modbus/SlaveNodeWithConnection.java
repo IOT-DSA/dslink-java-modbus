@@ -39,9 +39,11 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		if (connStatNode == null) {
 			connStatNode = node.createChild(ModbusConnection.NODE_STATUS, true).setValueType(ValueType.STRING)
 					.setValue(conn.statnode.getValue()).build();
+			LOGGER.info("(!) Created status node with value <" + connStatNode.getValue() + "> : "  + node.getName());
 		} else {
 			connStatNode.setValueType(ValueType.STRING);
 			connStatNode.setValue(conn.statnode.getValue());
+			LOGGER.info("(!) Set status node value to <" + connStatNode.getValue() + "> : "  + node.getName());
 		}
 	}
 
