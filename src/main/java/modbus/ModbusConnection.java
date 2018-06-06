@@ -415,7 +415,7 @@ abstract public class ModbusConnection {
 		if (reconnectFuture != null && !reconnectFuture.isDone()) {
 			return;
 		}
-		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
+		ScheduledThreadPoolExecutor reconnectStpe = Objects.createDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
 
 			@Override
