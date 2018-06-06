@@ -29,6 +29,8 @@ import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BaseLocator;
 import com.serotonin.modbus4j.locator.BinaryLocator;
 
+import modbus.Util.PingResult;
+
 /*
  * A regular class for the multiple tier design.
  * 
@@ -412,18 +414,18 @@ public class SlaveNode extends SlaveFolder {
 		int slaveId = node.getAttribute(ATTR_SLAVE_ID).getNumber().intValue();
 
 		synchronized (conn.masterLock) {
-			boolean connected = false;
+			PingResult pingResult = null;
 			if (conn.master != null) {
 				try {
-					connected = Util.pingModbusSlave(conn.master, slaveId);
+					pingResult = Util.pingConnectionAndSlave(conn.master, slaveId);
 				} catch (Exception e) {
 					LOGGER.debug("error during device ping: ", e);
 				}
-				if (connected) {
+				if (PingResult.GOOD.equals(pingResult)) {
 					statnode.setValue(new Value(NODE_STATUS_READY));
 				} else {
 					statnode.setValue(new Value(NODE_STATUS_PING_FAILED));
-					conn.checkConnection();
+					conn.checkConnection(pingResult);
 				}
 			} else {
 				statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));

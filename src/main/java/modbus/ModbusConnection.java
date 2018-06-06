@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.sero.messaging.MessageControl;
+import modbus.Util.PingResult;
 
 abstract public class ModbusConnection {
 	private static final Logger LOGGER;
@@ -378,9 +378,19 @@ abstract public class ModbusConnection {
 		}
 	}
 
-	void checkConnection() {
+	void checkConnection(PingResult devicePingResult) {
 		synchronized (masterLock) {
-			boolean connected = (master != null) && master.isInitialized() && Util.pingModbusMaster(master);
+			boolean connected;
+			if (master != null && master.isInitialized()) {
+				if (devicePingResult == null) {
+					connected = Util.pingModbusMaster(master);
+				} else {
+					connected = !PingResult.CONNECTION_DOWN.equals(devicePingResult);
+				}
+			} else {
+				connected = false;
+			}
+			
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				if (master != null) {

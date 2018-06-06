@@ -5,7 +5,6 @@ import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Map;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -33,7 +32,6 @@ import com.serotonin.modbus4j.msg.ModbusRequest;
 import com.serotonin.modbus4j.msg.WriteCoilRequest;
 import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegisterRequest;
-import com.serotonin.modbus4j.msg.WriteCoilsRequest;
 import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveFolder {

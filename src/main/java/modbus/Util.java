@@ -20,26 +20,13 @@ import jssc.SerialPortList;
 public class Util {
 	
 	public static boolean pingModbusMaster(ModbusMaster master) {
-		try {
-			master.send(new ReportSlaveIdRequest(1));
-		} catch (ModbusTransportException e) {
-			if (e.getCause() instanceof SocketTimeoutException) {
-				return false;
-			}
-		}
-		return true;
+		PingResult pr = pingConnectionAndSlave(master, 1);
+		return !PingResult.CONNECTION_DOWN.equals(pr);
 	}
 
 	public static boolean pingModbusSlave(ModbusMaster master, int slaveId) {
-		if (master.testSlaveNode(slaveId)) {
-			return true;
-		}
-		try {
-			master.send(new ReportSlaveIdRequest(slaveId));
-		} catch (ModbusTransportException e) {
-			return false;
-		}
-		return true;
+		PingResult pr = pingConnectionAndSlave(master, slaveId);
+		return PingResult.GOOD.equals(pr);
 	}
 	
 	public static PingResult pingConnectionAndSlave(ModbusMaster master, int slaveId) {
@@ -48,7 +35,7 @@ public class Util {
 		} catch (ModbusTransportException e) {
 			if (e.getCause() instanceof SocketTimeoutException) {
 				return PingResult.CONNECTION_DOWN;
-			} else if (!master.testSlaveNode(slaveId)) {
+			} else {
 				return PingResult.DEVICE_DOWN;
 			}
 		}
