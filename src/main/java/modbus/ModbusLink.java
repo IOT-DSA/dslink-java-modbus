@@ -379,30 +379,30 @@ public class ModbusLink {
 			}
 		}
 		
-		tp.schedule(new Runnable() {
-			@Override
-			public void run() {
-				for (int i = 0; i < 5; i++) {
-					Map<String, Node> children = node.getChildren();
-					for (Node child: children.values()) {
-						Node connStat = child.getChild(ModbusConnection.NODE_STATUS, true);
-						if (connStat != null) {
-							connStat.setValue(connStat.getValue());
-						}
-						Node devStat = child.getChild(SlaveNode.NODE_STATUS, true);
-						if (devStat != null) {
-							devStat.setValue(devStat.getValue());
-						}
-						LOGGER.info("(!) Refreshed statuses: " + child.getName());
-					}
-					try {
-						Thread.sleep(500);
-					} catch (InterruptedException e) {
-						LOGGER.error("", e);
-					}
-				}
-			}
-		}, 2000, TimeUnit.MILLISECONDS);
+//		tp.schedule(new Runnable() {
+//			@Override
+//			public void run() {
+//				for (int i = 0; i < 5; i++) {
+//					Map<String, Node> children = node.getChildren();
+//					for (Node child: children.values()) {
+//						Node connStat = child.getChild(ModbusConnection.NODE_STATUS, true);
+//						if (connStat != null) {
+//							connStat.setValue(connStat.getValue());
+//						}
+//						Node devStat = child.getChild(SlaveNode.NODE_STATUS, true);
+//						if (devStat != null) {
+//							devStat.setValue(devStat.getValue());
+//						}
+//						LOGGER.info("(!) Refreshed statuses: " + child.getName());
+//					}
+//					try {
+//						Thread.sleep(500);
+//					} catch (InterruptedException e) {
+//						LOGGER.error("", e);
+//					}
+//				}
+//			}
+//		}, 2000, TimeUnit.MILLISECONDS);
 		
 	}
 

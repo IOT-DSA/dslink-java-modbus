@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.modbus4j.ModbusFactory;
 import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.sero.messaging.MessageControl;
 
 abstract public class ModbusConnection {
 	private static final Logger LOGGER;
@@ -379,7 +380,7 @@ abstract public class ModbusConnection {
 
 	void checkConnection() {
 		synchronized (masterLock) {
-			boolean connected = (master != null) && master.isInitialized();
+			boolean connected = (master != null) && master.isInitialized() && Util.pingModbusMaster(master);
 			if (!connected) {
 				statnode.setValue(new Value(NODE_STATUS_CONNECTING));
 				if (master != null) {
@@ -398,7 +399,7 @@ abstract public class ModbusConnection {
 	}
 
 	void scheduleReconnect() {
-		if (link.unrestoredChildCount.get() > 0 || (reconnectFuture != null && !reconnectFuture.isDone())) {
+		if (reconnectFuture != null && !reconnectFuture.isDone()) {
 			return;
 		}
 		LOGGER.info("(!) Scheduling Reconnect: " + node.getName());

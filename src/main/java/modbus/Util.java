@@ -1,5 +1,6 @@
 package modbus;
 
+import java.net.SocketTimeoutException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
@@ -17,6 +18,17 @@ import jssc.SerialNativeInterface;
 import jssc.SerialPortList;
 
 public class Util {
+	
+	public static boolean pingModbusMaster(ModbusMaster master) {
+		try {
+			master.send(new ReportSlaveIdRequest(1));
+		} catch (ModbusTransportException e) {
+			if (e.getCause() instanceof SocketTimeoutException) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	public static boolean pingModbusSlave(ModbusMaster master, int slaveId) {
 		if (master.testSlaveNode(slaveId)) {
@@ -28,6 +40,23 @@ public class Util {
 			return false;
 		}
 		return true;
+	}
+	
+	public static PingResult pingConnectionAndSlave(ModbusMaster master, int slaveId) {
+		try {
+			master.send(new ReportSlaveIdRequest(slaveId));
+		} catch (ModbusTransportException e) {
+			if (e.getCause() instanceof SocketTimeoutException) {
+				return PingResult.CONNECTION_DOWN;
+			} else if (!master.testSlaveNode(slaveId)) {
+				return PingResult.DEVICE_DOWN;
+			}
+		}
+		return PingResult.GOOD;
+	}
+	
+	public static enum PingResult {
+		GOOD, CONNECTION_DOWN, DEVICE_DOWN
 	}
 
 	public static String[] getCommPorts() {
