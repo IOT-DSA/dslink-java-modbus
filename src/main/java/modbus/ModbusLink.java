@@ -377,37 +377,10 @@ public class ModbusLink {
 					LOGGER.error("", e);
 				}
 			}
-		}
-		
-//		tp.schedule(new Runnable() {
-//			@Override
-//			public void run() {
-//				for (int i = 0; i < 5; i++) {
-//					Map<String, Node> children = node.getChildren();
-//					for (Node child: children.values()) {
-//						Node connStat = child.getChild(ModbusConnection.NODE_STATUS, true);
-//						if (connStat != null) {
-//							connStat.setValue(connStat.getValue());
-//						}
-//						Node devStat = child.getChild(SlaveNode.NODE_STATUS, true);
-//						if (devStat != null) {
-//							devStat.setValue(devStat.getValue());
-//						}
-//						LOGGER.info("(!) Refreshed statuses: " + child.getName());
-//					}
-//					try {
-//						Thread.sleep(500);
-//					} catch (InterruptedException e) {
-//						LOGGER.error("", e);
-//					}
-//				}
-//			}
-//		}, 2000, TimeUnit.MILLISECONDS);
-		
+		}		
 	}
 
 	private void restoreConnection(Node child) {
-		LOGGER.info("(!) Restoring " + child.getName());
 		Value restype = child.getAttribute(ATTRIBUTE_RESTORE_TYPE);
 		if (restype == null) {
 			node.removeChild(child, false);
@@ -501,19 +474,15 @@ public class ModbusLink {
 				String hostName = host + ":" + port;
 				IpConnectionWithDevice conn = null;
 				synchronized (hostToConnection) {
-					LOGGER.info("(!) Acquired hostToConnection lock: " + child.getName());
 					if (hostToConnection.containsKey(hostName)) {
 						conn = hostToConnection.get(hostName);
-						LOGGER.info("(!) Using existing connection: " + child.getName());
 					} else {
 						conn = new IpConnectionWithDevice(getLink(), child);
 						hostToConnection.put(hostName, conn);
-						LOGGER.info("(!) Created connection: " + child.getName());
 					}
 				}
 				conn.restorer.restore();
 				conn.addSlave(child);
-				LOGGER.info("(!) Added as slave to connection: " + child.getName());
 			}
 		} else if (restype.getString().equals(EditableFolder.ATTRIBUTE_RESTORE_EDITABLE_FOLDER)) {
 			Value port = child.getAttribute(ATTRIBUTE_PORT);
@@ -522,16 +491,6 @@ public class ModbusLink {
 				EditableFolder folder = new LocalSlaveNode(getLink(), child);
 				folder.restoreLastSession();
 			}
-		}
-		
-		try {
-			Node statNode = child.getChild(ModbusConnection.NODE_STATUS, true);
-			if (statNode != null) {
-//				statNode.setValue(statNode.getValue());
-				LOGGER.info(child.getName() + " - Connection Status: " + statNode.getValue());
-			}
-		} catch (Exception e) {
-			LOGGER.info("whoops");
 		}
 	}
 

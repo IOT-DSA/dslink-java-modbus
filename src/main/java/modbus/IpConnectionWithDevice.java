@@ -8,11 +8,8 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
-import org.dsa.iot.dslink.node.actions.Parameter;
-import org.dsa.iot.dslink.node.actions.table.Row;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValuePair;
-import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +41,6 @@ public class IpConnectionWithDevice extends IpConnection {
 			@Override
 			public void handle(ValuePair event) {
 				Value value = event.getCurrent();
-				LOGGER.info("(!) Status listener got update with value <" + value.toString() + "> : " + node.getName());
 				for (SlaveNode sn : new HashSet<SlaveNode>(slaves)) {
 					if (sn.node != node && sn instanceof SlaveNodeWithConnection
 							&& ((SlaveNodeWithConnection) sn).connStatNode != null) {
@@ -57,13 +53,11 @@ public class IpConnectionWithDevice extends IpConnection {
 				}
 			}
 		});
-		LOGGER.info("(!) Set up status listener: " + node.getName());
 	}
 
 	@Override
 	void restoreLastSession() {
 		synchronized (masterLock) {
-			LOGGER.info("(!) Restoring: " + node.getName());
 			init();
 
 			Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
@@ -78,11 +72,9 @@ public class IpConnectionWithDevice extends IpConnection {
 	void init() {
 		master = getMaster();
 		if (master != null) {
-			LOGGER.info("(!) Got master: " + node.getName());
 			statnode.setValue(new Value(NODE_STATUS_CONNECTED));
 			retryDelay = 1;
 		} else {
-			LOGGER.info("(!) Failed to get master: " + node.getName());
 			statnode.setValue(new Value(NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED));
 			scheduleReconnect();
 		}
@@ -119,45 +111,6 @@ public class IpConnectionWithDevice extends IpConnection {
 			slaveNode.createChild("stop", true).setAction(act).build().setSerializable(false);
 		else
 			anode.setAction(act);
-		
-		
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
-			@Override
-			public void handle(ActionResult event) {
-				event.getTable().addRow(Row.make(slaveNode.getChild("Connection Status", false).getValue()));
-			}
-		});
-		act.addResult(new Parameter("Connection Status", ValueType.STRING));
-		slaveNode.createChild("get conn status", true).setAction(act).build().setSerializable(false);
-		
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
-			@Override
-			public void handle(ActionResult event) {
-				Node statnode = slaveNode.getChild("Connection Status", false);
-				Value statval = statnode.getValue();
-				statnode.setValue(statval);
-			}
-		});
-		slaveNode.createChild("reupdate conn status", true).setAction(act).build().setSerializable(false);
-		
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
-			@Override
-			public void handle(ActionResult event) {
-				event.getTable().addRow(Row.make(slaveNode.getChild("Device Status", false).getValue()));
-			}
-		});
-		act.addResult(new Parameter("Device Status", ValueType.STRING));
-		slaveNode.createChild("get dev status", true).setAction(act).build().setSerializable(false);
-		
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
-			@Override
-			public void handle(ActionResult event) {
-				Node statnode = slaveNode.getChild("Device Status", false);
-				Value statval = statnode.getValue();
-				statnode.setValue(statval);
-			}
-		});
-		slaveNode.createChild("reupdate dev status", true).setAction(act).build().setSerializable(false);
 	}
 
 	void slaveRemoved() {

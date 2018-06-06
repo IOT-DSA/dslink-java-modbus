@@ -412,7 +412,6 @@ abstract public class ModbusConnection {
 		if (reconnectFuture != null && !reconnectFuture.isDone()) {
 			return;
 		}
-		LOGGER.info("(!) Scheduling Reconnect: " + node.getName());
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
 		reconnectFuture = reconnectStpe.schedule(new Runnable() {
 
@@ -421,9 +420,7 @@ abstract public class ModbusConnection {
 				Value stat = statnode.getValue();
 				if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
 						|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
-					LOGGER.info("(!) Reconnecting - calling stop(): " + node.getName());
 					stop();
-					LOGGER.info("(!) Reconnecting - calling restoreLastSession(): " + node.getName());
 					restoreLastSession();
 				}
 			}
