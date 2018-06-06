@@ -265,6 +265,9 @@ abstract public class ModbusConnection {
 	}
 
 	public ScheduledThreadPoolExecutor getDaemonThreadPool() {
+		if (stpe.getCorePoolSize() < slaves.size()) {
+			stpe.setCorePoolSize(slaves.size());
+		}
 		return stpe;
 	}
 
