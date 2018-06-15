@@ -349,7 +349,7 @@ public class ModbusLink {
 		Map<String, Node> children = node.getChildren();
 		unrestoredChildCount.set(children.size());
 		
-		ScheduledThreadPoolExecutor tp = Objects.createDaemonThreadPool();
+		ScheduledThreadPoolExecutor tp = Objects.getDaemonThreadPool();
 		if (tp.getCorePoolSize() < children.size()) {
 			tp.setCorePoolSize(children.size());
 		}
