@@ -21,7 +21,7 @@ repositories {
 
 
 dependencies {
-    compile 'org.iot-dsa:dslink:+'
+    compile 'org.iot-dsa:dslink:0.19.0-SNAPSHOT'
     compile 'com.infiniteautomation:modbus4j:+'
     compile 'org.scream3r:jssc:+'
     compileOnly 'com.google.code.findbugs:annotations:+'
