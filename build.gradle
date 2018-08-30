@@ -17,7 +17,6 @@ repositories {
     }
 }
 
-
 dependencies {
     api 'org.iot-dsa:dslink:0.20.1'
     implementation 'com.infiniteautomation:modbus4j:3.0.3'
@@ -29,7 +28,6 @@ run {
     args System.getProperty("exec.args", "").split()
     workingDir project.buildDir
 }
-
 
 tasks.withType(FindBugs) {
     reports {
