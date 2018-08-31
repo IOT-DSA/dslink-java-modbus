@@ -1,12 +1,11 @@
 apply plugin: 'application'
 apply plugin: 'findbugs'
-apply plugin: 'java'
-apply plugin: 'maven'
+apply plugin: 'java-library'
 
 mainClassName = 'modbus.Main'
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
-version = '0.2.12-SNAPSHOT'
+version = '0.3.1'
 
 repositories {
     mavenLocal()
@@ -19,12 +18,10 @@ repositories {
     }
 }
 
-
 dependencies {
-    compile 'org.iot-dsa:dslink:+'
-    compile 'com.infiniteautomation:modbus4j:+'
-    compile 'org.scream3r:jssc:+'
-    compileOnly 'com.google.code.findbugs:annotations:+'
+    api 'org.iot-dsa:dslink:0.20.1'
+    implementation 'com.infiniteautomation:modbus4j:3.0.3'
+    implementation 'org.scream3r:jssc:2.8.0'
 }
 
 
@@ -33,12 +30,15 @@ run {
     workingDir project.buildDir
 }
 
-
 tasks.withType(FindBugs) {
     reports {
         xml.enabled = false
         html.enabled = true
     }
+}
+
+wrapper {
+    gradleVersion = '4.10'
 }
 
 applicationDistribution.from new File(project.projectDir, "dslink.json")
