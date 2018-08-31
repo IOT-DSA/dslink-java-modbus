@@ -83,9 +83,8 @@ public class SlaveNodeWithConnection extends SlaveNode {
 				node.getAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_DISCARD_DATA_DELAY, ValueType.NUMBER,
 				node.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY)));
-		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY, ValueType.BOOL,
-				node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY)));
-
+		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
+				node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND)));
 		Node anode = node.getChild("edit", true);
 		if (anode == null)
 			node.createChild("edit", true).setAction(act).build().setSerializable(false);
@@ -114,14 +113,12 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			int currentMaxwrc = node.getAttribute(ModbusConnection.ATTR_MAX_WRITE_REGISTER_COUNT).getNumber()
 					.intValue();
 			int currentDdd = node.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
-			boolean currentMwo = node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND_ONLY).getBool();
-
+			String currentMwo = node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND).getString();
 			boolean isConnectionChanged = !currentHost.equals(((IpConnection) conn).getHost())
 					|| !(currentPort == ((IpConnection) conn).getPort()) || !(currentTimeout == conn.getTimeout())
 					|| !(currentRetries == conn.getRetries()) || !(currentMaxrbc == conn.getMaxrbc())
 					|| !(currentMaxrrc == conn.getMaxrrc()) || !(currentMaxwrc == conn.getMaxwrc())
-					|| !(currentDdd == conn.getDdd()) || !(currentMwo == conn.isMwo());
-
+					|| !(currentDdd == conn.getDdd()) || !(currentMwo.equals(conn.getUseMultipleWrites()));
 			if (isConnectionChanged) {
 				((IpConnection) conn).writeIpAttributes();
 
