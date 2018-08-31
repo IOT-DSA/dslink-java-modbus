@@ -56,6 +56,7 @@ public class SlaveNode extends SlaveFolder {
 	Node statnode;
 
 	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
+	final ConcurrentMap<Node, Long> lastUpdates = new ConcurrentHashMap<Node, Long>();
 
 	SlaveNode(ModbusConnection conn, Node node) {
 		super(conn, node);
@@ -109,6 +110,9 @@ public class SlaveNode extends SlaveFolder {
 				node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
+		double defdur = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().doubleValue() / 1000;
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(defdur))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		Node anode = node.getChild(ACTION_EDIT, true);
 		if (anode == null)
@@ -135,12 +139,14 @@ public class SlaveNode extends SlaveFolder {
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
+			long suppressDuration = (long) (event.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber().doubleValue() * 1000);
 
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
 			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
+			node.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(suppressDuration));
 
 			conn.getLink().handleEdit(root);
 
@@ -351,17 +357,35 @@ public class SlaveNode extends SlaveFolder {
 				break;
 			}
 		}
-
-		if (v != null) {
-			pnode.setValueType(vt);
-			pnode.setValue(v);
-		} else if (node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
+		
+		if (v == null && node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL).getBool()) {
 			if (pnode.getValueType().compare(ValueType.NUMBER)) {
-				pnode.setValue(new Value(0));
+				v = new Value(0);
 			} else if (pnode.getValueType().compare(ValueType.BOOL)) {
-				pnode.setValue(new Value(false));
+				v = new Value(false);
 			}
 		}
+		
+		if (vt != null && !vt.equals(pnode.getValueType())) {
+			pnode.setValueType(vt);
+		}
+		if (v != null && (!v.equals(pnode.getValue()) || isTimeForNonCovUpdate(pnode))) {
+			pnode.setValue(v);
+			lastUpdates.put(pnode, System.currentTimeMillis());
+		}
+	}
+	
+	private boolean isTimeForNonCovUpdate(Node pnode) {
+		long suppressDuration = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().longValue();
+		if (suppressDuration == 0) {
+			return true;
+		}
+		Long lastUpdate = lastUpdates.get(pnode);
+		if (lastUpdate == null) {
+			return true;
+		}
+		long now = System.currentTimeMillis();
+		return now - lastUpdate > suppressDuration;
 	}
 
 	public ScheduledThreadPoolExecutor getDaemonThreadPool() {

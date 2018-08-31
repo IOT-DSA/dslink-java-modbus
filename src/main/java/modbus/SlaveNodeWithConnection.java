@@ -58,7 +58,7 @@ public class SlaveNodeWithConnection extends SlaveNode {
 		// The device specific parameters
 		act.addParameter(new Parameter(ModbusConnection.ATTR_SLAVE_ID, ValueType.NUMBER,
 				node.getAttribute(ModbusConnection.ATTR_SLAVE_ID)));
-		int interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().intValue() / 1000;
+		double interval = node.getAttribute(ModbusConnection.ATTR_POLLING_INTERVAL).getNumber().doubleValue() / 1000;
 		act.addParameter(new Parameter(ModbusConnection.ATTR_POLLING_INTERVAL, ValueType.NUMBER, new Value(interval)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL)));
@@ -66,6 +66,9 @@ public class SlaveNodeWithConnection extends SlaveNode {
 				node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL,
 				node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY)));
+		double defdur = node.getAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION).getNumber().doubleValue() / 1000;
+		act.addParameter(new Parameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER, new Value(defdur))
+				.setDescription("how many seconds to wait before sending an update for an unchanged value"));
 
 		// the common parameters for connection
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TIMEOUT, ValueType.NUMBER,
@@ -82,7 +85,6 @@ public class SlaveNodeWithConnection extends SlaveNode {
 				node.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY)));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, ValueType.makeEnum(ModbusConnection.MULTIPLE_WRITE_COMMAND_OPTIONS),
 				node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND)));
-
 		Node anode = node.getChild("edit", true);
 		if (anode == null)
 			node.createChild("edit", true).setAction(act).build().setSerializable(false);
@@ -112,13 +114,11 @@ public class SlaveNodeWithConnection extends SlaveNode {
 					.intValue();
 			int currentDdd = node.getAttribute(ModbusConnection.ATTR_DISCARD_DATA_DELAY).getNumber().intValue();
 			String currentMwo = node.getAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND).getString();
-
 			boolean isConnectionChanged = !currentHost.equals(((IpConnection) conn).getHost())
 					|| !(currentPort == ((IpConnection) conn).getPort()) || !(currentTimeout == conn.getTimeout())
 					|| !(currentRetries == conn.getRetries()) || !(currentMaxrbc == conn.getMaxrbc())
 					|| !(currentMaxrrc == conn.getMaxrrc()) || !(currentMaxwrc == conn.getMaxwrc())
 					|| !(currentDdd == conn.getDdd()) || !(currentMwo.equals(conn.getUseMultipleWrites()));
-
 			if (isConnectionChanged) {
 				((IpConnection) conn).writeIpAttributes();
 
@@ -135,12 +135,14 @@ public class SlaveNodeWithConnection extends SlaveNode {
 			boolean batchpoll = event.getParameter(ModbusConnection.ATTR_USE_BATCH_POLLING, ValueType.BOOL).getBool();
 			boolean contig = event.getParameter(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, ValueType.BOOL)
 					.getBool();
+			long suppressDuration = (long) (event.getParameter(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, ValueType.NUMBER).getNumber().doubleValue() * 1000);
 
 			node.setAttribute(ModbusConnection.ATTR_SLAVE_ID, new Value(slaveid));
 			node.setAttribute(ModbusConnection.ATTR_POLLING_INTERVAL, new Value(intervalInMs));
 			node.setAttribute(ModbusConnection.ATTR_ZERO_ON_FAILED_POLL, new Value(zerofail));
 			node.setAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING, new Value(batchpoll));
 			node.setAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY, new Value(contig));
+			node.setAttribute(ModbusConnection.ATTR_SUPPRESS_NON_COV_DURATION, new Value(suppressDuration));
 
 			conn.getLink().handleEdit(root);
 

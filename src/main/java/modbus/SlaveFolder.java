@@ -77,7 +77,7 @@ public class SlaveFolder {
 
 	ModbusConnection conn;
 	protected Node node;
-	protected SlaveFolder root;
+	protected SlaveNode root;
 
 	SlaveFolder(ModbusConnection conn, Node node) {
 		this.conn = conn;
@@ -105,7 +105,7 @@ public class SlaveFolder {
 		makeImportAction(node);
 	}
 
-	SlaveFolder(ModbusConnection conn, Node node, SlaveFolder root) {
+	SlaveFolder(ModbusConnection conn, Node node, SlaveNode root) {
 		this(conn, node);
 		this.root = root;
 	}
@@ -404,6 +404,13 @@ public class SlaveFolder {
 			pointNode.setWritable(Writable.WRITE);
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
 		}
+		
+		pointNode.getListener().setNodeRemovedHandler(new Handler<Node>() {
+			@Override
+			public void handle(Node event) {
+				root.lastUpdates.remove(event);
+			}
+		});
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {
