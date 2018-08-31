@@ -1,50 +1,37 @@
 package modbus;
 
 public enum DataType {
-	BOOLEAN(null, null),
-	INT16(Short.MIN_VALUE, Short.MAX_VALUE), 
-	UINT16(0, 65535),
-	INT16SWAP(Short.MIN_VALUE, Short.MAX_VALUE),
-	UINT16SWAP(0, 65535),
-	INT32(Integer.MIN_VALUE, Integer.MAX_VALUE), 
-	UINT32(0L, 4294967295L),
-	INT32SWAP(Integer.MIN_VALUE, Integer.MAX_VALUE),
-	UINT32SWAP(0L, 4294967295L),
-	INT32SWAPSWAP(Integer.MIN_VALUE, Integer.MAX_VALUE),
-	UINT32SWAPSWAP(0L, 4294967295L),
-	FLOAT32(null, null),
-	FLOAT32SWAP(null, null),
-	INT64(Long.MIN_VALUE, Long.MAX_VALUE),
-	UINT64(0L, null),
-	INT64SWAP(Long.MIN_VALUE, Long.MAX_VALUE),
-	UINT64SWAP(0L, null),
-	FLOAT64(null, null),
-	FLOAT64SWAP(null, null),
-	BCD16(0, 9999),
-	BCD32(0, 99999999),
-	BCD32SWAP(0, 99999999),
-	CHARSTRING(null, null),
-	VARCHARSTRING(null, null),
-	INT32M10K(-327680000, 327670000),
-	UINT32M10K(0, 655350000), 
-	INT32M10KSWAP(-327680000, 327670000), 
-	UINT32M10KSWAP(0, 655350000);
+	BOOLEAN(null, null), INT16(Short.MIN_VALUE, Short.MAX_VALUE), UINT16(0, 65535), INT16SWAP(Short.MIN_VALUE,
+			Short.MAX_VALUE), UINT16SWAP(0, 65535), INT32(Integer.MIN_VALUE, Integer.MAX_VALUE), UINT32(0L,
+					4294967295L), INT32SWAP(Integer.MIN_VALUE, Integer.MAX_VALUE), UINT32SWAP(0L,
+							4294967295L), INT32SWAPSWAP(Integer.MIN_VALUE, Integer.MAX_VALUE), UINT32SWAPSWAP(0L,
+									4294967295L), FLOAT32(null, null), FLOAT32SWAP(null, null), INT64(Long.MIN_VALUE,
+											Long.MAX_VALUE), UINT64(0L, null), INT64SWAP(Long.MIN_VALUE,
+													Long.MAX_VALUE), UINT64SWAP(0L, null), FLOAT64(null,
+															null), FLOAT64SWAP(null, null), BCD16(0, 9999), BCD32(0,
+																	99999999), BCD32SWAP(0, 99999999), CHARSTRING(null,
+																			null), VARCHARSTRING(null, null), INT32M10K(
+																					-327680000,
+																					327670000), UINT32M10K(0,
+																							655350000), INT32M10KSWAP(
+																									-327680000,
+																									327670000), UINT32M10KSWAP(
+																											0,
+																											655350000);
 
-	
 	private Long lowerBound;
 	private Long upperBound;
-	
+
 	private DataType(int lowerBound, int upperBound) {
 		this.lowerBound = (long) lowerBound;
 		this.upperBound = (long) upperBound;
 	}
-	
+
 	private DataType(Long lowerBound, Long upperBound) {
 		this.lowerBound = lowerBound;
 		this.upperBound = upperBound;
 	}
-	
-	
+
 	public boolean isFloat() {
 		return (this == FLOAT32 || this == FLOAT32SWAP || this == FLOAT64 || this == FLOAT64SWAP);
 	}
@@ -52,9 +39,10 @@ public enum DataType {
 	public boolean isString() {
 		return (this == CHARSTRING || this == VARCHARSTRING);
 	}
-	
+
 	public boolean checkBounds(Number n) {
-		return (lowerBound == null || n.longValue() >= lowerBound) && (upperBound == null || n.longValue() <= upperBound);
+		return (lowerBound == null || n.longValue() >= lowerBound)
+				&& (upperBound == null || n.longValue() <= upperBound);
 	}
 
 	protected static Integer getDataTypeInt(DataType dt) {

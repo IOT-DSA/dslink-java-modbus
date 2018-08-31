@@ -2,6 +2,7 @@ package modbus;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -30,6 +31,8 @@ public class IpConnectionWithDevice extends IpConnection {
 	static {
 		LOGGER = LoggerFactory.getLogger(IpConnectionWithDevice.class);
 	}
+	
+	final ConnectionRestorer restorer = new ConnectionRestorer(this);
 
 	IpConnectionWithDevice(ModbusLink link, final Node node) {
 		super(link, node);
@@ -42,6 +45,10 @@ public class IpConnectionWithDevice extends IpConnection {
 					if (sn.node != node && sn instanceof SlaveNodeWithConnection
 							&& ((SlaveNodeWithConnection) sn).connStatNode != null) {
 						((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
+					}
+					if (ModbusConnection.NODE_STATUS_CONNECTION_ESTABLISHMENT_FAILED.equals(value.getString()) 
+							|| ModbusConnection.NODE_STATUS_CONNECTION_STOPPED.equals(value.getString())) {
+						sn.getStatusNode().setValue(new Value(SlaveNode.NODE_STATUS_CONN_DOWN));
 					}
 				}
 			}
@@ -73,7 +80,7 @@ public class IpConnectionWithDevice extends IpConnection {
 		}
 	}
 
-	synchronized SlaveNode addSlave(Node slaveNode) {
+	SlaveNode addSlave(Node slaveNode) {
 		makeStopRestartActions(slaveNode);
 
 		SlaveNodeWithConnection sn = new SlaveNodeWithConnection(this, slaveNode);
@@ -81,7 +88,7 @@ public class IpConnectionWithDevice extends IpConnection {
 		return sn;
 	}
 
-	void makeStopRestartActions(Node slaveNode) {
+	void makeStopRestartActions(final Node slaveNode) {
 		Action act = new Action(Permission.READ, new RestartHandler());
 		Node anode = slaveNode.getChild(ACTION_RESTART, true);
 		if (anode == null) {
@@ -133,6 +140,35 @@ public class IpConnectionWithDevice extends IpConnection {
 			sn.node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transType.toString()));
 			sn.node.setAttribute(ATTR_HOST, new Value(host));
 			sn.node.setAttribute(ATTR_PORT, new Value(port));
+		}
+	}
+	
+	static class ConnectionRestorer {
+		AtomicBoolean started = new AtomicBoolean(false);
+		boolean done = false;
+		IpConnectionWithDevice conn;
+		ConnectionRestorer(IpConnectionWithDevice conn) {
+			this.conn = conn;
+		}
+		
+		public void restore() {
+			if (started.compareAndSet(false, true)) {
+				conn.restoreLastSession();
+				synchronized (this) {
+					done = true;
+					notifyAll();
+				}
+			} else {
+				synchronized(this) {
+					while(!done) {
+						try {
+							wait();
+						} catch (InterruptedException e) {
+							LOGGER.error("", e);
+						}
+					}
+				}
+			}
 		}
 	}
 
