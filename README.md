@@ -21,7 +21,10 @@ Use the action `add ip connection` or `add serial connection` to set up a connec
  - `max read register count` - maximum number of (holding or input) registers that can be read in one request
  - `max write register count` - maximum number of holding registers that can be written in one request
  - `discard data delay` - If set to a value greater than 0, will cause data to be discarded after that many milliseconds have passed since it arrived
- - `use multiple write commands only` - If your devices only support multiple write commands, set this to true
+ - `use multiple write commands` - When to use "write multiple coils/registers" commands (function codes 15 and 16) vs "write single coil/register" commands (function codes 5 and 6). Options are:
+   - `Always` - will use function code 15 or 16 for all writes. Use this if your device only supports multiple-write commands
+   - `Never` - will use function code 5 or 6 for all writes, sending multiple such commands if the value spans multiple registers. Use this if your device doesn't support multiple-write commands.
+   - `As Appropriate` - will use function code 5 or 6 for 1-register values and function code 15 or 16 for multi-register values.
 
 Most of the time, you can use the default values for all of the parameters except `name` and `host`.
 
@@ -44,8 +47,11 @@ Most of the time, you can use the default values for all of the parameters excep
  - `max read register count` - maximum number of (holding or input) registers that can be read in one request
  - `max write register count` - maximum number of holding registers that can be written in one request
  - `discard data delay` - If set to a value greater than 0, will cause data to be discarded after that many milliseconds have passed since it arrived
- - `use multiple write commands only` - If your devices only support multiple write commands, set this to true
-
+  - `use multiple write commands` - When to use "write multiple coils/registers" commands (function codes 15 and 16) vs "write single coil/register" commands (function codes 5 and 6). Options are:
+   - `Always` - will use function code 15 or 16 for all writes. Use this if your device only supports multiple-write commands
+   - `Never` - will use function code 5 or 6 for all writes, sending multiple such commands if the value spans multiple registers. Use this if your device doesn't support multiple-write commands.
+   - `As Appropriate` - will use function code 5 or 6 for 1-register values and function code 15 or 16 for multi-register values.
+   
 Most of the time, you can use the default values for all of the parameters except `name`, `comm port id`, `baud rate`, `data bits`, `stop bits`, and `parity`.
 
 ### Add device
