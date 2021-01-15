@@ -1,8 +1,12 @@
 package modbus;
 
+import com.serotonin.modbus4j.ModbusFactory;
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusInitException;
+import com.serotonin.modbus4j.serial.SerialPortWrapper;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -11,14 +15,8 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.serotonin.modbus4j.ModbusFactory;
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusInitException;
-import com.serotonin.modbus4j.serial.SerialPortWrapper;
 
 public class SerialConn extends ModbusConnection {
 	private static final Logger LOGGER;
@@ -67,13 +65,11 @@ public class SerialConn extends ModbusConnection {
 				ValueType.makeEnum(Util.enumNames(SerialTransportType.class)),
 				node.getAttribute(ModbusConnection.ATTR_TRANSPORT_TYPE)));
 
-		Set<String> portids = new HashSet<String>();
+		Set<String> portids = new HashSet<>();
 		try {
 			String[] cports = Util.getCommPorts();
-			for (String port : cports) {
-				portids.add(port);
-			}
-		} catch (Exception e) {
+			portids.addAll(Arrays.asList(cports));
+		} catch (Exception ignored) {
 		}
 		if (portids.size() > 0) {
 			if (portids.contains(node.getAttribute(ATTR_COMM_PORT_ID).getString())) {
@@ -178,27 +174,27 @@ public class SerialConn extends ModbusConnection {
 
 	static class AddDeviceHandler implements Handler<ActionResult> {
 
-		private SerialConn conn;
+		private final SerialConn conn;
 
 		AddDeviceHandler(SerialConn conn) {
 			this.conn = conn;
 		}
 
 		public void handle(ActionResult event) {
-			String transtype = null;
-			String commPortId = "na";
-			String parityString = "NONE";
-			int baudRate = 0;
-			int dataBits = 0;
-			int stopBits = 0;
+			String transtype;
+			String commPortId;
+			String parityString;
+			int baudRate;
+			int dataBits;
+			int stopBits;
 
-			int timeout = 0;
-			int retries = 0;
-			int maxrbc = 0;
-			int maxrrc = 0;
-			int maxwrc = 0;
-			int ddd = 0;
-			String mw = MULTIPLE_WRITE_COMMAND_DEFAULT;
+			int timeout;
+			int retries;
+			int maxrbc;
+			int maxrrc;
+			int maxwrc;
+			int ddd;
+			String mw;
 
 			String name = event.getParameter(ATTR_CONNECTION_NAME, ValueType.STRING).getString();
 			int slaveid = event.getParameter(ATTR_SLAVE_ID, ValueType.NUMBER).getNumber().intValue();

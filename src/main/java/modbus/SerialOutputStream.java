@@ -2,11 +2,10 @@ package modbus;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
 import jssc.SerialPort;
 
 public class SerialOutputStream extends OutputStream {
-	private SerialPort port;
+	private final SerialPort port;
 
 	public SerialOutputStream(SerialPort serialPort) {
 		this.port = serialPort;

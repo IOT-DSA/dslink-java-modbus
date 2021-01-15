@@ -3,26 +3,24 @@ package modbus;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.LinkedBlockingQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import jssc.SerialPort;
 import jssc.SerialPortEvent;
 import jssc.SerialPortEventListener;
 import jssc.SerialPortException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SerialInputStream extends InputStream implements SerialPortEventListener {
 
 	private final Logger LOGGER = LoggerFactory.getLogger(SerialInputStream.class);
 	private final Object closeLock = new Object();
 	private volatile boolean closed = false;
-	protected LinkedBlockingQueue<Byte> dataStream;
-	protected Object dataStreamLock = new Object();
-	protected SerialPort port;
+	protected final LinkedBlockingQueue<Byte> dataStream;
+	protected final Object dataStreamLock = new Object();
+	protected final SerialPort port;
 
 	public SerialInputStream(SerialPort serialPort) throws SerialPortException {
-		this.dataStream = new LinkedBlockingQueue<Byte>();
+		this.dataStream = new LinkedBlockingQueue<>();
 
 		this.port = serialPort;
 		this.port.addEventListener(this, SerialPort.MASK_RXCHAR);
@@ -46,7 +44,7 @@ public class SerialInputStream extends InputStream implements SerialPortEventLis
 	}
 
 	@Override
-	public int available() throws IOException {
+	public int available() {
 		synchronized (dataStreamLock) {
 			return this.dataStream.size();
 		}
@@ -83,8 +81,8 @@ public class SerialInputStream extends InputStream implements SerialPortEventLis
 			try {
 				synchronized (dataStreamLock) {
 					byte[] buffer = this.port.readBytes(event.getEventValue());
-					for (int i = 0; i < buffer.length; i++) {
-						this.dataStream.put(buffer[i]);
+					for (byte b : buffer) {
+						this.dataStream.put(b);
 					}
 				}
 

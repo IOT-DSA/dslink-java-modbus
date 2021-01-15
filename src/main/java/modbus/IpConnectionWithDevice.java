@@ -2,7 +2,6 @@ package modbus;
 
 import java.util.HashSet;
 import java.util.Set;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -34,15 +33,12 @@ public class IpConnectionWithDevice extends IpConnection {
 	IpConnectionWithDevice(ModbusLink link, final Node node) {
 		super(link, node);
 		node.setAttribute(ATTR_RESTORE_TYPE, new Value(SlaveFolder.ATTR_RESTORE_FOLDER));
-		statnode.getListener().setValueHandler(new Handler<ValuePair>() {
-			@Override
-			public void handle(ValuePair event) {
-				Value value = event.getCurrent();
-				for (SlaveNode sn : new HashSet<SlaveNode>(slaves)) {
-					if (sn.node != node && sn instanceof SlaveNodeWithConnection
-							&& ((SlaveNodeWithConnection) sn).connStatNode != null) {
-						((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
-					}
+		statnode.getListener().setValueHandler(event -> {
+			Value value = event.getCurrent();
+			for (SlaveNode sn : new HashSet<>(slaves)) {
+				if (sn.node != node && sn instanceof SlaveNodeWithConnection
+						&& ((SlaveNodeWithConnection) sn).connStatNode != null) {
+					((SlaveNodeWithConnection) sn).connStatNode.setValue(value);
 				}
 			}
 		});
@@ -53,7 +49,7 @@ public class IpConnectionWithDevice extends IpConnection {
 		synchronized (masterLock) {
 			init();
 
-			Set<SlaveNode> slavescopy = new HashSet<SlaveNode>(slaves);
+			Set<SlaveNode> slavescopy = new HashSet<>(slaves);
 			for (SlaveNode sn : slavescopy) {
 				sn.init();
 			}
@@ -90,13 +86,11 @@ public class IpConnectionWithDevice extends IpConnection {
 			anode.setAction(act);
 		}
 
-		act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				if (reconnectFuture != null) {
-					reconnectFuture.cancel(false);
-				}
-				stop();
+		act = new Action(Permission.READ, event -> {
+			if (reconnectFuture != null) {
+				reconnectFuture.cancel(false);
 			}
+			stop();
 		});
 
 		anode = slaveNode.getChild("stop", true);
@@ -116,7 +110,7 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	public void writeMasterAttributes() {
-		for (SlaveNode sn : new HashSet<SlaveNode>(slaves)) {
+		for (SlaveNode sn : new HashSet<>(slaves)) {
 			sn.node.setAttribute(ATTR_TIMEOUT, new Value(timeout));
 			sn.node.setAttribute(ATTR_RETRIES, new Value(retries));
 			sn.node.setAttribute(ATTR_MAX_READ_BIT_COUNT, new Value(maxrbc));
@@ -129,7 +123,7 @@ public class IpConnectionWithDevice extends IpConnection {
 
 	@Override
 	void writeIpAttributes() {
-		for (SlaveNode sn : new HashSet<SlaveNode>(slaves)) {
+		for (SlaveNode sn : new HashSet<>(slaves)) {
 			sn.node.setAttribute(ATTR_TRANSPORT_TYPE, new Value(transType.toString()));
 			sn.node.setAttribute(ATTR_HOST, new Value(host));
 			sn.node.setAttribute(ATTR_PORT, new Value(port));

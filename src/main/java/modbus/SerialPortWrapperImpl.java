@@ -1,19 +1,18 @@
 package modbus;
 
+import com.serotonin.modbus4j.serial.SerialPortWrapper;
 import java.io.InputStream;
 import java.io.OutputStream;
 import jssc.SerialPort;
-
-import com.serotonin.modbus4j.serial.SerialPortWrapper;
 
 public class SerialPortWrapperImpl implements SerialPortWrapper {
 	private final SerialPort port;
 	private SerialInputStream is;
 	private SerialOutputStream os;
-	private int baudRate;
-	private int dataBits;
-	private int stopBits;
-	private int parity;
+	private final int baudRate;
+	private final int dataBits;
+	private final int stopBits;
+	private final int parity;
 
 	public SerialPortWrapperImpl(String portName, int baudRate, int dataBits, int stopBits, int parity) {
 		port = new SerialPort(portName);
@@ -53,12 +52,10 @@ public class SerialPortWrapperImpl implements SerialPortWrapper {
 		return baudRate;
 	}
 
-	@Override
 	public int getFlowControlIn() {
 		return SerialPort.FLOWCONTROL_NONE;
 	}
 
-	@Override
 	public int getFlowControlOut() {
 		return SerialPort.FLOWCONTROL_NONE;
 	}

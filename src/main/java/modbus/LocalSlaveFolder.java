@@ -1,7 +1,8 @@
 package modbus;
 
+import com.serotonin.modbus4j.BasicProcessImage;
+import com.serotonin.modbus4j.ProcessImage;
 import java.util.Map;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -16,8 +17,6 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.serotonin.modbus4j.BasicProcessImage;
-import com.serotonin.modbus4j.ProcessImage;
 
 /*
  * The implementation of Editable Folder 
@@ -251,7 +250,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {
-		private Node pointNode;
+		private final Node pointNode;
 
 		CopyPointHandler(Node pnode) {
 			pointNode = pnode;
@@ -329,7 +328,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	protected class RemovePointHandler implements Handler<ActionResult> {
-		private Node pointNode;
+		private final Node pointNode;
 
 		RemovePointHandler(Node pnode) {
 			pointNode = pnode;
@@ -341,7 +340,7 @@ public class LocalSlaveFolder extends EditableFolder {
 	}
 
 	protected class SetValueHandler implements Handler<ValuePair> {
-		private Node pointNode;
+		private final Node pointNode;
 
 		SetValueHandler(Node node) {
 			this.pointNode = node;

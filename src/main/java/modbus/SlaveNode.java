@@ -1,25 +1,5 @@
 package modbus;
 
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-
-import org.dsa.iot.dslink.node.Node;
-import org.dsa.iot.dslink.node.Permission;
-import org.dsa.iot.dslink.node.actions.Action;
-import org.dsa.iot.dslink.node.actions.ActionResult;
-import org.dsa.iot.dslink.node.actions.Parameter;
-import org.dsa.iot.dslink.node.value.Value;
-import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.json.JsonArray;
-import org.dsa.iot.dslink.util.json.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.dsa.iot.dslink.util.StringUtils;
-import org.dsa.iot.dslink.util.handler.Handler;
-
 import com.serotonin.modbus4j.BatchRead;
 import com.serotonin.modbus4j.BatchResults;
 import com.serotonin.modbus4j.ExceptionResult;
@@ -28,6 +8,24 @@ import com.serotonin.modbus4j.exception.ErrorResponseException;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.BaseLocator;
 import com.serotonin.modbus4j.locator.BinaryLocator;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.Permission;
+import org.dsa.iot.dslink.node.actions.Action;
+import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.StringUtils;
+import org.dsa.iot.dslink.util.handler.Handler;
+import org.dsa.iot.dslink.util.json.JsonArray;
+import org.dsa.iot.dslink.util.json.JsonObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * A regular class for the multiple tier design.
@@ -55,8 +53,8 @@ public class SlaveNode extends SlaveFolder {
 
 	Node statnode;
 
-	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<Node, Boolean>();
-	final ConcurrentMap<Node, Long> lastUpdates = new ConcurrentHashMap<Node, Long>();
+	private final ConcurrentMap<Node, Boolean> subscribed = new ConcurrentHashMap<>();
+	final ConcurrentMap<Node, Long> lastUpdates = new ConcurrentHashMap<>();
 
 	SlaveNode(ModbusConnection conn, Node node) {
 		super(conn, node);
@@ -126,7 +124,6 @@ public class SlaveNode extends SlaveFolder {
 		super.remove();
 
 		conn.slaves.remove(this);
-		return;
 	}
 
 	private class EditHandler implements Handler<ActionResult> {
@@ -173,11 +170,11 @@ public class SlaveNode extends SlaveFolder {
 
 		int id = Util.getIntValue(node.getAttribute(ModbusConnection.ATTR_SLAVE_ID));
 		if (node.getAttribute(ModbusConnection.ATTR_USE_BATCH_POLLING).getBool()) {
-			BatchRead<Node> batch = new BatchRead<Node>();
+			BatchRead<Node> batch = new BatchRead<>();
 			batch.setContiguousRequests(
 					node.getAttribute(ModbusConnection.ATTR_CONTIGUOUS_BATCH_REQUEST_ONLY).getBool());
 			batch.setErrorsInResults(true);
-			Set<Node> polled = new HashSet<Node>();
+			Set<Node> polled = new HashSet<>();
 			for (Node pnode : subscribed.keySet()) {
 				BaseLocator<?> locator = getLocator(id, pnode);
 				if (locator == null) {
@@ -188,7 +185,7 @@ public class SlaveNode extends SlaveFolder {
 			}
 
 			try {
-				BatchResults<Node> response = null;
+				BatchResults<Node> response;
 				synchronized (conn.masterLock) {
 					if (getMaster() == null) {
 						return;
@@ -226,7 +223,7 @@ public class SlaveNode extends SlaveFolder {
 				}
 
 				try {
-					Object obj = null;
+					Object obj;
 					synchronized (conn.masterLock) {
 						if (getMaster() == null) {
 							return;
@@ -424,7 +421,6 @@ public class SlaveNode extends SlaveFolder {
 				statnode.setValue(new Value(NODE_STATUS_CONN_DOWN));
 			}
 		}
-		return;
 	}
 
 	@Override

@@ -1,7 +1,7 @@
 package modbus;
 
+import com.serotonin.modbus4j.ProcessImage;
 import java.util.Map;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -13,8 +13,6 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.serotonin.modbus4j.ProcessImage;
 
 /**
  * Contains the common abstract operations of an editable folder
@@ -89,7 +87,7 @@ public abstract class EditableFolder {
 		JsonObject nodeObj = parentObj.get(node.getName());
 		parentObj.put(name, nodeObj);
 		link.deserializer.deserialize(jsonObj);
-	};
+	}
 
 	protected abstract void addFolder(String name);
 
@@ -166,8 +164,8 @@ public abstract class EditableFolder {
 	}
 
 	void restoreLastSession() {
-		if (node.getChildren() == null)
-			return;
+		if (node.getChildren() == null) {
+		}
 
 	}
 

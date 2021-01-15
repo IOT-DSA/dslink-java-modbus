@@ -1,11 +1,14 @@
 package modbus;
 
+import com.serotonin.modbus4j.BasicProcessImage;
+import com.serotonin.modbus4j.ModbusSlaveSet;
+import com.serotonin.modbus4j.ProcessImageListener;
+import com.serotonin.modbus4j.exception.ModbusInitException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -16,10 +19,6 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.serotonin.modbus4j.BasicProcessImage;
-import com.serotonin.modbus4j.ModbusSlaveSet;
-import com.serotonin.modbus4j.ProcessImageListener;
-import com.serotonin.modbus4j.exception.ModbusInitException;
 
 /*
  * This is a special folder which represents the virtual device node
@@ -36,7 +35,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	static final String STATUS_START_LISTENING = "Listening started";
 	static final String STATUS_STOP_LISTENING = "Listening stoppd";
 
-	private Node statusNode;
+	private final Node statusNode;
 
 	private ModbusSlaveSet activeListener;
 	private final ScheduledThreadPoolExecutor listenerStpe;
@@ -72,7 +71,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 
 	protected Map<Integer, Node> getOffsetToPoint() {
 		if (null == offsetToPoint) {
-			offsetToPoint = new HashMap<Integer, Node>();
+			offsetToPoint = new HashMap<>();
 		}
 
 		return offsetToPoint;
@@ -140,15 +139,12 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	void startListening() {
 		if (listenerStpe != null) {
 
-			listenerStpe.execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						statusNode.setValue(new Value(STATUS_START_LISTENING));
-						activeListener.start();
-					} catch (ModbusInitException e) {
-						e.printStackTrace();
-					}
+			listenerStpe.execute(() -> {
+				try {
+					statusNode.setValue(new Value(STATUS_START_LISTENING));
+					activeListener.start();
+				} catch (ModbusInitException e) {
+					e.printStackTrace();
 				}
 			});
 
@@ -158,15 +154,12 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	void stopListening() {
 		if (listenerStpe != null) {
 
-			listenerStpe.execute(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						statusNode.setValue(new Value(STATUS_STOP_LISTENING));
-						activeListener.stop();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+			listenerStpe.execute(() -> {
+				try {
+					statusNode.setValue(new Value(STATUS_STOP_LISTENING));
+					activeListener.stop();
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			});
 
@@ -174,7 +167,7 @@ public class LocalSlaveNode extends LocalSlaveFolder {
 	}
 
 	private ModbusSlaveSet getActiveSlaveSet() {
-		IpTransportType transtype = null;
+		IpTransportType transtype;
 
 		try {
 			transtype = IpTransportType.valueOf(node.getAttribute(ATTRIBUTE_TRANSPORT_TYPE).getString().toUpperCase());

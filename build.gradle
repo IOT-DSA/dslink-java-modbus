@@ -1,25 +1,21 @@
 apply plugin: 'application'
-apply plugin: 'findbugs'
 apply plugin: 'java-library'
 
 mainClassName = 'modbus.Main'
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
-version = '0.3.1'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+version = '0.3.2'
 
 repositories {
-    mavenCentral()
+    jcenter()
     maven {
     	url 'https://maven.mangoautomation.net/repository/ias-release/'
-    }
-    maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots/'
     }
 }
 
 dependencies {
-    api 'org.iot-dsa:dslink:0.20.1'
-    implementation 'com.infiniteautomation:modbus4j:3.0.3'
+    api 'org.iot-dsa:dslink:0.24.1'
+    implementation 'com.infiniteautomation:modbus4j:3.0.5'
     implementation 'org.scream3r:jssc:2.8.0'
 }
 
@@ -37,7 +33,7 @@ tasks.withType(FindBugs) {
 }
 
 wrapper {
-    gradleVersion = '4.10'
+    gradleVersion = '6.8'
 }
 
 applicationDistribution.from new File(project.projectDir, "dslink.json")

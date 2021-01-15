@@ -1,5 +1,7 @@
 package modbus;
 
+import com.serotonin.modbus4j.ModbusFactory;
+import com.serotonin.modbus4j.ModbusMaster;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
@@ -8,7 +10,6 @@ import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -26,9 +27,6 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.serotonin.modbus4j.ModbusFactory;
-import com.serotonin.modbus4j.ModbusMaster;
 
 abstract public class ModbusConnection {
 	private static final Logger LOGGER;
@@ -265,11 +263,7 @@ abstract public class ModbusConnection {
 	}
 
 	public Action getRemoveAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				remove();
-			}
-		});
+		Action act = new Action(Permission.READ, event -> remove());
 
 		return act;
 	}
@@ -291,13 +285,11 @@ abstract public class ModbusConnection {
 	}
 
 	private void makeStopAction() {
-		Action act = new Action(Permission.READ, new Handler<ActionResult>() {
-			public void handle(ActionResult event) {
-				if (reconnectFuture != null) {
-					reconnectFuture.cancel(false);
-				}
-				stop();
+		Action act = new Action(Permission.READ, event -> {
+			if (reconnectFuture != null) {
+				reconnectFuture.cancel(false);
 			}
+			stop();
 		});
 
 		Node anode = node.getChild("stop", true);
@@ -308,12 +300,7 @@ abstract public class ModbusConnection {
 	}
 
     private void makeExportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleExport(event);
-            }
-        });
+        Action act = new Action(Permission.READ, this::handleExport);
         act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
         Node anode = node.getChild(ACTION_EXPORT, true);
         if (anode == null) {
@@ -324,12 +311,7 @@ abstract public class ModbusConnection {
     }
 
     private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(event);
-            }
-        });
+        Action act = new Action(Permission.READ, this::handleImport);
         act.addParameter(new Parameter("Name", ValueType.STRING));
         act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
         Node anode = node.getChild(ACTION_IMPORT, true);
@@ -379,7 +361,7 @@ abstract public class ModbusConnection {
 					try {
 						master.destroy();
 						link.masters.remove(master);
-					} catch (Exception e) {
+					} catch (Exception ignored) {
 					}
 				}
 				master = null;
@@ -395,16 +377,12 @@ abstract public class ModbusConnection {
 			return;
 		}
 		ScheduledThreadPoolExecutor reconnectStpe = Objects.getDaemonThreadPool();
-		reconnectFuture = reconnectStpe.schedule(new Runnable() {
-
-			@Override
-			public void run() {
-				Value stat = statnode.getValue();
-				if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
-						|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
-					stop();
-					restoreLastSession();
-				}
+		reconnectFuture = reconnectStpe.schedule(() -> {
+			Value stat = statnode.getValue();
+			if (stat == null || !(NODE_STATUS_CONNECTED.equals(stat.getString())
+					|| NODE_STATUS_SETTINGUP.equals(stat.getString()))) {
+				stop();
+				restoreLastSession();
 			}
 		}, retryDelay, TimeUnit.SECONDS);
 		if (retryDelay < RETRY_DELAY_MAX)

@@ -1,20 +1,17 @@
 package modbus;
 
-import java.util.Arrays;
-import java.util.regex.Pattern;
-
-import org.dsa.iot.dslink.node.value.Value;
-import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.json.JsonArray;
-
 import com.serotonin.modbus4j.ModbusMaster;
 import com.serotonin.modbus4j.exception.ModbusTransportException;
 import com.serotonin.modbus4j.locator.NumericLocator;
 import com.serotonin.modbus4j.locator.StringLocator;
 import com.serotonin.modbus4j.msg.ReportSlaveIdRequest;
-
+import java.util.Arrays;
+import java.util.regex.Pattern;
 import jssc.SerialNativeInterface;
 import jssc.SerialPortList;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.json.JsonArray;
 
 public class Util {
 	

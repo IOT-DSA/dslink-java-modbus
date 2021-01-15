@@ -1,11 +1,18 @@
 package modbus;
 
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.locator.NumericLocator;
+import com.serotonin.modbus4j.locator.StringLocator;
+import com.serotonin.modbus4j.msg.ModbusRequest;
+import com.serotonin.modbus4j.msg.WriteCoilRequest;
+import com.serotonin.modbus4j.msg.WriteCoilsRequest;
+import com.serotonin.modbus4j.msg.WriteRegisterRequest;
+import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
@@ -19,21 +26,12 @@ import org.dsa.iot.dslink.node.value.ValuePair;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
+import org.dsa.iot.dslink.util.StringUtils;
+import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.dsa.iot.dslink.util.StringUtils;
-import org.dsa.iot.dslink.util.handler.Handler;
-
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.locator.NumericLocator;
-import com.serotonin.modbus4j.locator.StringLocator;
-import com.serotonin.modbus4j.msg.ModbusRequest;
-import com.serotonin.modbus4j.msg.WriteCoilRequest;
-import com.serotonin.modbus4j.msg.WriteCoilsRequest;
-import com.serotonin.modbus4j.msg.WriteRegisterRequest;
-import com.serotonin.modbus4j.msg.WriteRegistersRequest;
 
 public class SlaveFolder {
 	private static final Logger LOGGER;
@@ -226,12 +224,7 @@ public class SlaveFolder {
 	}
 
     private void makeExportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleExport(fnode, event);
-            }
-        });
+        Action act = new Action(Permission.READ, event -> handleExport(fnode, event));
         act.addResult(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
         Node anode = fnode.getChild(ACTION_EXPORT, true);
         if (anode == null) {
@@ -255,12 +248,7 @@ public class SlaveFolder {
     }
 
     private void makeImportAction(final Node fnode) {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(fnode, event);
-            }
-        });
+        Action act = new Action(Permission.READ, event -> handleImport(fnode, event));
         act.addParameter(new Parameter("Name", ValueType.STRING));
         act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
         Node anode = fnode.getChild(ACTION_IMPORT, true);
@@ -311,8 +299,8 @@ public class SlaveFolder {
 	protected class AddPointHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
 			String name = event.getParameter("name", ValueType.STRING).getString();
-			PointType type = null;
-			ValueType valType = null;
+			PointType type;
+			ValueType valType;
 			try {
 				type = PointType
 						.valueOf(event.getParameter(ATTR_POINT_TYPE, ValueType.STRING).getString().toUpperCase());
@@ -405,16 +393,11 @@ public class SlaveFolder {
 			pointNode.getListener().setValueHandler(new SetHandler(pointNode));
 		}
 		
-		pointNode.getListener().setNodeRemovedHandler(new Handler<Node>() {
-			@Override
-			public void handle(Node event) {
-				root.lastUpdates.remove(event);
-			}
-		});
+		pointNode.getListener().setNodeRemovedHandler(event -> root.lastUpdates.remove(event));
 	}
 
 	protected class CopyPointHandler implements Handler<ActionResult> {
-		private Node pointNode;
+		private final Node pointNode;
 
 		CopyPointHandler(Node pnode) {
 			pointNode = pnode;
@@ -504,7 +487,7 @@ public class SlaveFolder {
 	}
 
 	protected class RemovePointHandler implements Handler<ActionResult> {
-		private Node toRemove;
+		private final Node toRemove;
 
 		RemovePointHandler(Node pnode) {
 			toRemove = pnode;
@@ -521,7 +504,7 @@ public class SlaveFolder {
 	}
 
 	protected class SetHandler implements Handler<ValuePair> {
-		private Node vnode;
+		private final Node vnode;
 
 		SetHandler(Node vnode) {
 			this.vnode = vnode;
@@ -576,7 +559,7 @@ public class SlaveFolder {
 				return;
 			}
 
-			Queue<ModbusRequest> requests = new LinkedList<ModbusRequest>();
+			Queue<ModbusRequest> requests = new LinkedList<>();
 			try {
 				switch (type) {
 				case COIL:
@@ -619,8 +602,7 @@ public class SlaveFolder {
 			} catch (Exception e) {
 				LOGGER.error("Error during set: " + e.getMessage());
 				LOGGER.debug("error: ", e);
-				return;
-			} 
+			}
 		}
 	}
 

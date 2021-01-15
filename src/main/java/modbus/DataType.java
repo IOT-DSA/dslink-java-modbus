@@ -31,15 +31,15 @@ public enum DataType {
 	UINT32M10KSWAP(0, 655350000);
 
 	
-	private Long lowerBound;
-	private Long upperBound;
+	private final Long lowerBound;
+	private final Long upperBound;
 	
-	private DataType(int lowerBound, int upperBound) {
+	DataType(int lowerBound, int upperBound) {
 		this.lowerBound = (long) lowerBound;
 		this.upperBound = (long) upperBound;
 	}
 	
-	private DataType(Long lowerBound, Long upperBound) {
+	DataType(Long lowerBound, Long upperBound) {
 		this.lowerBound = lowerBound;
 		this.upperBound = upperBound;
 	}

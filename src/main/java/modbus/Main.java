@@ -1,23 +1,15 @@
 package modbus;
 
-import java.io.File;
-
+import com.serotonin.modbus4j.ModbusMaster;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkFactory;
 import org.dsa.iot.dslink.DSLinkHandler;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeManager;
 import org.dsa.iot.dslink.serializer.Deserializer;
-import org.dsa.iot.dslink.serializer.SerializationManager;
 import org.dsa.iot.dslink.serializer.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.serotonin.modbus4j.ModbusFactory;
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusInitException;
-import com.serotonin.modbus4j.exception.ModbusTransportException;
-import com.serotonin.modbus4j.msg.ReadCoilsRequest;
 
 @SuppressWarnings("unused")
 public class Main extends DSLinkHandler {

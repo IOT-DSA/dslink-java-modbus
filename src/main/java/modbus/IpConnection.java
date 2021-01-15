@@ -1,5 +1,8 @@
 package modbus;
 
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.exception.ModbusInitException;
+import com.serotonin.modbus4j.ip.IpParameters;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -10,10 +13,6 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.exception.ModbusInitException;
-import com.serotonin.modbus4j.ip.IpParameters;
 
 public class IpConnection extends ModbusConnection {
 
@@ -89,7 +88,7 @@ public class IpConnection extends ModbusConnection {
 			if (master != null) {
 				try {
 					master.destroy();
-				} catch (Exception e1) {
+				} catch (Exception ignored) {
 				}
 			}
 			master = null;
@@ -160,7 +159,7 @@ public class IpConnection extends ModbusConnection {
 	}
 
 	class AddDeviceHandler implements Handler<ActionResult> {
-		private ModbusConnection conn;
+		private final ModbusConnection conn;
 
 		AddDeviceHandler(ModbusConnection conn) {
 			this.conn = conn;

@@ -1,7 +1,12 @@
 package modbus;
 
+import com.serotonin.modbus4j.ModbusMaster;
+import com.serotonin.modbus4j.ModbusSlaveSet;
+import com.serotonin.modbus4j.ip.tcp.TcpSlave;
+import com.serotonin.modbus4j.ip.udp.UdpSlave;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -10,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -21,15 +25,10 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.serializer.Deserializer;
 import org.dsa.iot.dslink.serializer.Serializer;
+import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.dsa.iot.dslink.util.handler.Handler;
-
-import com.serotonin.modbus4j.ModbusMaster;
-import com.serotonin.modbus4j.ModbusSlaveSet;
-import com.serotonin.modbus4j.ip.tcp.TcpSlave;
-import com.serotonin.modbus4j.ip.udp.UdpSlave;
 
 public class ModbusLink {
 	static private final Logger LOGGER;
@@ -74,13 +73,13 @@ public class ModbusLink {
 		this.serializer = ser;
 		this.deserializer = deser;
 		this.futures = new ConcurrentHashMap<>();
-		this.connections = new HashSet<ModbusConnection>();
-		this.masters = new HashSet<ModbusMaster>();
+		this.connections = new HashSet<>();
+		this.masters = new HashSet<>();
 
-		this.tcpListeners = new HashMap<Integer, ModbusSlaveSet>();
-		this.udpListeners = new HashMap<Integer, ModbusSlaveSet>();
+		this.tcpListeners = new HashMap<>();
+		this.udpListeners = new HashMap<>();
 
-		this.hostToConnection = new HashMap<String, IpConnectionWithDevice>();
+		this.hostToConnection = new HashMap<>();
 	}
 
 	public static void start(Node parent, Serializer copyser, Deserializer copydeser) {
@@ -140,7 +139,7 @@ public class ModbusLink {
 	private class MakeSlaveHandler implements Handler<ActionResult> {
 
 		public void handle(ActionResult event) {
-			String transtype = IpTransportType.TCP.name();
+			String transtype;
 			String name = event.getParameter(ATTRIBUTE_NAME, ValueType.STRING).getString();
 			Node slaveNode;
 
@@ -215,12 +214,10 @@ public class ModbusLink {
 		act.addParameter(new Parameter(ModbusConnection.ATTR_CONNECTION_NAME, ValueType.STRING));
 		act.addParameter(new Parameter(ModbusConnection.ATTR_TRANSPORT_TYPE,
 				ValueType.makeEnum(Util.enumNames(SerialTransportType.class))));
-		Set<String> portids = new HashSet<String>();
+		Set<String> portids = new HashSet<>();
 		try {
 			String[] cports = Util.getCommPorts();
-			for (String port : cports) {
-				portids.add(port);
-			}
+			portids.addAll(Arrays.asList(cports));
 		} catch (Exception e) {
 			LOGGER.debug("", e);
 		}
@@ -260,12 +257,7 @@ public class ModbusLink {
 	}
 
 	private void makeImportAction() {
-        Action act = new Action(Permission.READ, new Handler<ActionResult>(){
-            @Override
-            public void handle(ActionResult event) {
-                handleImport(event);
-            }
-        });
+        Action act = new Action(Permission.READ, this::handleImport);
         act.addParameter(new Parameter("Name", ValueType.STRING));
         act.addParameter(new Parameter("JSON", ValueType.STRING).setEditorType(EditorType.TEXT_AREA));
         Node anode = node.getChild(ACTION_IMPORT, true);
@@ -307,7 +299,7 @@ public class ModbusLink {
     }
 
 	public ModbusSlaveSet getSlaveSet(modbus.IpTransportType transtype, int port) {
-		ModbusSlaveSet slaveSet = null;
+		ModbusSlaveSet slaveSet;
 
 		switch (transtype) {
 		case TCP: {
@@ -431,7 +423,7 @@ public class ModbusLink {
 						&& timeout != null && retries != null) {
 
 					String hostName = host + ":" + port;
-					IpConnectionWithDevice conn = null;
+					IpConnectionWithDevice conn;
 					if (hostToConnection.containsKey(hostName)) {
 						conn = hostToConnection.get(hostName);
 						conn.addSlave(child);
@@ -507,8 +499,8 @@ public class ModbusLink {
 
 		public void handle(ActionResult event) {
 
-			String host = "na";
-			int port = 0;
+			String host;
+			int port;
 
 			int timeout, retries, maxrbc, maxrrc, maxwrc, ddd;
 			String mw;
@@ -554,8 +546,8 @@ public class ModbusLink {
 	 */
 	class AddIpDeviceHandler implements Handler<ActionResult> {
 		public void handle(ActionResult event) {
-			String host = "na";
-			int port = 0;
+			String host;
+			int port;
 			int timeout, retries, maxrbc, maxrrc, maxwrc, ddd;
 			String mw;
 			String transtype;
@@ -607,7 +599,7 @@ public class ModbusLink {
 			snode.setAttribute(ModbusConnection.ATTR_USE_MULTIPLE_WRITE_COMMAND, new Value(mw));
 
 			String hostName = host + ":" + port;
-			IpConnectionWithDevice conn = null;
+			IpConnectionWithDevice conn;
 			if (hostToConnection.containsKey(hostName)) {
 				conn = hostToConnection.get(hostName);
 				conn.addSlave(snode);
@@ -636,8 +628,8 @@ public class ModbusLink {
 
 		for (Node event : set) {
 			if (event.getMetaData() == newslave) {
-				handleUnsub((SlaveNode) oldslave, event);
-				handleSub((SlaveNode) newslave, event);
+				handleUnsub(oldslave, event);
+				handleSub(newslave, event);
 			}
 		}
 	}
@@ -648,12 +640,7 @@ public class ModbusLink {
 			return;
 		}
 		ScheduledThreadPoolExecutor stpe = slave.getDaemonThreadPool();
-		ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(new Runnable() {
-			@Override
-			public void run() {
-				slave.readPoints();
-			}
-		}, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
+		ScheduledFuture<?> future = stpe.scheduleWithFixedDelay(slave::readPoints, 0, slave.intervalInMs, TimeUnit.MILLISECONDS);
 		futures.put(slave, future);
 	}
 
@@ -669,18 +656,9 @@ public class ModbusLink {
 
 	void setupPoint(Node child, final SlaveFolder slave) {
 		child.setMetaData(slave);
-		child.getListener().setOnSubscribeHandler(new Handler<Node>() {
-			public void handle(final Node event) {
-				handleSub((SlaveNode) slave, event);
-			}
-		});
+		child.getListener().setOnSubscribeHandler(event -> handleSub((SlaveNode) slave, event));
 
-		child.getListener().setOnUnsubscribeHandler(new Handler<Node>() {
-			@Override
-			public void handle(Node event) {
-				handleUnsub((SlaveNode) slave, event);
-			}
-		});
+		child.getListener().setOnUnsubscribeHandler(event -> handleUnsub((SlaveNode) slave, event));
 	}
 
 	private ModbusLink getLink() {
