@@ -2,34 +2,34 @@ apply plugin: 'application'
 apply plugin: 'java-library'
 
 mainClassName = 'modbus.Main'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-version = '0.3.2'
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+version = '1.0.0'
 
 repositories {
-    jcenter()
+    mavenLocal()
+    mavenCentral()
     maven {
     	url 'https://maven.mangoautomation.net/repository/ias-release/'
+    }
+    maven {
+        url 'https://jitpack.io'
+    }
+    maven {
+        url 'http://maven.scijava.org/content/repositories/public/'
     }
 }
 
 dependencies {
-    api 'org.iot-dsa:dslink:0.24.1'
+    implementation 'com.github.iot-dsa:sdk-dslink-java:1.0.0'
     implementation 'com.infiniteautomation:modbus4j:3.0.5'
-    implementation 'org.scream3r:jssc:2.8.0'
+    implementation 'io.github.java-native:jssc:2.9.3'
 }
 
 
 run {
     args System.getProperty("exec.args", "").split()
     workingDir project.buildDir
-}
-
-tasks.withType(FindBugs) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
 }
 
 wrapper {
